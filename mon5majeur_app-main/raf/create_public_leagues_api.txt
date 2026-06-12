@@ -1,0 +1,161 @@
+create public league API:
+
+curl --location 'https://api.mon5majeur.com/api/public-leagues/' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOi' \
+--data '{
+  "leauge_name": "Public Sadid",
+  "leauge_logo": "atlanta_hawks",
+  "leauge_description": "Public Sadid",
+  "team_budget": "100M",
+  "max_team_number": "6"
+}'
+response 201 created: 
+
+{
+    "id": 8,
+    "teams": [
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "current_match_day": 0,
+    "leauge_name": "Public Sadid",
+    "leauge_description": "Public Sadid",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "6",
+    "created_at": "24-01-2026 19:37:12",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+
+get  public leagues api:
+
+curl --location 'https://api.mon5majeur.com/api/public-leagues/8/' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJI'
+
+response 200 ok:
+
+{
+    "id": 8,
+    "teams": [
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "current_match_day": 0,
+    "leauge_name": "Public Sadid",
+    "leauge_description": "Public Sadid",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "6",
+    "created_at": "24-01-2026 19:37:12",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+
+update public league api:
+
+curl --location --request PUT 'https://api.mon5majeur.com/api/public-leagues/8/' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGci' \
+--data '{
+  "leauge_name": "Public Sadid updated",
+  "leauge_logo": "atlanta_hawks",
+  "leauge_description": "Public Sadid updated",
+  "team_budget": "100M",
+  "max_team_number": "6"
+}'
+
+response 200 ok:
+
+{
+    "id": 8,
+    "teams": [
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "current_match_day": 0,
+    "leauge_name": "Public Sadid updated",
+    "leauge_description": "Public Sadid updated",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "6",
+    "created_at": "24-01-2026 19:37:12",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+
+get all active public leagues api:
+
+curl --location 'https://api.mon5majeur.com/api/public-leagues/active_leagues/' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOi'
+
+response 200 ok:
+[
+    {
+        "id": 2,
+        "teams": [
+            {
+                "team_id": 2,
+                "team_name": "admin",
+                "team_logo": "paris_fc"
+            }
+        ],
+        "current_match_day": 0,
+        "leauge_name": "test public league --2",
+        "leauge_description": "string",
+        "leauge_logo": "atlanta_hawks",
+        "team_budget": "50M",
+        "max_team_number": "6",
+        "created_at": "23-01-2026 20:40:29",
+        "start_date": null,
+        "is_ready": false,
+        "is_started": false,
+        "is_active": true,
+        "creator": 2
+    },
+    {
+        "id": 3,
+        "teams": [
+            {
+                "team_id": 4,
+                "team_name": "Mir",
+                "team_logo": "paris_fc"
+            }
+        ],
+        "current_match_day": 0,
+        "leauge_name": "fahad public league --2",
+        "leauge_description": "string",
+        "leauge_logo": "atlanta_hawks",
+        "team_budget": "50M",
+        "max_team_number": "6",
+        "created_at": "23-01-2026 20:42:00",
+        "start_date": null,
+        "is_ready": false,
+        "is_started": false,
+        "is_active": true,
+        "creator": 4
+    }
+]

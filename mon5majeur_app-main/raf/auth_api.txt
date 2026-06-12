@@ -1,0 +1,52 @@
+register api 
+
+postman request POST 'https://api.mon5majeur.com/api/auth/register/' \
+  --header 'Content-Type: application/json' \
+  --body '{
+  "email": "sadid.jones@gmail.com",
+  "password": "123456@Er",
+  "password2": "123456@Er"
+}'
+
+register api response 
+
+{
+    "message": "OTP sent to your email. Verify to complete registration."
+}
+
+otp verify api
+
+postman request POST 'https://api.mon5majeur.com/api/auth/verify-otp/' \
+  --header 'Content-Type: application/json' \
+  --body '{
+  "email": "sadid.jones@gmail.com",
+  "otp": "315777"
+}'
+
+otp verify api response 
+
+{
+    "message": "Registration complete. You can now log in."
+}
+
+login api
+
+postman request POST 'https://api.mon5majeur.com/api/auth/login/' \
+  --header 'Content-Type: application/json' \
+  --body '{
+  "email": "sadid.jones@gmail.com",
+  "password": "123456@Er"
+}'
+
+login api response
+
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc3MTExMDc0MiwiaWF0IjoxNzY4NDMyMzQyLCJqdGkiOiIwZjQ5MDNiN2I3NTI0NzUxOTNkZThhNzc2MWU5NzU0MiIsInVzZXJfaWQiOiIyIn0.voG0JI7xJTyP0hnsDb5uK2TJukhDIZni74UetBBTtvE",
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxMTEwNzQyLCJpYXQiOjE3Njg0MzIzNDIsImp0aSI6ImU4MDc1NTFjZDRiMDQzODk5NWFmMDgzNmUyY2MzZjc1IiwidXNlcl9pZCI6IjIifQ.k9Sh0yCLH3Elb1pWJ4_JF4Ct-OntnUjcaVvcn0wSCws",
+    "user": {
+        "user_id": 2,
+        "email": "sadid.jones@gmail.com",
+        "username": "sadid.jones",
+        "is_superuser": false
+    }
+}

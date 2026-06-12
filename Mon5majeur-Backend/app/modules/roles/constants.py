@@ -1,0 +1,5 @@
+ROLE_ADMIN = "admin"
+ROLE_USER = "user"
+ROLE_MODERATOR = "moderator"
+
+SYSTEM_ROLES = {ROLE_ADMIN, ROLE_USER}

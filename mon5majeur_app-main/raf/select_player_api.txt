@@ -1,0 +1,166 @@
+select player private api
+curl --location 'https://api.mon5majeur.com/api/private-leagues/2/1/players-selection/' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxMTgzODQ4LCJpYXQiOjE3Njg1MDU0NDgsImp0aSI6IjFiMGU1NjYzNWRlZTQ3MDc5NWZhMTJjYzgwNDRkM2UwIiwidXNlcl9pZCI6IjEifQ.O61Nb5XLnqyX97QDu4QYRi7TLidNcWGQmVreClMVZcY' \
+--data '{
+  "selected_players": [
+      {
+      "id": "4870562",
+      "name": "Dominick Barlow",
+      "position": "F",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.7M"
+    },
+    {
+      "id": "4432179",
+      "name": "MarJon Beauchamp",
+      "position": "F",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5M"
+    },
+    {
+      "id": "5105637",
+      "name": "Adem Bona",
+      "position": "C",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.9M"
+    },
+    {
+      "id": "5105637",
+      "name": "Adem Bona",
+      "position": "C",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.9M"
+    },
+    {
+      "id": "5105637",
+      "name": "Adem Bona",
+      "position": "C",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.9M"
+    }
+  ]
+}'
+
+response 200 ok :
+{
+    "match_id": 14,
+    "match_day": 1,
+    "selected_players": [
+        {
+            "id": "4870562",
+            "name": "Dominick Barlow",
+            "position": "F",
+            "team": "Philadelphia 76ers",
+            "team_id": "1208",
+            "price": "5.7M",
+            "score": 0
+        },
+        {
+            "id": "4432179",
+            "name": "MarJon Beauchamp",
+            "position": "F",
+            "team": "Philadelphia 76ers",
+            "team_id": "1208",
+            "price": "5M",
+            "score": 0
+        },
+        {
+            "id": "5105637",
+            "name": "Adem Bona",
+            "position": "C",
+            "team": "Philadelphia 76ers",
+            "team_id": "1208",
+            "price": "5.9M",
+            "score": 0
+        },
+        {
+            "id": "5105637",
+            "name": "Adem Bona",
+            "position": "C",
+            "team": "Philadelphia 76ers",
+            "team_id": "1208",
+            "price": "5.9M",
+            "score": 0
+        },
+        {
+            "id": "5105637",
+            "name": "Adem Bona",
+            "position": "C",
+            "team": "Philadelphia 76ers",
+            "team_id": "1208",
+            "price": "5.9M",
+            "score": 0
+        }
+    ],
+    "total_points": 0,
+    "max_balance": "50M",
+    "current_balance": "21.6M"
+}
+
+select player public  api:
+
+curl --location 'https://api.mon5majeur.com/api/public-leagues/2/2/players-selection/' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUz' \
+--data '{
+  "selected_players": [
+      {
+      "id": "4432816",
+      "name": "LaMelo Ball",
+      "position": "G",
+      "team": "Charlotte Hornets",
+      "team_id": "1185",
+      "status": "OK",
+      "price": "155.2M"
+    },
+    {
+      "id": "4066383",
+      "name": "Miles Bridges",
+      "position": "F",
+      "team": "Charlotte Hornets",
+      "team_id": "1185",
+      "status": "OK",
+      "price": "119.3M"
+    },
+    {
+      "id": "4066383",
+      "name": "Miles Bridges",
+      "position": "F",
+      "team": "Charlotte Hornets",
+      "team_id": "1185",
+      "status": "OK",
+      "price": "119.3M"
+    },
+    {
+      "id": "4066383",
+      "name": "Miles Bridges",
+      "position": "F",
+      "team": "Charlotte Hornets",
+      "team_id": "1185",
+      "status": "OK",
+      "price": "119.3M"
+    },
+    {
+      "id": "2578239",
+      "name": "Pat Connaughton",
+      "position": "G",
+      "team": "Charlotte Hornets",
+      "team_id": "1185",
+      "status": "OK",
+      "price": "76.1M"
+    }
+  ]
+}'

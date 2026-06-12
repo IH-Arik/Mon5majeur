@@ -1,0 +1,13 @@
+join league api 
+curl --location 'https://api.mon5majeur.com/api/private-leagues/join/' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUz' \
+--data '{
+  "join_code": "YWARRD"
+}'
+
+response code - 200 
+{
+    "detail": "Successfully joined the league."
+}

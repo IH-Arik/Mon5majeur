@@ -1,0 +1,104 @@
+todays game api 
+curl --location 'https://api.mon5majeur.com/api/games-today/' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiI'
+
+response 200 ok :
+
+[
+    {
+        "id": 310922,
+        "home_team": "Orlando Magic",
+        "home_team_id": "1127",
+        "away_team": "Charlotte Hornets",
+        "away_team_id": "1185",
+        "game_time": "7:00 PM",
+        "status": "Not Started",
+        "venue": "Kia Center, Orlando, FL",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 00:00"
+    },
+    {
+        "id": 310923,
+        "home_team": "Philadelphia 76ers",
+        "home_team_id": "1208",
+        "away_team": "Houston Rockets",
+        "away_team_id": "1193",
+        "game_time": "7:00 PM",
+        "status": "Not Started",
+        "venue": "Xfinity Mobile Arena, Philadelphia, PA",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 00:00"
+    },
+    {
+        "id": 310924,
+        "home_team": "Washington Wizards",
+        "home_team_id": "1218",
+        "away_team": "Denver Nuggets",
+        "away_team_id": "1228",
+        "game_time": "7:00 PM",
+        "status": "Not Started",
+        "venue": "Capital One Arena, Washington, DC",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 00:00"
+    },
+    {
+        "id": 310925,
+        "home_team": "Dallas Mavericks",
+        "home_team_id": "1189",
+        "away_team": "Golden State Warriors",
+        "away_team_id": "1177",
+        "game_time": "7:30 PM",
+        "status": "Not Started",
+        "venue": "American Airlines Center, Dallas, TX",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 00:30"
+    },
+    {
+        "id": 310926,
+        "home_team": "Minnesota Timberwolves",
+        "home_team_id": "1202",
+        "away_team": "Chicago Bulls",
+        "away_team_id": "1186",
+        "game_time": "8:00 PM",
+        "status": "Not Started",
+        "venue": "Target Center, Minneapolis, MN",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 01:00"
+    },
+    {
+        "id": 310927,
+        "home_team": "Utah Jazz",
+        "home_team_id": "1180",
+        "away_team": "San Antonio Spurs",
+        "away_team_id": "1190",
+        "game_time": "9:00 PM",
+        "status": "Not Started",
+        "venue": "Delta Center, Salt Lake City, UT",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 02:00"
+    },
+    {
+        "id": 310928,
+        "home_team": "Los Angeles Clippers",
+        "home_team_id": "1171",
+        "away_team": "Los Angeles Lakers",
+        "away_team_id": "1066",
+        "game_time": "10:00 PM",
+        "status": "Not Started",
+        "venue": "Intuit Dome, Inglewood, CA",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 03:00"
+    },
+    {
+        "id": 310929,
+        "home_team": "Portland Trail Blazers",
+        "home_team_id": "1550",
+        "away_team": "Miami Heat",
+        "away_team_id": "1197",
+        "game_time": "10:00 PM",
+        "status": "Not Started",
+        "venue": "Moda Center, Portland, OR",
+        "timezone": "EDT",
+        "datetime_utc": "23.01.2026 03:00"
+    }
+]

@@ -1,0 +1,104 @@
+result api
+curl --location 'https://api.mon5majeur.com/api/private-leagues/matches/2/4/' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxODA0MjQzLCJpYXQiOjE3NjkxMjU4NDMsImp0aSI6IjE1N2RmMGI2MzY1NjRlZjA4NWIxMTUzNjUyNzkwNTdmIiwidXNlcl9pZCI6IjQifQ.gY43UMSEaurTeiDDABVyaTRFNxcnD4K0QmvY50jaBrk' \
+--data ''
+
+response 200 ok :
+{
+    "id": 17,
+    "league_id": 2,
+    "league_name": "Admin's Private League --2",
+    "match_day": 4,
+    "match_type": "regular_season",
+    "match_date": "24-01-2026 00:00:00",
+    "status": "scheduled",
+    "player_scores": [
+        {
+            "player_id": 2,
+            "team_name": "admin",
+            "username": "admin",
+            "total_points": 0,
+            "selection": [
+                {
+                    "id": "4712849",
+                    "name": "Anthony Black",
+                    "position": "G",
+                    "score": 0
+                },
+                {
+                    "id": "4278572",
+                    "name": "Jamal Cain",
+                    "position": "F",
+                    "score": 0
+                },
+                {
+                    "id": "4432573",
+                    "name": "Paolo Banchero",
+                    "position": "F",
+                    "score": 0
+                },
+                {
+                    "id": "4432573",
+                    "name": "Paolo Banchero",
+                    "position": "F",
+                    "score": 0
+                },
+                {
+                    "id": "4432573",
+                    "name": "Paolo Banchero",
+                    "position": "F",
+                    "score": 0
+                }
+            ]
+        },
+        {
+            "player_id": 4,
+            "team_name": "Mir",
+            "username": "fahad1000mir",
+            "total_points": 0,
+            "selection": [
+                {
+                    "id": "4348700",
+                    "name": "Goga Bitadze",
+                    "position": "C",
+                    "score": 0
+                },
+                {
+                    "id": "4066320",
+                    "name": "Desmond Bane",
+                    "position": "G",
+                    "score": 0
+                },
+                {
+                    "id": "4277847",
+                    "name": "Wendell Carter Jr.",
+                    "position": "C",
+                    "score": 0
+                },
+                {
+                    "id": "4278572",
+                    "name": "Jamal Cain",
+                    "position": "F",
+                    "score": 0
+                },
+                {
+                    "id": "4278572",
+                    "name": "Jamal Cain",
+                    "position": "F",
+                    "score": 0
+                }
+            ]
+        }
+    ],
+    "pairs": [
+        {
+            "player_a_id": 2,
+            "player_a_name": "admin",
+            "player_b_id": 4,
+            "player_b_name": "Mir",
+            "score_a": 0,
+            "score_b": 0
+        }
+    ],
+    "created_at": "21-01-2026 19:06:59"
+}

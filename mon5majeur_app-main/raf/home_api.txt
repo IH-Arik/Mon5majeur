@@ -1,0 +1,22 @@
+profile api
+
+curl --location --request GET 'https://partnerless-rochel-however.ngrok-free.dev/api/UserProfiles/' \
+--header 'Content-Type: text/plain' \
+--header 'Authorization: Bearer eyJhbGciOiJIU' \
+--data '
+'
+response 200 ok
+[
+    {
+        "id": 6,
+        "team_logo": "lakers",
+        "team_name": "Paris Fc",
+        "favorite_team": "Boston Celtics",
+        "date_of_birth": "2022-12-09",
+        "accept_terms_conditions": true,
+        "recived_notifications": true,
+        "created_at": "15-01-2026 19:53:48",
+        "updated_at": "15-01-2026 19:53:48",
+        "user": 3
+    }
+]

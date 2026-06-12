@@ -1,0 +1,51 @@
+my match today api
+
+curl --location 'https://api.mon5majeur.com/api/private-leagues/matches/my-matches-today/' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzcxMTgzODQ4LCJpYXQiOjE3Njg1MDU0NDgsImp0aSI6IjFiMGU1NjYzNWRlZTQ3MDc5NWZhMTJjYzgwNDRkM2UwIiwidXNlcl9pZCI6IjEifQ.O61Nb5XLnqyX97QDu4QYRi7TLidNcWGQmVreClMVZcY' \
+--data ''
+
+response 200:
+[
+    {
+        "id": 15,
+        "league_id": 2,
+        "league_name": "Admin's Private League --2",
+        "match_day": 2,
+        "match_type": "regular_season",
+        "match_date": "22-01-2026 00:00:00",
+        "status": "scheduled",
+        "player_scores": [],
+        "pairs": [
+            {
+                "player_a_id": 2,
+                "player_a_name": "admin",
+                "player_b_id": 4,
+                "player_b_name": "Mir",
+                "score_a": 0,
+                "score_b": 0
+            }
+        ],
+        "created_at": "21-01-2026 19:06:58"
+    },
+    {
+        "id": 91,
+        "league_id": 1,
+        "league_name": "Admin's Private League",
+        "match_day": 2,
+        "match_type": "regular_season",
+        "match_date": "22-01-2026 00:00:00",
+        "status": "scheduled",
+        "player_scores": [],
+        "pairs": [
+            {
+                "player_a_id": 2,
+                "player_a_name": "admin",
+                "player_b_id": null,
+                "player_b_name": null,
+                "score_a": 0,
+                "score_b": 0
+            }
+        ],
+        "created_at": "21-01-2026 19:07:48"
+    }
+]

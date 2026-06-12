@@ -1,0 +1,87 @@
+get all league api:
+
+curl --location 'https://api.mon5majeur.com/api/private-leagues/' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIU'
+
+response code - 200:
+
+[
+    {
+        "id": 10,
+        "teams": [
+            {
+                "team_id": 3,
+                "team_name": "Fahad",
+                "team_logo": "paris_fc"
+            },
+            {
+                "team_id": 4,
+                "team_name": "Mir",
+                "team_logo": "paris_fc"
+            },
+            {
+                "team_id": 5,
+                "team_name": "My Team",
+                "team_logo": "boston_celtics"
+            }
+        ],
+        "leauge_name": "Sadid Leauge Updated",
+        "leauge_description": "updated",
+        "leauge_logo": "atlanta_hawks",
+        "team_budget": "100M",
+        "max_team_number": "10",
+        "join_code": "V7S69U",
+        "created_at": "19-01-2026 21:27:55",
+        "start_date": null,
+        "is_ready": false,
+        "is_started": false,
+        "is_active": true,
+        "creator": 5
+    },
+    {
+        "id": 12,
+        "teams": [
+            {
+                "team_id": 5,
+                "team_name": "My Team",
+                "team_logo": "boston_celtics"
+            }
+        ],
+        "leauge_name": "test",
+        "leauge_description": "test",
+        "leauge_logo": "chicago_bulls",
+        "team_budget": "100M",
+        "max_team_number": "6",
+        "join_code": "RMH525",
+        "created_at": "19-01-2026 23:10:18",
+        "start_date": null,
+        "is_ready": false,
+        "is_started": false,
+        "is_active": true,
+        "creator": 5
+    },
+    {
+        "id": 13,
+        "teams": [
+            {
+                "team_id": 5,
+                "team_name": "My Team",
+                "team_logo": "boston_celtics"
+            }
+        ],
+        "leauge_name": "test3",
+        "leauge_description": "test3",
+        "leauge_logo": "golden_state_warriors",
+        "team_budget": "100M",
+        "max_team_number": "6",
+        "join_code": "XG1GL9",
+        "created_at": "19-01-2026 23:13:04",
+        "start_date": null,
+        "is_ready": false,
+        "is_started": false,
+        "is_active": true,
+        "creator": 5
+    }
+ 
+]

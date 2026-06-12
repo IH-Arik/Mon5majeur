@@ -1,0 +1,56 @@
+profile setup api
+
+curl --location 'https://partnerless-rochel-however.ngrok-free.dev/api/UserProfiles/' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIs' \
+--data '{
+  "team_logo": "paris_fc",
+  "team_name": "ParFc",
+  "favorite_team": "Your Favorite Team",
+  "date_of_birth": "2026-01-12",
+  "accept_terms_conditions": true,
+  "recived_notifications": true
+}'
+
+response 201 ok
+{
+    "id": 5,
+    "team_logo": "paris_fc",
+    "team_name": "ParFc",
+    "favorite_team": "Your Favorite Team",
+    "date_of_birth": "2026-01-12",
+    "accept_terms_conditions": true,
+    "recived_notifications": true,
+    "created_at": "15-01-2026 19:38:02",
+    "updated_at": "15-01-2026 19:38:02",
+    "user": 3
+}
+
+and this backend code of this api
+
+class UserProfile(models.Model):
+    
+    TEAM_LOGO_CHOICES = [
+        ("paris_fc", "Paris FC"),
+        ("lakers", "Lakers"),
+        ("boston_celtics", "Boston Celtics"),
+        ("chicago_bulls", "Chicago Bulls"),
+        ("atlanta_hawks", "Atlanta Hawks"),
+        ("golden_state_warriors", "Golden State Warriors"),
+        # Add more logos as needed
+    ]
+ 
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='userprofile')
+    team_logo = models.CharField(max_length=100, choices=TEAM_LOGO_CHOICES, blank=True, null=True)
+    team_name = models.CharField(max_length=100, unique=True, blank=False, null=False)
+    favorite_team = models.CharField(max_length=50, blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    accept_terms_conditions = models.BooleanField(default=False)
+    recived_notifications = models.BooleanField(default=False)
+    
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.team_name}"

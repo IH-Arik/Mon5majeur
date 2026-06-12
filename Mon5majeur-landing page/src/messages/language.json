@@ -1,0 +1,662 @@
+{
+  "en": {
+    "Navbar": {
+      "links": ["Home", "Contact Us"],
+      "inputPlaceholder": "Enter your mail",
+      "buttonText": "Get Download Link"
+    },
+    "banner": {
+      "title": {
+        "part1": "Build your 5.",
+        "part2": "Dominate The",
+        "animated": "NBA Nights."
+      },
+      "description": "Create your dream team, compete with friends, and track real-time NBA stats. Ready to play?",
+      "ariaLabels": {
+        "googlePlay": "Download on Google Play",
+        "appStore": "Download on the App Store"
+      },
+      "altText": {
+        "googlePlay": "Get it on Google Play",
+        "appStore": "Download on the App Store",
+        "heroHand": "Hand holding mobile showing game application"
+      }
+    },
+    "scrolling": {
+      "aria": {
+        "sectionLabel": "Scrolling Game Features"
+      },
+      "items": {
+        "challenges": "CHALLENGES",
+        "victory": "VICTORY",
+        "score": "SCORE",
+        "fantasy": "FANTASY"
+      }
+    },
+    "GetNotified": {
+      "sectionTitle": "Be notified when it",
+      "registeredTitle": "Already Pre-Registered",
+      "sectionTitleAccent": "launches",
+      "inputPlaceholder": "Enter your mail...",
+      "buttonText": "Get Notified",
+      "description": "We'll send you the link as soon as the app is available.",
+      "promoText": "Early Access players in the first week unlock 2 exclusive jerseys"
+    },
+    "CardSlider": {
+      "subtitle": "Flexible. Dynamic. Fun",
+      "slides": [
+        {
+          "name": "Strategic Boosts",
+          "content": "Unlock strategic boosts to enhance your team—Luxury Tax, 6th Man, Chef Curry, and more. Use them to gain an edge over your opponents!"
+        },
+        {
+          "name": "Real-time NBA Stats",
+          "content": "Create a private league, compete in real-time, track your victories, and see who wins!"
+        },
+        {
+          "name": "Daily Lineups",
+          "content": "Craft your perfect roster every day. Choose from the best players and maximize your fantasy points with smart picks."
+        },
+        {
+          "name": "Challenge Friends",
+          "content": "Create a private league, compete in real-time with your friends, track your victories, and see who wins!"
+        },
+        {
+          "name": "Global Competition",
+          "content": "Compete against players worldwide! Climb the weekly and monthly leaderboards for a chance to win amazing prizes and earn bragging rights."
+        }
+      ]
+    },
+    "Experience": {
+      "title": "Experience the Ultimate",
+      "colorTitle": "NBA Fantasy Game",
+      "subtitle1": "New NBA night = New team.",
+      "subtitle2": "You build your starting five based on the day's games, within your budget",
+      "budget": "(80M or 100M)",
+      "badge1": "No fixed roster",
+      "badge2": "No Drafts",
+      "fun": "Fun",
+      "freedom": "Freedom",
+      "strategy": "Strategy",
+      "cta": "Get Launching Notifications",
+      "card1": {
+        "title": "Build Your 5",
+        "subtitle": "Your lineup changes every night",
+        "content": "Create a new starting five based on the NBA games of the night. Budget, stars, strategy… it’s your call"
+      },
+      "card2": {
+        "title": "Scores & Rankings",
+        "subtitle": "Real NBA stats",
+        "content": "Your players score in real-time, based on their actual NBA performances every night. As the games unfold, your team's fantasy score updates instantly, reflecting the points, rebounds, assists, and other stats of your selected players."
+      }
+    },
+    "PrivateLeagues": {
+      "title": "Private Leagues",
+      "subtitle": "Challenge your friends",
+      "description": "Create your own mini-league with friends. New lineups every night, Playoffs, strategic boosts… The most fun way to play with friends",
+      "joinLeague": "Join the League",
+      "teamName": "Hoops FC",
+      "versus": "Vs"
+    },
+    "GlobalLeagues": {
+      "title": "Global League",
+      "subtitle": "Compete against the world",
+      "description": "Climb the global leaderboard with weekly and monthly rankings. Compete against players worldwide and watch your position rise as you score more points each night!",
+      "badgeTitle": "NBR Global League",
+      "badgeDescription": "Compete against everyone. Weekly + Monthly prizes"
+    },
+    "GetApp": {
+      "title": "Get This app on",
+      "colorTitle": "Apple & Google play store after launching",
+      "description": "Everything you need to know about Mon5Majeur and how it works",
+      "cta": "Get Launching Notifications"
+    },
+    "FAQ": {
+      "badge": "FAQ",
+      "titlePart1": "Get all your",
+      "titlePart2": "questions",
+      "titlePart3": "answered",
+      "titlePart4": "here",
+      "description": "Everything you need to know about Mon5Majeur and how it works",
+      "cta": "Get Launching Notifications",
+      "questions": [
+        {
+          "question": "What is Mon5Majeur?",
+          "answer": "An NBA fantasy game made to play with friends: you build your starting five every night, follow live scores, and climb the rankings."
+        },
+        {
+          "question": "Is the app free?",
+          "answer": "Yes. The app is free, with optional premium features."
+        },
+        {
+          "question": "Can I play with my friends?",
+          "answer": "Yes. You can create Private Leagues (mini seasons + playoffs) and join them via invitation."
+        },
+        {
+          "question": "Where do the scores come from?",
+          "answer": "From real NBA performances, updated every night (and in real time during games)."
+        },
+        {
+          "question": "How do I get the 2 exclusive jerseys?",
+          "answer": "Sign up for the launch alert and create your account during the first week after release: the 2 in-game jerseys will be unlocked and available to claim for free in the shop."
+        }
+      ]
+    },
+    "PlayersGuide": {
+      "title": "Ultimate",
+      "colorTitle": "Player's Guide",
+      "description": "A complete PDF packed with strategies, insights, and step-by-step guidance to help you make smarter decisions and level up your game.",
+      "features": [
+        "Proven strategies explained simply",
+        "Real examples & best practices",
+        "Beginner to advanced friendly"
+      ],
+      "cta": "Download the PDF",
+      "disclaimer": "No spam. Instant download."
+    },
+    "UniverseOfMon5Majeur": {
+      "title": "Universe of",
+      "colorTitle": "MON5MAJEUR",
+      "features": [
+        {
+          "title": "Pre-launch <span class='text-[#E35D14]'>Bonus</span>",
+          "subtitle": "2 exclusive jerseys offered to all pre-registered players"
+        },
+        {
+          "title": "In-game <span class='text-[#E35D14]'>Jerseys</span>",
+          "subtitle": "Customize your team with exclusive jerseys."
+        },
+        {
+          "title": "Team <span class='text-[#E35D14]'>Logo</span>",
+          "subtitle": "Create your GM identity. Your team, your style."
+        },
+        {
+          "title": "Hall of <span class='text-[#E35D14]'>Fame</span>",
+          "subtitle": "Weekly and monthly rankings. Become one of the best"
+        },
+        {
+          "title": "Victory <span class='text-[#E35D14]'>Trophy</span>",
+          "subtitle": "Win your league and unlock your unique trophy"
+        },
+        {
+          "title": "Strategic <span class='text-[#E35D14]'>Bonuses</span>",
+          "subtitle": "+3 points, automatic substitute, budget boost... The right choices make the difference."
+        }
+      ]
+    },
+    "ContactBanner": {
+      "title": "CONTACT",
+      "titleHighlight": "US",
+      "subtitle": "We're here to help! Reach out to us with any questions or feedback."
+    },
+    "ContactForm": {
+      "nameLabel": "Your Name",
+      "namePlaceholder": "Enter your full name",
+      "emailLabel": "Your Email",
+      "emailPlaceholder": "Enter your mail",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Write your message here...",
+      "submitBtn": "Leave us a Message"
+    },
+    "ContactPage": {
+      "title": "Other ways to",
+      "titleHighlight": "reach out",
+      "emailLabel": "Email",
+      "phoneLabel": "Phone No"
+    },
+    "LegalNotice": {
+      "title": "Legal",
+      "titleHighlight": "Notice",
+      "lastUpdated": "Last updated: 26/12/2025",
+      "publisherTitle": "Website Publisher",
+      "companyType": "Single-shareholder simplified joint-stock company",
+      "shareCapitalLabel": "Share Capital",
+      "registeredOfficeLabel": "Registered Office",
+      "officeAddress": "229 rue Saint-Honoré, 75001 Paris, France",
+      "rcsLabel": "RCS (Paris)",
+      "siretLabel": "SIRET",
+      "directorLabel": "President / Publishing Director",
+      "contactLabel": "Contact",
+      "hostingTitle": "Hosting Provider",
+      "hostingAddressLabel": "Address",
+      "hostingAddress": "2 rue Kellermann, 59100 Roubaix, France"
+    },
+    "SocialSection": {
+      "title": "Follow Us on",
+      "titleHighlight": "Social Media"
+    },
+    "PrivacyBanner": {
+      "title": "PRIVACY",
+      "animatedWord": "POLICY",
+      "effectiveDate": "Effective Date: 26/11/2025"
+    },
+    "Privacy": {
+      "scopeTitle": "Scope",
+      "scopeText": "This Privacy Policy applies to: the MON5MAJEUR application; and the website mon5majeur.com (and any associated site), including when a User subscribes to a launch alert / waitlist.",
+      "controllerTitle": "Data Controller",
+      "controllerText": "MON5MAJEUR, SASU with a share capital of €1,000, registered with the Paris Trade and Companies Register (RCS) under number 993 681 915 (SIRET: 99368191500019), with its registered office at 229 rue Saint-Honoré, 75001 Paris, France.",
+      "privacyContact": "Privacy contact:",
+      "supportContact": "Support:",
+      "collectTitle": "Data We Collect",
+      "collectIntro": "We may collect:",
+      "collectIdentityLabel": "Identity / account:",
+      "collectIdentityText": "email, user ID, username, account-related information (Google/Apple if used).",
+      "collectGameLabel": "Game data:",
+      "collectGameText": "lineups, scores, rankings, leagues, progression, Credits, preferences.",
+      "collectTechLabel": "Technical data:",
+      "collectTechText": "device, OS, version, logs, crash reports, IP address / connection information.",
+      "collectPurchaseLabel": "In-app purchases:",
+      "collectPurchaseText": "identifiers/receipts required for verification/restoration (no banking data).",
+      "collectAdLabel": "Advertising:",
+      "collectAdText": "advertising identifiers (IDFA/GAID) and ad interactions, depending on your choices.",
+      "collectSupportLabel": "Support:",
+      "collectSupportText": "messages and information sent to customer support.",
+      "collectWebLabel": "Website (launch alert):",
+      "collectWebText": "email + technical metadata (e.g., IP/logs) required for security and proper operation.",
+      "collectSensitive": "We do not knowingly collect sensitive data.",
+      "purposesTitle": "Purposes",
+      "purposesIntro": "We use your data to:",
+      "purposesText": "provide and manage the service (account, gameplay, leagues, rankings); ensure security and prevent fraud; improve performance (bugs/crashes); manage in-app purchases; display and measure advertising; send communications (support, security, and launch alerts if you subscribe).",
+      "legalTitle": "Legal Bases",
+      "legalIntro": "Depending on the processing activity:",
+      "legalText": "Performance of a contract (Terms): account, service, gameplay; Legitimate interests: security, fraud prevention, technical improvements; Consent: personalized ads and certain identifiers/trackers where required; Legal obligation: accounting/tax obligations where applicable.",
+      "adTitle": "Advertising & Mediation",
+      "adText": "The app displays ads and uses: Google AdMob, and AppLovin MAX (mediation), which may integrate multiple ad networks. Depending on your choices (and the rules applicable in your region), certain partners may process advertising identifiers and technical signals to serve/measure ads, including personalized ads when you consent.",
+      "adConsentTitle": "Managing consent / withdrawing consent",
+      "adConsentText": "You can change your choices via: a consent screen (on first launch or via Settings > Privacy / Privacy options in the app, if available), and/or your device settings (iOS/Android).",
+      "rightsTitle": "Your Rights",
+      "rightsText": "You have the rights of access, rectification, erasure, objection, restriction, portability, and the right to withdraw consent.",
+      "rightsExercise": "To exercise your rights:",
+      "rightsVerification": "(identity verification may be requested if necessary). You may also lodge a complaint with the CNIL (French data protection authority).",
+      "contactTitle": "Contact"
+    },
+    "TermsBanner": {
+      "title": "Terms &",
+      "animatedWord": "Conditions",
+      "effectiveDate": "Effective Date: 26/11/2025"
+    },
+    "Terms": {
+      "mainTitle": "General Terms of Use (CGU)",
+      "lastUpdated": "Last updated: 26/12/2025",
+      "publisherTitle": "Application Publisher",
+      "publisherText": "The MON5MAJEUR application is edited by MON5MAJEUR, a SASU with a capital of €1,000, registered at the RCS of Paris (993 681 915).",
+      "officeLabel": "📍 Office:",
+      "officeValue": "229 rue Saint-Honoré, 75001 Paris, France.",
+      "directorLabel": "👤 President & Publication Director:",
+      "directorValue": "Robin Martinella.",
+      "contactLabel": "📧 Contact:",
+      "hostingLabel": "🌐 Hosting (Site):",
+      "hostingValue": "OVH SAS, 2 rue Kellermann, 59100 Roubaix, France.",
+      "purposeTitle": "Purpose & Description",
+      "purposeText": "By accessing the Application, the User accepts these terms without reserve. MON5MAJEUR is a Fantasy Basketball application allowing users to create virtual teams, join leagues, and view statistics.",
+      "nbaDisclaimer": "MON5MAJEUR is not affiliated with the NBA. No protected NBA logos or visuals are used.",
+      "accessTitle": "Access Conditions",
+      "accessText1": "Accessible from age 13. Minors require parental authorization. For those under 15, parental consent is required for data treatments like personalized ads.",
+      "accessText2": "The app is available on App Store and Google Play; users are responsible for their own internet connection costs.",
+      "accountTitle": "Accounts & Security",
+      "accountText1": "Users must provide accurate information and protect their credentials. Accounts inactive for 24 months may be deleted after notification.",
+      "accountText2": "Account deletion can be requested via the app or at",
+      "creditsTitle": "Credits & Ads",
+      "creditsText": "Credits are virtual currency only, non-transferable and non-convertible to cash. Remaining credits are lost if the account is deleted.",
+      "adsText": "The app may contain ads or rewarded videos. Ads may be personalized based on user settings.",
+      "conductTitle": "Prohibited Conduct",
+      "conductForbidden": "Strictly forbidden:",
+      "conductText": "Bots, hacks, scripts, bug exploitation, or any action aimed at distorting the game. Usernames and league names must remain respectful. Sanctions include warnings, suspension, or account deletion.",
+      "contestsTitle": "Contests & Prizes",
+      "contestsText1": "Prizes are non-exchangeable and non-convertible. Physical prizes (jerseys) are limited to residents of Metropolitan France, Belgium, Luxembourg, and Monaco.",
+      "contestsText2": "Jersey selection (model, team, season) is at the Publisher's discretion. Apple and Google are not sponsors or organizers of these contests.",
+      "legalTitle": "Legal & Liability",
+      "legalText1": "All app elements (code, design, text) belong to the Publisher. Reproduction is prohibited.",
+      "legalText2": "The Application is provided \"as is\". The Publisher is not liable for network outages, indirect losses, or Force Majeure.",
+      "governingTitle": "Governing Law",
+      "governingText": "These terms are governed by French law. Any disputes will be handled by the courts within the jurisdiction of the headquarters."
+    },
+    "Footer": {
+      "notifiedTitle": "Be notified when it",
+      "launches": "launches",
+      "notifiedSubtitle": "We'll send you the link as soon as the app is available.",
+      "placeholder": "Enter your mail...",
+      "button": "Get Notified",
+      "description": "Create your dream team, compete with friends, and track real-time NBA stats. Ready to play?",
+      "home": "Home",
+      "features": "Features",
+      "faq": "FAQ",
+      "services": "Services",
+      "contact": "Contact Us",
+      "terms": "Terms & Conditions",
+      "privacy": "Privacy Policy",
+      "followUs": "Follow Us",
+      "copyright": "© 2025 MON5MAJEUR — Made in Paris."
+    }
+  },
+  "fr": {
+    "Navbar": {
+      "links": ["Accueil", "Contactez-nous"],
+      "inputPlaceholder": "Entrez votre e-mail",
+      "buttonText": "Lien de téléchargement"
+    },
+    "banner": {
+      "title": {
+        "part1": "Créez votre 5 majeur.",
+        "part2": "Dominez les",
+        "animated": "Nuits NBA."
+      },
+      "description": "Créez votre équipe de rêve, affrontez vos amis et suivez les statistiques de la NBA en temps réel. Prêt à jouer ?",
+      "ariaLabels": {
+        "googlePlay": "Télécharger sur Google Play",
+        "appStore": "Télécharger sur l'App Store"
+      },
+      "altText": {
+        "googlePlay": "Disponible sur Google Play",
+        "appStore": "Télécharger dans l'App Store",
+        "heroHand": "Main tenant un téléphone affichant l'application de jeu"
+      }
+    },
+    "scrolling": {
+      "aria": {
+        "sectionLabel": "Défilement des fonctionnalités du jeu"
+      },
+      "items": {
+        "challenges": "DÉFIS",
+        "victory": "VICTOIRE",
+        "score": "SCORE",
+        "fantasy": "FANTASY"
+      }
+    },
+    "GetNotified": {
+      "sectionTitle": "Soyez notifié lors du",
+      "registeredTitle": "Déjà préinscrit",
+      "sectionTitleAccent": "lancement",
+      "inputPlaceholder": "Entrez votre email...",
+      "buttonText": "M'avertir",
+      "description": "Nous vous enverrons le lien dès que l'application sera disponible.",
+      "promoText": "Les joueurs en accès anticipé de la première semaine débloquent 2 maillots exclusifs"
+    },
+    "CardSlider": {
+      "subtitle": "Flexible. Dynamique. Amusant",
+      "slides": [
+        {
+          "name": "Boosts Stratégiques",
+          "content": "Débloquez des boosts stratégiques pour améliorer votre équipe : Luxury Tax, 6th Man, Chef Curry, et plus encore. Utilisez-les pour gagner un avantage sur vos adversaires !"
+        },
+        {
+          "name": "Stats NBA en Temps Réel",
+          "content": "Créez une ligue privée, participez en temps réel, suivez vos victoires et voyez qui gagne !"
+        },
+        {
+          "name": "Compositions Quotidiennes",
+          "content": "Créez votre effectif parfait chaque jour. Choisissez parmi les meilleurs joueurs et maximisez vos points fantasy avec des choix judicieux."
+        },
+        {
+          "name": "Défiez vos Amis",
+          "content": "Créez une ligue privée, affrontez vos amis en temps réel, suivez vos victoires et voyez qui gagne !"
+        },
+        {
+          "name": "Compétition Mondiale",
+          "content": "Affrontez des joueurs du monde entier ! Grimpez dans les classements hebdomadaires et mensuels pour tenter de gagner des prix incroyables."
+        }
+      ]
+    },
+    "Experience": {
+      "title": "Découvrez l'Ultime",
+      "colorTitle": "Jeu NBA Fantasy",
+      "subtitle1": "Nouvelle nuit NBA = Nouvelle équipe.",
+      "subtitle2": "Créez votre cinq de départ selon les matchs du jour, en respectant votre budget",
+      "budget": "(80M ou 100M)",
+      "badge1": "Pas d'effectif fixe",
+      "badge2": "Pas de Drafts",
+      "fun": "Plaisir",
+      "freedom": "Liberté",
+      "strategy": "Stratégie",
+      "cta": "Recevoir les Notifications de Lancement",
+      "card1": {
+        "title": "Créez Votre 5",
+        "subtitle": "Votre composition change chaque nuit",
+        "content": "Créez un nouveau cinq de départ basé sur les matchs NBA de la nuit. Budget, stars, stratégie… c'est vous qui décidez."
+      },
+      "card2": {
+        "title": "Scores & Classements",
+        "subtitle": "Stats NBA réelles",
+        "content": "Vos joueurs marquent en temps réel, selon leurs performances NBA réelles chaque nuit. À mesure que les matchs avancent, le score fantasy de votre équipe se met à jour instantanément."
+      }
+    },
+    "PrivateLeagues": {
+      "title": "Ligues Privées",
+      "subtitle": "Défiez vos amis",
+      "description": "Créez votre propre mini-ligue entre amis. Nouvelles compositions chaque soir, Playoffs, boosts stratégiques… La façon la plus fun de jouer entre amis",
+      "joinLeague": "Rejoindre la Ligue",
+      "teamName": "Hoops FC",
+      "versus": "Vs"
+    },
+    "GlobalLeagues": {
+      "title": "Ligue Mondiale",
+      "subtitle": "Affrontez le monde entier",
+      "description": "Grimpez dans le classement mondial avec des classements hebdomadaires et mensuels. Affrontez des joueurs du monde entier et voyez votre position progresser à mesure que vous marquez des points chaque nuit !",
+      "badgeTitle": "Ligue Mondiale NBR",
+      "badgeDescription": "Affrontez tout le monde. Prix hebdomadaires + mensuels"
+    },
+    "GetApp": {
+      "title": "Téléchargez l'app sur",
+      "colorTitle": "Apple & Google Play Store dès le lancement",
+      "description": "Tout ce que vous devez savoir sur Mon5Majeur et son fonctionnement",
+      "cta": "Recevoir les Notifications de Lancement"
+    },
+    "FAQ": {
+      "badge": "FAQ",
+      "titlePart1": "Toutes les",
+      "titlePart2": "réponses",
+      "titlePart3": "à vos questions",
+      "titlePart4": "ici",
+      "description": "Tout ce que vous devez savoir sur Mon5Majeur et son fonctionnement",
+      "cta": "Recevoir les Notifications de Lancement",
+      "questions": [
+        {
+          "question": "Qu'est-ce que Mon5Majeur ?",
+          "answer": "Un jeu de fantasy NBA conçu pour jouer entre amis : composez votre cinq de départ chaque soir, suivez les scores en direct et grimpez dans les classements."
+        },
+        {
+          "question": "L'application est-elle gratuite ?",
+          "answer": "Oui. L'application est gratuite, avec des fonctionnalités premium optionnelles."
+        },
+        {
+          "question": "Puis-je jouer avec mes amis ?",
+          "answer": "Oui. Vous pouvez créer des Ligues Privées (mini-saisons + playoffs) et les rejoindre via une invitation."
+        },
+        {
+          "question": "D'où proviennent les scores ?",
+          "answer": "Des performances réelles de la NBA, mises à jour chaque nuit (et en temps réel pendant les matchs)."
+        },
+        {
+          "question": "Comment obtenir les 2 maillots exclusifs ?",
+          "answer": "Inscrivez-vous à l'alerte de lancement et créez votre compte durant la première semaine après la sortie : les 2 maillots en jeu seront débloqués et disponibles gratuitement dans la boutique."
+        }
+      ]
+    },
+    "PlayersGuide": {
+      "title": "Le Guide Ultime",
+      "colorTitle": "du Joueur",
+      "description": "Un PDF complet rempli de stratégies, d'astuces et de conseils étape par étape pour vous aider à prendre de meilleures décisions et progresser.",
+      "features": [
+        "Stratégies prouvées expliquées simplement",
+        "Exemples réels et bonnes pratiques",
+        "Adapté aux débutants comme aux experts"
+      ],
+      "cta": "Télécharger le PDF",
+      "disclaimer": "Pas de spam. Téléchargement instantané."
+    },
+    "UniverseOfMon5Majeur": {
+      "title": "L'Univers de",
+      "colorTitle": "MON5MAJEUR",
+      "features": [
+        {
+          "title": "<span class='text-[#E35D14]'>Bonus</span> de Pré-lancement",
+          "subtitle": "2 maillots exclusifs offerts à tous les joueurs pré-inscrits"
+        },
+        {
+          "title": "<span class='text-[#E35D14]'>Maillots</span> en jeu",
+          "subtitle": "Personnalisez votre équipe avec des maillots exclusifs."
+        },
+        {
+          "title": "<span class='text-[#E35D14]'>Logo</span> d'Équipe",
+          "subtitle": "Créez votre identité de GM. Votre équipe, votre style."
+        },
+        {
+          "title": "Hall of <span class='text-[#E35D14]'>Fame</span>",
+          "subtitle": "Classements hebdomadaires et mensuels. Devenez l'un des meilleurs"
+        },
+        {
+          "title": "<span class='text-[#E35D14]'>Trophée</span> de Victoire",
+          "subtitle": "Gagnez votre ligue et débloquez votre trophée unique"
+        },
+        {
+          "title": "<span class='text-[#E35D14]'>Bonus</span> Stratégiques",
+          "subtitle": "+3 points, remplaçant automatique, boost de budget... Les bons choix font la différence."
+        }
+      ]
+    },
+    "ContactBanner": {
+      "title": "CONTACTEZ-",
+      "titleHighlight": "NOUS",
+      "subtitle": "Nous sommes là pour vous aider ! Contactez-nous pour toute question ou suggestion."
+    },
+    "ContactForm": {
+      "nameLabel": "Votre Nom",
+      "namePlaceholder": "Entrez votre nom complet",
+      "emailLabel": "Votre Email",
+      "emailPlaceholder": "Entrez votre adresse mail",
+      "messageLabel": "Message",
+      "messagePlaceholder": "Écrivez votre message ici...",
+      "submitBtn": "Laissez-nous un message"
+    },
+    "ContactPage": {
+      "title": "Autres moyens de nous",
+      "titleHighlight": "contacter",
+      "emailLabel": "E-mail",
+      "phoneLabel": "N° de Téléphone"
+    },
+    "LegalNotice": {
+      "title": "Mentions",
+      "titleHighlight": "Légales",
+      "lastUpdated": "Dernière mise à jour : 26/12/2025",
+      "publisherTitle": "Éditeur du site",
+      "companyType": "Société par actions simplifiée unipersonnelle (SASU)",
+      "shareCapitalLabel": "Capital Social",
+      "registeredOfficeLabel": "Siège Social",
+      "officeAddress": "229 rue Saint-Honoré, 75001 Paris, France",
+      "rcsLabel": "RCS (Paris)",
+      "siretLabel": "SIRET",
+      "directorLabel": "Président / Directeur de la publication",
+      "contactLabel": "Contact",
+      "hostingTitle": "Hébergeur",
+      "hostingAddressLabel": "Adresse",
+      "hostingAddress": "2 rue Kellermann, 59100 Roubaix, France"
+    },
+    "SocialSection": {
+      "title": "Suivez-nous sur les",
+      "titleHighlight": "Réseaux Sociaux"
+    },
+    "PrivacyBanner": {
+      "title": "POLITIQUE DE",
+      "animatedWord": "CONFIDENTIALITÉ",
+      "effectiveDate": "Date d'entrée en vigueur : 26/11/2025"
+    },
+    "Privacy": {
+      "scopeTitle": "Champ d'application",
+      "scopeText": "Cette Politique de Confidentialité s'applique à : l'application MON5MAJEUR ; et le site web mon5majeur.com (ainsi que tout site associé), y compris lorsqu'un Utilisateur s'inscrit à une alerte de lancement / liste d'attente.",
+      "controllerTitle": "Responsable du Traitement",
+      "controllerText": "MON5MAJEUR, SASU au capital social de 1 000 €, immatriculée au Registre du Commerce et des Sociétés (RCS) de Paris sous le numéro 993 681 915 (SIRET : 99368191500019), ayant son siège social au 229 rue Saint-Honoré, 75001 Paris, France.",
+      "privacyContact": "Contact confidentialité :",
+      "supportContact": "Support :",
+      "collectTitle": "Données Collectées",
+      "collectIntro": "Nous pouvons collecter :",
+      "collectIdentityLabel": "Identité / compte :",
+      "collectIdentityText": "e-mail, identifiant utilisateur, nom d'utilisateur, informations liées au compte (Google/Apple si utilisés).",
+      "collectGameLabel": "Données de jeu :",
+      "collectGameText": "compositions, scores, classements, ligues, progression, Crédits, préférences.",
+      "collectTechLabel": "Données techniques :",
+      "collectTechText": "appareil, OS, version, logs, rapports de crash, adresse IP / informations de connexion.",
+      "collectPurchaseLabel": "Achats intégrés :",
+      "collectPurchaseText": "identifiants/reçus requis pour la vérification/restauration (aucune donnée bancaire).",
+      "collectAdLabel": "Publicité :",
+      "collectAdText": "identifiants publicitaires (IDFA/GAID) et interactions publicitaires, selon vos choix.",
+      "collectSupportLabel": "Support :",
+      "collectSupportText": "messages et informations envoyés au service client.",
+      "collectWebLabel": "Site web (alerte de lancement) :",
+      "collectWebText": "e-mail + métadonnées techniques (ex: IP/logs) requises pour la sécurité et le bon fonctionnement.",
+      "collectSensitive": "Nous ne collectons pas sciemment de données sensibles.",
+      "purposesTitle": "Finalités",
+      "purposesIntro": "Nous utilisons vos données pour :",
+      "purposesText": "fournir et gérer le service (compte, gameplay, ligues, classements) ; assurer la sécurité et prévenir la fraude ; améliorer les performances (bugs/crashs) ; gérer les achats intégrés ; afficher et mesurer la publicité ; envoyer des communications (support, sécurité et alertes de lancement si vous y souscrivez).",
+      "legalTitle": "Bases Légales",
+      "legalIntro": "Selon l'activité de traitement :",
+      "legalText": "Exécution d'un contrat (Conditions) : compte, service, gameplay ; Intérêts légitimes : sécurité, prévention de la fraude, améliorations techniques ; Consentement : publicités personnalisées et certains identifiants/traceurs si requis ; Obligation légale : obligations comptables/fiscales le cas échéant.",
+      "adTitle": "Publicité & Médiation",
+      "adText": "L'application affiche des publicités et utilise : Google AdMob et AppLovin MAX (médiation), qui peuvent intégrer plusieurs réseaux publicitaires. Selon vos choix (et les règles applicables dans votre région), certains partenaires peuvent traiter des identifiants publicitaires et des signaux techniques pour diffuser/mesurer les publicités, y compris des publicités personnalisées lorsque vous y consentez.",
+      "adConsentTitle": "Gérer le consentement / retrait du consentement",
+      "adConsentText": "Vous pouvez modifier vos choix via : un écran de consentement (au premier lancement ou via Paramètres > Confidentialité / Options de confidentialité dans l'application, si disponible), et/ou les paramètres de votre appareil (iOS/Android).",
+      "rightsTitle": "Vos Droits",
+      "rightsText": "Vous disposez des droits d'accès, de rectification, d'effacement, d'opposition, de limitation, de portabilité et du droit de retirer votre consentement.",
+      "rightsExercise": "Pour exercer vos droits :",
+      "rightsVerification": "(une vérification d'identité peut être demandée si nécessaire). Vous pouvez également introduire une réclamation auprès de la CNIL.",
+      "contactTitle": "Contact"
+    },
+    "TermsBanner": {
+      "title": "Conditions",
+      "animatedWord": "Générales",
+      "effectiveDate": "Date d'entrée en vigueur : 26/11/2025"
+    },
+    "Terms": {
+      "mainTitle": "Conditions Générales d'Utilisation (CGU)",
+      "lastUpdated": "Dernière mise à jour : 26/12/2025",
+      "publisherTitle": "Éditeur de l'Application",
+      "publisherText": "L'application MON5MAJEUR est éditée par MON5MAJEUR, SASU au capital de 1 000 €, immatriculée au RCS de Paris (993 681 915).",
+      "officeLabel": "📍 Siège social :",
+      "officeValue": "229 rue Saint-Honoré, 75001 Paris, France.",
+      "directorLabel": "👤 Président & Directeur de publication :",
+      "directorValue": "Robin Martinella.",
+      "contactLabel": "📧 Contact :",
+      "hostingLabel": "🌐 Hébergement (Site) :",
+      "hostingValue": "OVH SAS, 2 rue Kellermann, 59100 Roubaix, France.",
+      "purposeTitle": "Objet & Description",
+      "purposeText": "En accédant à l'Application, l'Utilisateur accepte ces conditions sans réserve. MON5MAJEUR est une application de Fantasy Basketball permettant aux utilisateurs de créer des équipes virtuelles, de rejoindre des ligues et de consulter des statistiques.",
+      "nbaDisclaimer": "MON5MAJEUR n'est pas affilié à la NBA. Aucun logo ou visuel protégé de la NBA n'est utilisé.",
+      "accessTitle": "Conditions d'Accès",
+      "accessText1": "Accessible dès 13 ans. Les mineurs doivent obtenir une autorisation parentale. Pour les moins de 15 ans, le consentement parental est requis pour les traitements de données tels que les publicités personnalisées.",
+      "accessText2": "L'application est disponible sur l'App Store et Google Play ; les frais de connexion internet sont à la charge de l'utilisateur.",
+      "accountTitle": "Comptes & Sécurité",
+      "accountText1": "Les utilisateurs doivent fournir des informations exactes et protéger leurs identifiants. Les comptes inactifs pendant 24 mois peuvent être supprimés après notification.",
+      "accountText2": "La suppression du compte peut être demandée via l'application ou à l'adresse",
+      "creditsTitle": "Crédits & Publicités",
+      "creditsText": "Les crédits sont une monnaie virtuelle uniquement, non transférables et non convertibles en espèces. Les crédits restants sont perdus en cas de suppression du compte.",
+      "adsText": "L'application peut contenir des publicités ou des vidéos récompensées. Les publicités peuvent être personnalisées selon les réglages de l'utilisateur.",
+      "conductTitle": "Comportements Interdits",
+      "conductForbidden": "Strictement interdit :",
+      "conductText": "Bots, hacks, scripts, exploitation de bugs ou toute action visant à fausser le jeu. Les pseudonymes et noms de ligues doivent rester respectueux. Les sanctions incluent l'avertissement, la suspension ou la suppression du compte.",
+      "contestsTitle": "Concours & Lots",
+      "contestsText1": "Les lots sont non échangeables et non convertibles. Les lots physiques (maillots) sont limités aux résidents de France Métropolitaine, Belgique, Luxembourg et Monaco.",
+      "contestsText2": "Le choix du maillot (modèle, équipe, saison) est à la discrétion de l'Éditeur. Apple et Google ne sont ni sponsors ni organisateurs de ces concours.",
+      "legalTitle": "Cadre Légal & Responsabilité",
+      "legalText1": "Tous les éléments de l'application (code, design, texte) appartiennent à l'Éditeur. Toute reproduction est interdite.",
+      "legalText2": "L'Application est fournie « en l'état ». L'Éditeur n'est pas responsable des pannes de réseau, des pertes indirectes ou des cas de Force Majeure.",
+      "governingTitle": "Loi Applicable",
+      "governingText": "Ces conditions sont régies par le droit français. Tout litige sera traité par les tribunaux du ressort du siège social."
+    },
+    "Footer": {
+      "notifiedTitle": "Soyez notifié lors du",
+      "launches": "lancement",
+      "notifiedSubtitle": "Nous vous enverrons le lien dès que l'application sera disponible.",
+      "placeholder": "Entrez votre e-mail...",
+      "button": "Être notifié",
+      "description": "Créez votre équipe de rêve, affrontez vos amis et suivez les stats NBA en temps réel. Prêt à jouer ?",
+      "home": "Accueil",
+      "features": "Fonctionnalités",
+      "faq": "FAQ",
+      "services": "Services",
+      "contact": "Contactez-nous",
+      "terms": "Conditions Générales",
+      "privacy": "Confidentialité",
+      "followUs": "Suivez-nous",
+      "copyright": "© 2025 MON5MAJEUR — Fait à Paris."
+    }
+  }
+}

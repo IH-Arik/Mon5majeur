@@ -1,0 +1,76 @@
+# Root .gitignore for Mon5majeur monorepo
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+*.ipr
+*.iws
+
+# Python (Backend)
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/*.egg
+**/*.egg-info/
+**/dist/
+**/build/
+**/.eggs/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/htmlcov/
+**/.coverage
+**/coverage.xml
+**/.venv/
+**/venv/
+**/uploads/*
+!**/uploads/.gitkeep
+
+# Node/JavaScript (Landing Page, Dashboard)
+**/node_modules/
+**/.pnp
+**/.pnp.*
+**/.yarn/*
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarn/releases
+!**/.yarn/versions
+**/.next/
+**/out/
+**/.vercel/
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# Flutter/Dart (Mobile App)
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+**/app.*.symbols
+**/app.*.map.json
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/.fvm/
+
+# Sensitive environment files (NEVER COMMIT)
+.env
+.env*
+**/.env
+**/.env*
+!**/.env.example
+env
+**/env
+**/server.log
+**/server.err
+**/server_err.log

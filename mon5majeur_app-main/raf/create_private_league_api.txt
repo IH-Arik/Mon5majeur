@@ -1,0 +1,244 @@
+create a private league api
+
+curl --location 'https://api.mon5majeur.com/api/private-leagues/' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUz' \
+--data '{
+  "leauge_name": "Sadid Leauge",
+  "leauge_logo": "atlanta_hawks",
+  "leauge_description": "Sadid",
+  "team_budget": "100M",
+  "max_team_number": "10"
+}'
+
+response - code - 201 
+
+{
+    "id": 10,
+    "teams": [
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "leauge_name": "Sadid Leauge",
+    "leauge_description": "Sadid",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "10",
+    "join_code": "V7S69U",
+    "created_at": "19-01-2026 21:27:55",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+-- END --
+
+update private league api
+
+curl --location --request PATCH 'https://api.mon5majeur.com/api/private-leagues/10/' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI' \
+--data '{
+  "leauge_name": "Sadid Leauge Updated",
+  "leauge_logo": "atlanta_hawks",
+  "leauge_description": "updated",
+  "team_budget": "100M",
+  "max_team_number": "10"
+}'
+response - code - 200 
+
+{
+    "id": 10,
+    "teams": [
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "leauge_name": "Sadid Leauge Updated",
+    "leauge_description": "updated",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "10",
+    "join_code": "V7S69U",
+    "created_at": "19-01-2026 21:27:55",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+
+-- END --
+
+delete private league api
+
+curl --location --request DELETE 'https://api.mon5majeur.com/api/private-leagues/10/' \
+--header 'Authorization: Bearer eyJhbGciOiJIUz'
+
+response - code - 204 
+
+-- END --
+
+get private league details api
+
+curl --location 'https://api.mon5majeur.com/api/private-leagues/10/' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIU'
+
+response - code - 200 
+
+{
+    "id": 10,
+    "teams": [
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "leauge_name": "Sadid Leauge Updated",
+    "leauge_description": "updated",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "10",
+    "join_code": "V7S69U",
+    "created_at": "19-01-2026 21:27:55",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+-- END --
+
+kick team from private league api
+
+curl --location 'https://api.mon5majeur.com/api/private-leagues/kick/' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUz' \
+--data '{
+  "team_id": 3,
+  "league_id": 10
+}'
+
+response - code - 200 
+
+{
+    "detail": "Successfully kicked Fahad from the league."
+}
+
+-- END --
+
+websocket  private league updates 
+
+ws://api.mon5majeur.com/ws/leagues/8/
+
+response 
+
+{
+    "type": "broadcast",
+    "event": "team_left",
+    "payload": {
+        "user": "fahad1001mir",
+        "team_id": 3,
+        "team_name": "Fahad",
+        "team_logo": "paris_fc"
+    }
+}
+
+
+{
+    "type": "broadcast",
+    "event": "team_joined",
+    "payload": {
+        "user": "fahad1001mir",
+        "team_id": 3,
+        "team_name": "Fahad",
+        "team_logo": "paris_fc"
+    }
+}
+
+{
+    "type": "broadcast",
+    "event": "team_kicked",
+    "payload": {
+        "user": "fahad1001mir",
+        "team_id": 3,
+        "team_name": "Fahad",
+        "team_logo": "paris_fc"
+    }
+}
+
+{
+    "type": "broadcast",
+    "event": "team_joined",
+    "payload": {
+        "user": "fahad1000mir",
+        "team_id": 4,
+        "team_name": "Mir",
+        "team_logo": "paris_fc"
+    }
+}
+
+{
+    "type": "broadcast",
+    "event": "team_joined",
+    "payload": {
+        "user": "fahad1001mir",
+        "team_id": 3,
+        "team_name": "Fahad",
+        "team_logo": "paris_fc"
+    }
+}
+-- END --
+
+private league list api
+
+curl --location 'https://api.mon5majeur.com/api/private-leagues/10/' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGci'
+
+response - code - 200 
+{
+    "id": 10,
+    "teams": [
+        {
+            "team_id": 3,
+            "team_name": "Fahad",
+            "team_logo": "paris_fc"
+        },
+        {
+            "team_id": 4,
+            "team_name": "Mir",
+            "team_logo": "paris_fc"
+        },
+        {
+            "team_id": 5,
+            "team_name": "My Team",
+            "team_logo": "boston_celtics"
+        }
+    ],
+    "leauge_name": "Sadid Leauge Updated",
+    "leauge_description": "updated",
+    "leauge_logo": "atlanta_hawks",
+    "team_budget": "100M",
+    "max_team_number": "10",
+    "join_code": "V7S69U",
+    "created_at": "19-01-2026 21:27:55",
+    "start_date": null,
+    "is_ready": false,
+    "is_started": false,
+    "is_active": true,
+    "creator": 5
+}
+
+-- END --

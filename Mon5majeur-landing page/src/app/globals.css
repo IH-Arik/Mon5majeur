@@ -1,0 +1,71 @@
+@font-face {
+  font-family: 'Orbitron';
+  src: url('/fonts/Orbitron-VariableFont_wght.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aldrich';
+  src: url('/fonts/Aldrich-Regular.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Galdeano';
+  src: url('/fonts/Galdeano-Regular.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'RussoOne';
+  src: url('/fonts/RussoOne-Regular.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import "tailwindcss";
+
+@theme {
+  --color-dark: #050803;
+  --color-primary1: #ED7333;
+  --color-primary2: #D85510;
+  --color-border: #301A0E;
+  --color-input-bg: #0D0D0D;
+  --color-Base: #E4E0E0;
+
+
+  --font-aldrich: 'Aldrich', sans-serif;
+  --font-galdeano: 'Galdeano', sans-serif;
+  --font-russoOne: 'RussoOne', sans-serif;
+}
+
+body {
+  background-color: #050803;
+  color: white
+}
+
+/* Utility Classes */
+.flip-rotate {
+  @apply transform -rotate-45 scale-x-[-1];
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Orbitron', sans-serif;
+}

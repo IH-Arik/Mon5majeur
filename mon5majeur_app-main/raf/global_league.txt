@@ -1,0 +1,120 @@
+create global league players selection
+
+curl --location 'https://api.mon5majeur.com/api/global-leagues/players-selection/' \
+--header 'Content-Type: application/json' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIU' \
+--data '{
+  "selected_players": [
+          {
+      "id": "4870562",
+      "name": "Dominick Barlow",
+      "position": "F",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.7M"
+    },
+    {
+      "id": "4432179",
+      "name": "MarJon Beauchamp",
+      "position": "F",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5M"
+    },
+    {
+      "id": "5105637",
+      "name": "Adem Bona",
+      "position": "C",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.9M"
+    },
+    {
+      "id": "5105637",
+      "name": "Adem Bona",
+      "position": "C",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.9M"
+    },
+    {
+      "id": "5105637",
+      "name": "Adem Bona",
+      "position": "C",
+      "team": "Philadelphia 76ers",
+      "team_id": "1208",
+      "status": "OK",
+      "price": "5.9M"
+    }
+  ]
+}'
+
+get global league players selection
+
+curl --location 'https://api.mon5majeur.com/api/global-leagues/players-selection/' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6I'
+
+
+response :
+
+{
+    "match_day": 3,
+    "selected_players": [
+        {
+            "id": "4870562",
+            "name": "Dominick Barlow",
+            "team": "Philadelphia 76ers",
+            "price": "5.7M",
+            "score": 0,
+            "team_id": "1208",
+            "position": "F"
+        },
+        {
+            "id": "4432179",
+            "name": "MarJon Beauchamp",
+            "team": "Philadelphia 76ers",
+            "price": "5M",
+            "score": 0,
+            "team_id": "1208",
+            "position": "F"
+        },
+        {
+            "id": "5105637",
+            "name": "Adem Bona",
+            "team": "Philadelphia 76ers",
+            "price": "5.9M",
+            "score": 0,
+            "team_id": "1208",
+            "position": "C"
+        },
+        {
+            "id": "5105637",
+            "name": "Adem Bona",
+            "team": "Philadelphia 76ers",
+            "price": "5.9M",
+            "score": 0,
+            "team_id": "1208",
+            "position": "C"
+        },
+        {
+            "id": "5105637",
+            "name": "Adem Bona",
+            "team": "Philadelphia 76ers",
+            "price": "5.9M",
+            "score": 0,
+            "team_id": "1208",
+            "position": "C"
+        }
+    ],
+    "total_points": 0,
+    "max_balance": "100M",
+    "current_balance": "71.6M"
+}
+
+

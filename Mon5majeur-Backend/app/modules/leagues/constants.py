@@ -1,0 +1,24 @@
+LEAGUE_TYPE_GLOBAL = "global"
+LEAGUE_TYPE_PRIVATE = "private"
+LEAGUE_TYPE_PUBLIC = "public"
+LEAGUE_TYPES = [LEAGUE_TYPE_GLOBAL, LEAGUE_TYPE_PRIVATE, LEAGUE_TYPE_PUBLIC]
+
+LEAGUE_STATUS_WAITING = "waiting"
+LEAGUE_STATUS_REGULAR = "regular_season"
+LEAGUE_STATUS_PLAYOFFS = "playoffs"
+LEAGUE_STATUS_COMPLETED = "completed"
+LEAGUE_STATUS_CANCELLED = "cancelled"
+
+MATCH_STATUS_UPCOMING = "upcoming"
+MATCH_STATUS_LIVE = "live"
+MATCH_STATUS_COMPLETED = "completed"
+
+VALID_LEAGUE_SIZES = [4, 6, 8, 10]
+
+# Total regular-season match days per league size (home-and-away round robin)
+MATCH_DAYS_BY_SIZE = {4: 6, 6: 10, 8: 14, 10: 18}
+
+# Default budgets (in millions)
+BUDGET_STANDARD = 80
+BUDGET_PREMIUM = 100
+GLOBAL_LEAGUE_BUDGET = 100
