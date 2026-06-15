@@ -109,6 +109,28 @@ async def _send_fcm_reminder(user_id) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 06:00 Paris — sync NBA player roster (daily, catches trades & signings)
+# ---------------------------------------------------------------------------
+
+async def sync_player_roster_job() -> None:
+    """
+    Pull the full NBA playerIndex from NBA CDN and upsert into Player collection.
+    Runs once a day at 06:00 Paris so roster changes (trades, signings, injuries)
+    are reflected before the 12:00 schedule sync and evening games.
+    """
+    from app.modules.players.service import PlayerService
+    from app.modules.players.repository import PlayerRepository
+
+    logger.info("CRON sync_player_roster_job: fetching NBA CDN playerIndex")
+    try:
+        svc = PlayerService(PlayerRepository())
+        count = await svc.sync_from_goalserve("nba")
+        logger.info("CRON: synced %d players from NBA CDN playerIndex", count)
+    except Exception as exc:
+        logger.error("CRON sync_player_roster_job failed: %s", exc, exc_info=True)
+
+
+# ---------------------------------------------------------------------------
 # 12:00 Paris — sync today's NBA schedule from Goalserve
 # ---------------------------------------------------------------------------
 

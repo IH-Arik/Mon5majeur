@@ -32,6 +32,9 @@ class TokenTransaction(BaseDocument):
         "bonus_activation",      # spent to activate a bonus
         "refund",                # admin refund
         "admin_grant",           # admin manually credited
+        "earn_daily_video",      # rewarded ad watch (daily limit)
+        "earn_match_win",        # earned by winning a league match
+        "earn_league_win",       # earned by winning a full league
     ]
     reference_id: str | None = None   # e.g. store transaction ID, bonus slug
     note: str | None = None
@@ -44,9 +47,13 @@ class TokenTransaction(BaseDocument):
         ]
 
 
-# Token costs for bonus activations (in tokens)
+# Shop purchase costs per bonus (spec prices, in tokens)
 BONUS_COSTS = {
-    "luxury_tax": 50,
-    "chef_curry": 50,
-    "sixth_man": 50,
+    "chef_curry": 130,
+    "sixth_man": 170,
+    "luxury_tax": 150,
+    "live_scoring": 450,   # per-year subscription
+    "stop_pub": 450,       # per-year subscription
 }
+
+DAILY_VIDEO_REWARD = 6   # tokens earned per rewarded-ad video

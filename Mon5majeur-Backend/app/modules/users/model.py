@@ -36,6 +36,10 @@ class User(BaseDocument):
     notification_types: list[str] = []     # e.g. ["team_reminder", "results"]
     is_profile_complete: bool = False
 
+    # Token economy
+    token_balance: int = 0                   # in-app tokens earned/spent
+    last_daily_video_claim: datetime | None = None  # UTC; daily ad-reward throttle
+
     # Premium live score access
     premium_until: datetime | None = None    # UTC; None = no premium
 

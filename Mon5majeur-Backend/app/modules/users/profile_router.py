@@ -214,6 +214,16 @@ async def get_profile_stats(
     )
 
 
+@router.get(
+    "/token-balance/",
+    summary="Get current user token balance (Flutter: ShopScreen header)",
+)
+async def get_token_balance(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return {"balance": current_user.token_balance}
+
+
 @router.delete(
     "/",
     status_code=status.HTTP_204_NO_CONTENT,

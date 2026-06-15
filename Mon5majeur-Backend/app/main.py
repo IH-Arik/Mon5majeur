@@ -16,6 +16,8 @@ from app.modules.leagues.public_router import router as public_leagues_compat_ro
 from app.modules.leagues.rules_router import router as league_rules_router
 from app.modules.leagues.ws_router import router as ws_router
 from app.modules.players.compat_router import router as players_compat_router
+from app.modules.bonuses.router import router as bonuses_compat_router
+from app.modules.tokens.router import router as tokens_compat_router
 from app.modules.users.profile_router import router as user_profiles_compat_router
 
 
@@ -41,6 +43,8 @@ def create_application() -> FastAPI:
     app.include_router(global_leagues_compat_router, prefix="/api")
     app.include_router(user_profiles_compat_router, prefix="/api")
     app.include_router(players_compat_router, prefix="/api")
+    app.include_router(bonuses_compat_router, prefix="/api")
+    app.include_router(tokens_compat_router, prefix="/api")
     app.include_router(league_rules_router, prefix="/api")
     # WebSocket: wss://api.mon5majeur.com/ws/public-leagues/{id}/ and /ws/private-leagues/{id}/
     app.include_router(ws_router)

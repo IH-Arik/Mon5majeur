@@ -6,7 +6,7 @@ Mounted at /api (no /v1 prefix) to match Flutter's hardcoded URLs:
   GET /api/players-today/            → paginated players with daily_price (Flutter Player.fromJson)
   GET /api/players/{player_id}/info/ → player detail + season averages (Flutter PlayerInfoScreen)
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -28,6 +28,21 @@ from app.modules.users.model import User
 router = APIRouter(tags=["Players & Games (Flutter compat)"])
 
 _PAGE_SIZE = 100
+
+
+async def _nba_today() -> date:
+    """
+    Return the NBA 'game date' that has active games.
+    NBA uses ET dates — Paris morning (01:00-09:00) is still the previous ET day.
+    We check today UTC and yesterday UTC; whichever has games in the DB wins.
+    Falls back to today UTC if neither has games yet.
+    """
+    utc_today = datetime.now(timezone.utc).date()
+    for candidate in (utc_today, utc_today - timedelta(days=1)):
+        count = await NBAGame.find(NBAGame.nba_date == candidate).count()
+        if count > 0:
+            return candidate
+    return utc_today
 
 
 # ── Status mapping ────────────────────────────────────────────────────────────
@@ -93,17 +108,16 @@ def _player_to_compat(player: Player) -> PlayerCompatItem:
     summary="Today's NBA games (Flutter: _fetchTodaysGames)",
 )
 async def games_today(
-    nba_date: str | None = Query(None, description="Override date YYYY-MM-DD, default=today UTC"),
+    nba_date: str | None = Query(None, description="Override date YYYY-MM-DD, default=NBA current date"),
     _: User = Depends(get_current_user),
 ) -> list[GameCompatResponse]:
     if nba_date:
         try:
-            from datetime import date
             today = date.fromisoformat(nba_date)
         except ValueError:
-            today = datetime.now(timezone.utc).date()
+            today = await _nba_today()
     else:
-        today = datetime.now(timezone.utc).date()
+        today = await _nba_today()
 
     games = await NBAGame.find(NBAGame.nba_date == today).sort(+NBAGame.tip_off_time).to_list()
     return [_game_to_compat(g) for g in games]
@@ -119,7 +133,7 @@ async def players_today(
     page: int = Query(1, ge=1, description="Page number (1-based)"),
     _: User = Depends(get_current_user),
 ) -> PlayersTodayPageResponse:
-    today = datetime.now(timezone.utc).date()
+    today = await _nba_today()
 
     games = await NBAGame.find(NBAGame.nba_date == today).to_list()
     team_ids_playing: set[str] = set()
@@ -153,6 +167,24 @@ async def players_today(
 
 
 @router.get(
+    "/games-history/",
+    response_model=list[GameCompatResponse],
+    summary="Last 7 days of NBA games (Flutter: Results / Score history screen)",
+)
+async def games_history(
+    days: int = Query(7, ge=1, le=30, description="How many days back to fetch"),
+    _: User = Depends(get_current_user),
+) -> list[GameCompatResponse]:
+    nba_today = await _nba_today()
+    since = nba_today - timedelta(days=days - 1)
+    games = await NBAGame.find(
+        NBAGame.nba_date >= since,
+        NBAGame.nba_date <= nba_today,
+    ).sort(-NBAGame.nba_date).to_list()
+    return [_game_to_compat(g) for g in games]
+
+
+@router.get(
     "/players-today-scores/",
     response_model=PlayersTodayScoresResponse,
     summary="Today's fantasy player scores sorted by score desc (Flutter: MyMatchScreen > Todays Fantasy Players Score)",
@@ -160,7 +192,7 @@ async def players_today(
 async def players_today_scores(
     _: User = Depends(get_current_user),
 ) -> PlayersTodayScoresResponse:
-    today = datetime.now(timezone.utc).date()
+    today = await _nba_today()
 
     stats = await PlayerGameStats.find(
         PlayerGameStats.nba_date == today,
@@ -233,7 +265,7 @@ async def player_info(
     rating = round(min(max(raw_rating, 0.0), 10.0), 1)
 
     # ── Selected Today % ───────────────────────────────────────────────────
-    today = datetime.now(timezone.utc).date()
+    today = await _nba_today()
     player_id_str = str(player.id)
 
     total_today = await FlutterPlayerSelection.find(

@@ -28,7 +28,12 @@ def _parse_price(raw) -> float:
 
 
 async def _get_global_league() -> League:
-    league = await League.find_one(League.type == "global")
+    # Prefer active (regular_season) global league; fall back to any global league
+    league = await League.find_one(
+        League.type == "global", League.status == "regular_season"
+    )
+    if not league:
+        league = await League.find_one(League.type == "global")
     if not league:
         raise NotFoundException("Global league not found")
     return league

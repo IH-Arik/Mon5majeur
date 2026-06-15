@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
+import '../../../../data/models/bonus_inventory_model.dart';
 import '../../../../data/models/game_model.dart';
 import '../../../../data/models/player.dart';
 import '../../../../data/services/api_service.dart';
@@ -49,9 +50,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // Show bonus options
   bool showBonusOptions = false;
 
-  // Available counts
-  int sixthManAvailable = 3;
-  int chefsCurryAvailable = 2;
+  // Available counts (loaded from API)
+  int sixthManAvailable = 0;
+  int chefsCurryAvailable = 0;
   int luxuryTaxAvailable = 0;
 
   // API Integration
@@ -72,9 +73,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     Assets.icons.gercy5,
   ];
 
+  // 6th Man is outside the budget — spec says it is NOT counted against the 100M cap
   double get usedBudget =>
-      selectedPlayers.fold(0.0, (sum, p) => sum + (p?.price ?? 0.0)) +
-      (sixthManPlayer?.price ?? 0.0);
+      selectedPlayers.fold(0.0, (sum, p) => sum + (p?.price ?? 0.0));
 
   int get remainingPlayers => selectedPlayers.where((p) => p == null).length;
   bool get isTeamComplete => selectedPlayers.every((p) => p != null);
@@ -108,6 +109,27 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
   }
 
+  Future<void> _fetchBonusInventory() async {
+    try {
+      final response = await _apiClient.get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.bonusInventory}',
+      );
+      if (response.statusCode == 200 && response.body != null) {
+        final inv = BonusInventory.fromJson(
+            response.body as Map<String, dynamic>);
+        if (mounted) {
+          setState(() {
+            sixthManAvailable = inv.sixthManCharges;
+            chefsCurryAvailable = inv.chefCurryCharges;
+            luxuryTaxAvailable = inv.luxuryTaxCharges;
+          });
+        }
+      }
+    } catch (_) {
+      // non-fatal: keep default 0
+    }
+  }
+
   // Add this ValueNotifier to notify child screen of updates
   final ValueNotifier<List<Player>> _playersNotifier = ValueNotifier([]);
 
@@ -117,6 +139,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     _fetchPlayers();
     _fetchTodaysGames();
     _fetchSavedTeam();
+    _fetchBonusInventory();
   }
 
   @override
@@ -585,9 +608,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         '🔄 Fetching saved team for PUBLIC League ${widget.leagueId}, Match Day ${widget.matchDay}',
       );
 
-      // UPDATED TO USE publicPlayersSelection
-      final url =
-          '${ApiUrl.baseUrl}${ApiUrl.publicPlayersSelection(widget.leagueId!, widget.matchDay!)}';
+      final url = widget.isPrivate
+          ? '${ApiUrl.baseUrl}${ApiUrl.privatePlayersSelection(widget.leagueId!, widget.matchDay!)}'
+          : '${ApiUrl.baseUrl}${ApiUrl.publicPlayersSelection(widget.leagueId!, widget.matchDay!)}';
 
       final response = await _apiClient.get(url: url, showResult: true);
 

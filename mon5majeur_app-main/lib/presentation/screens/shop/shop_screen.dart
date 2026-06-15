@@ -8,24 +8,25 @@ import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
 import '../../widgets/navigation.dart';
+import 'shop_controller.dart';
 
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    Get.put(ShopController());
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Column(
           children: [
-            /// Header Section
+            /// Header
             Padding(
               padding: EdgeInsets.all(16.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  /// Title
                   Text(
                     AppString.shop.tr,
                     style: TextStyle(
@@ -34,8 +35,6 @@ class ShopScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
-                  /// Placeholder for symmetry
                   SizedBox(width: 28.w),
                 ],
               ),
@@ -60,33 +59,80 @@ class ShopScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 6.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2a2a2a),
-                      borderRadius: BorderRadius.circular(20.r),
-                    ),
-                    child: Row(
-                      children: [
-                        Assets.icons.tokenIcon.image(width: 20.r, height: 20.r),
-                        SizedBox(width: 6.w),
-                        GestureDetector(
-                          onTap: () =>
-                              context.go(RoutePath.buyToken.addBasePath),
-                          child: Text(
-                            AppString.tokenAmount.tr,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      /// Daily video earn button
+                      Obx(() {
+                        final c = Get.find<ShopController>();
+                        return GestureDetector(
+                          onTap: c.isEarningVideo.value
+                              ? null
+                              : () => c.earnDailyVideoTokens(),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10.w, vertical: 6.h),
+                            margin: EdgeInsets.only(right: 8.w),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1a3d1a),
+                              borderRadius: BorderRadius.circular(20.r),
+                              border: Border.all(
+                                  color: const Color(0xFF2d6b2d), width: 1),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.play_circle_outline,
+                                    color: Colors.greenAccent, size: 16.r),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  c.isEarningVideo.value
+                                      ? '...'
+                                      : '+6 ${AppString.tokens.tr.trim()}',
+                                  style: TextStyle(
+                                    color: Colors.greenAccent,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        );
+                      }),
+
+                      /// Token balance pill
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2a2a2a),
+                          borderRadius: BorderRadius.circular(20.r),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            Assets.icons.tokenIcon
+                                .image(width: 20.r, height: 20.r),
+                            SizedBox(width: 6.w),
+                            GestureDetector(
+                              onTap: () =>
+                                  context.go(RoutePath.buyToken.addBasePath),
+                              child: Obx(() {
+                                final c = Get.find<ShopController>();
+                                return Text(
+                                  c.isLoadingBalance.value
+                                      ? '...'
+                                      : '${c.tokenBalance.value}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -94,103 +140,207 @@ class ShopScreen extends StatelessWidget {
 
             /// Scrollable Bonus Cards
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.all(16.w),
-                children: [
-                  /// Chef Curry Card (Brown/Popular)
-                  _BonusCard(
-                    backgroundColor: const Color(0xFF3d2f2f),
-                    borderColor: const Color(0xFFFF6B35),
-                    iconAsset: Assets.icons.chefcurry,
-                    title: AppString.chefCurry.tr,
-                    subtitle: AppString.doublePoints.tr,
-                    description: AppString.chefCurryDesc.tr,
-                    tokenAmount: '130',
-                    buttonText: AppString.unlock.tr,
-                    buttonColor: const Color(0xFFFF6B35),
-                    badge: AppString.popular.tr,
-                    badgeColor: const Color(0xFFFF6B35),
-                    showMoreCoinIcon: true,
-                    showStarIcon: true,
-                  ),
+              child: Obx(() {
+                final c = Get.find<ShopController>();
+                final inv = c.inventory.value;
+                return ListView(
+                  padding: EdgeInsets.all(16.w),
+                  children: [
+                    /// Chef Curry
+                    _BonusCard(
+                      backgroundColor: const Color(0xFF3d2f2f),
+                      borderColor: const Color(0xFFFF6B35),
+                      iconAsset: Assets.icons.chefcurry,
+                      title: AppString.chefCurry.tr,
+                      subtitle: AppString.doublePoints.tr,
+                      description: AppString.chefCurryDesc.tr,
+                      tokenAmount: '130',
+                      buttonText: AppString.unlock.tr,
+                      buttonColor: const Color(0xFFFF6B35),
+                      badge: AppString.popular.tr,
+                      badgeColor: const Color(0xFFFF6B35),
+                      showStarIcon: true,
+                      chargesRemaining: inv.chefCurryCharges,
+                      onUnlock: () =>
+                          _confirmPurchase(context, c, 'chef_curry',
+                              AppString.chefCurry.tr, 130),
+                    ),
 
-                  SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-                  /// 6th Man Card (Navy Blue)
-                  _BonusCard(
-                    backgroundColor: const Color(0xFF1a2744),
-                    borderColor: const Color(0xFF2d4a7c),
-                    iconAsset: Assets.icons.sixman,
-                    title: AppString.sixthMan.tr,
-                    subtitle: AppString.extraPlayer.tr,
-                    description: AppString.sixthManDesc.tr,
-                    tokenAmount: '170',
-                    buttonText: AppString.unlock.tr,
-                    buttonColor: const Color(0xFF8B5CF6),
-                  ),
+                    /// 6th Man
+                    _BonusCard(
+                      backgroundColor: const Color(0xFF1a2744),
+                      borderColor: const Color(0xFF2d4a7c),
+                      iconAsset: Assets.icons.sixman,
+                      title: AppString.sixthMan.tr,
+                      subtitle: AppString.extraPlayer.tr,
+                      description: AppString.sixthManDesc.tr,
+                      tokenAmount: '170',
+                      buttonText: AppString.unlock.tr,
+                      buttonColor: const Color(0xFF8B5CF6),
+                      chargesRemaining: inv.sixthManCharges,
+                      onUnlock: () =>
+                          _confirmPurchase(context, c, 'sixth_man',
+                              AppString.sixthMan.tr, 170),
+                    ),
 
-                  SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-                  /// Luxary Tax Card (Dark Green)
-                  _BonusCard(
-                    backgroundColor: const Color(0xFF1a3d32),
-                    borderColor: const Color(0xFF2d6b54),
-                    iconAsset: Assets.icons.luxarytax,
-                    title: AppString.luxaryTax.tr,
-                    subtitle: AppString.budgetBoost.tr,
-                    description: AppString.luxaryTaxDesc.tr,
-                    tokenAmount: '150',
-                    buttonText: AppString.unlock.tr,
-                    buttonColor: const Color(0xFF10B981),
-                  ),
+                    /// Luxury Tax
+                    _BonusCard(
+                      backgroundColor: const Color(0xFF1a3d32),
+                      borderColor: const Color(0xFF2d6b54),
+                      iconAsset: Assets.icons.luxarytax,
+                      title: AppString.luxaryTax.tr,
+                      subtitle: AppString.budgetBoost.tr,
+                      description: AppString.luxaryTaxDesc.tr,
+                      tokenAmount: '150',
+                      buttonText: AppString.unlock.tr,
+                      buttonColor: const Color(0xFF10B981),
+                      chargesRemaining: inv.luxuryTaxCharges,
+                      onUnlock: () =>
+                          _confirmPurchase(context, c, 'luxury_tax',
+                              AppString.luxaryTax.tr, 150),
+                    ),
 
-                  SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-                  /// Live Scoring Card (Dark Purple/PRO)
-                  _BonusCard(
-                    backgroundColor: const Color(0xFF2d2444),
-                    borderColor: const Color(0xFF4a3d6b),
-                    iconAsset: Assets.icons.livescoring,
-                    title: AppString.liveScoring.tr,
-                    subtitle: AppString.realTimeUpdate.tr,
-                    description: AppString.liveScoringDesc.tr,
-                    tokenAmount: '700',
-                    tokenSuffix: AppString.perYear.tr,
-                    buttonText: AppString.unlock.tr,
-                    buttonColor: const Color(0xFF8B5CF6),
-                    badge: AppString.pro.tr,
-                    badgeColor: const Color(0xFFFF6B35),
-                  ),
+                    /// Live Scoring
+                    _BonusCard(
+                      backgroundColor: const Color(0xFF2d2444),
+                      borderColor: const Color(0xFF4a3d6b),
+                      iconAsset: Assets.icons.livescoring,
+                      title: AppString.liveScoring.tr,
+                      subtitle: AppString.realTimeUpdate.tr,
+                      description: AppString.liveScoringDesc.tr,
+                      tokenAmount: '450',
+                      tokenSuffix: AppString.perYear.tr,
+                      buttonText: inv.liveScoringActive
+                          ? 'Active ✓'
+                          : AppString.unlock.tr,
+                      buttonColor: inv.liveScoringActive
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF8B5CF6),
+                      badge: AppString.pro.tr,
+                      badgeColor: const Color(0xFFFF6B35),
+                      onUnlock: inv.liveScoringActive
+                          ? null
+                          : () => _confirmPurchase(context, c, 'live_scoring',
+                              AppString.liveScoring.tr, 450),
+                    ),
 
-                  SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-                  /// Jersey Card (Navy Blue/Coming Soon)
-                  _BonusCard(
-                    backgroundColor: const Color(0xFF1a2744),
-                    borderColor: const Color(0xFF2d4a7c),
-                    iconAsset: Assets.icons.jersey,
-                    title: AppString.jersey.tr,
-                    subtitle: AppString.buyCustomJerseys.tr,
-                    description: AppString.comingSoon.tr,
-                    tokenAmount: '',
-                    buttonText: AppString.comingSoon.tr,
-                    buttonColor: const Color(0xFF8B5CF6),
-                    isComingSoon: true,
-                  ),
+                    /// Stop-Pub
+                    _BonusCard(
+                      backgroundColor: const Color(0xFF2d1a1a),
+                      borderColor: const Color(0xFF6b2d2d),
+                      iconAsset: Assets.icons.livescoring,
+                      title: 'Stop-Pub',
+                      subtitle: 'Remove all ads',
+                      description:
+                          'Enjoy the app without any advertisements for a full year.',
+                      tokenAmount: '450',
+                      tokenSuffix: AppString.perYear.tr,
+                      buttonText:
+                          inv.stopPubActive ? 'Active ✓' : AppString.unlock.tr,
+                      buttonColor: inv.stopPubActive
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
+                      onUnlock: inv.stopPubActive
+                          ? null
+                          : () => _confirmPurchase(
+                              context, c, 'stop_pub', 'Stop-Pub', 450),
+                    ),
 
-                  SizedBox(height: 80.h),
-                ],
-              ),
+                    SizedBox(height: 16.h),
+
+                    /// Jersey — coming soon
+                    _BonusCard(
+                      backgroundColor: const Color(0xFF1a2744),
+                      borderColor: const Color(0xFF2d4a7c),
+                      iconAsset: Assets.icons.jersey,
+                      title: AppString.jersey.tr,
+                      subtitle: AppString.buyCustomJerseys.tr,
+                      description: AppString.comingSoon.tr,
+                      tokenAmount: '',
+                      buttonText: AppString.comingSoon.tr,
+                      buttonColor: const Color(0xFF8B5CF6),
+                      isComingSoon: true,
+                    ),
+
+                    SizedBox(height: 80.h),
+                  ],
+                );
+              }),
             ),
           ],
         ),
       ),
-
-      /// Bottom Navigation Bar
       bottomNavigationBar: const NavigationWidget(currentIndex: 3),
     );
   }
+
+  void _confirmPurchase(
+    BuildContext context,
+    ShopController c,
+    String slug,
+    String name,
+    int cost,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a1a),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r)),
+        title: Text(
+          'Confirm Purchase',
+          style: TextStyle(color: Colors.white, fontSize: 16.sp),
+        ),
+        content: Text(
+          'Buy $name for $cost tokens?\n\nYour balance: ${c.tokenBalance.value} tokens.',
+          style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel',
+                style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B35),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r)),
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final ok = await c.purchaseBonus(slug);
+              if (ok) {
+                Get.snackbar(
+                  'Purchased!',
+                  '$name added to your inventory',
+                  backgroundColor: const Color(0xFF1a3d1a),
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
+            child: Text('Buy',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+// ─── Bonus Card Widget ────────────────────────────────────────────────────────
 
 class _BonusCard extends StatelessWidget {
   final Color backgroundColor;
@@ -206,8 +356,9 @@ class _BonusCard extends StatelessWidget {
   final String? badge;
   final Color? badgeColor;
   final bool isComingSoon;
-  final bool showMoreCoinIcon;
   final bool showStarIcon;
+  final int chargesRemaining;
+  final VoidCallback? onUnlock;
 
   const _BonusCard({
     required this.backgroundColor,
@@ -223,8 +374,9 @@ class _BonusCard extends StatelessWidget {
     this.badge,
     this.badgeColor,
     this.isComingSoon = false,
-    this.showMoreCoinIcon = false,
     this.showStarIcon = false,
+    this.chargesRemaining = 0,
+    this.onUnlock,
   });
 
   @override
@@ -239,10 +391,9 @@ class _BonusCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// Header with Icon, Title, and Badge
+          /// Header: icon + title + badge
           Row(
             children: [
-              /// Icon
               Container(
                 width: 50.r,
                 height: 50.r,
@@ -257,21 +408,41 @@ class _BonusCard extends StatelessWidget {
                   ),
                 ),
               ),
-
               SizedBox(width: 12.w),
-
-              /// Title and Subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (chargesRemaining > 0) ...[
+                          SizedBox(width: 8.w),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1a3d1a),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Text(
+                              'x$chargesRemaining',
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     SizedBox(height: 2.h),
                     Text(
@@ -281,14 +452,10 @@ class _BonusCard extends StatelessWidget {
                   ],
                 ),
               ),
-
-              /// Badge (Popular/PRO) with optional star icon
               if (badge != null)
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 6.h,
-                  ),
+                      horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     color: badgeColor,
                     borderRadius: BorderRadius.circular(20.r),
@@ -320,19 +487,15 @@ class _BonusCard extends StatelessWidget {
           Text(
             description,
             style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14.sp,
-              height: 1.4,
-            ),
+                color: Colors.grey, fontSize: 14.sp, height: 1.4),
           ),
 
           SizedBox(height: 20.h),
 
-          /// Token Amount and Unlock Button
+          /// Token amount + unlock button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              /// Token Display
               if (!isComingSoon)
                 Row(
                   children: [
@@ -350,9 +513,7 @@ class _BonusCard extends StatelessWidget {
                       Text(
                         ' $tokenSuffix',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                        ),
+                            color: Colors.white, fontSize: 14.sp),
                       )
                     else
                       Text(
@@ -365,30 +526,37 @@ class _BonusCard extends StatelessWidget {
                       ),
                   ],
                 ),
-
-              /// Unlock Button
-              ElevatedButton(
-                onPressed: isComingSoon ? null : () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: buttonColor,
-                  disabledBackgroundColor: buttonColor,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 24.w,
-                    vertical: 12.h,
+              Obx(() {
+                final c = Get.find<ShopController>();
+                final loading = c.isPurchasing.value;
+                return ElevatedButton(
+                  onPressed:
+                      isComingSoon || loading ? null : onUnlock,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: buttonColor,
+                    disabledBackgroundColor: buttonColor.withValues(alpha: 0.5),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 24.w, vertical: 12.h),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r)),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                ),
-                child: Text(
-                  buttonText,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ),
+                  child: loading
+                      ? SizedBox(
+                          width: 16.r,
+                          height: 16.r,
+                          child: const CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(
+                          buttonText,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                );
+              }),
             ],
           ),
         ],

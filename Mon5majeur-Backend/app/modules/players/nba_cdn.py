@@ -80,10 +80,10 @@ async def fetch_schedule_for_date(nba_date: date) -> list[dict]:
 
     games = []
     for day in data.get("leagueSchedule", {}).get("gameDates", []):
-        # gameDateEst looks like "2026-06-13T00:00:00Z"
+        # gameDate is "06/13/2026 00:00:00" (MM/DD/YYYY)
         day_str = day.get("gameDate", "")
         try:
-            day_date = datetime.strptime(day_str[:10], "%Y-%m-%d").date()
+            day_date = datetime.strptime(day_str[:10], "%m/%d/%Y").date()
         except ValueError:
             continue
         if day_date != nba_date:

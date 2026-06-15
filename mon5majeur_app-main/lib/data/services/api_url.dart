@@ -1,6 +1,7 @@
 // Update api_url.dart
 class ApiUrl {
-  static const baseUrl = "https://energize-dyslexic-frisbee.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8001
+  static const baseUrl =
+      "https://energize-dyslexic-frisbee.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8001
 
   static const imageBaseUrl = baseUrl;
 
@@ -24,6 +25,7 @@ class ApiUrl {
   // Profile endpoints
   static const userProfiles = "/api/UserProfiles/";
   static String updateProfile(int profileId) => "/api/UserProfiles/$profileId/";
+  static const tokenBalance = "/api/UserProfiles/token-balance/";
 
   // Private League endpoints
   static const privateLeagues = "/api/private-leagues/";
@@ -39,11 +41,21 @@ class ApiUrl {
 
   // WebSocket — derived from baseUrl so it works with ngrok and production
   static String leagueWebSocket(int leagueId) {
-    final wsBase = baseUrl.replaceFirst('https://', 'wss://').replaceFirst('http://', 'ws://');
+    final wsBase = baseUrl
+        .replaceFirst('https://', 'wss://')
+        .replaceFirst('http://', 'ws://');
     return "$wsBase/ws/leagues/$leagueId/";
   }
 
+  // Bonus shop endpoints
+  static const bonusInventory = "/api/bonuses/my-inventory/";
+  static const bonusPurchase = "/api/bonuses/purchase/";
+  static const earnDailyVideo = "/api/tokens/earn/daily-video/";
+  static const tokenWallet = "/api/tokens/wallet";
+
   static const gamesToday = "/api/games-today/";
+  static const gamesHistory = "/api/games-history/";
+  static const playersTodayScores = "/api/players-today-scores/";
 
   // Private League - Player Selection & Match Results
   static String playersSelection(int leagueId, int matchDay) =>

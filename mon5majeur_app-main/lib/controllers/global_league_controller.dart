@@ -166,20 +166,28 @@ class GlobalLeagueController extends GetxController {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         logger.i('Successfully submitted player selection');
-
-        // Refresh the selection after successful submission
         await fetchGlobalLeagueSelection();
-
         return true;
+      } else if (response.statusCode == 401) {
+        hasError.value = true;
+        errorMessage.value = 'Session expired. Please log in again.';
+        logger.e('401 unauthorized submitting player selection');
+        return false;
+      } else if (response.statusCode == 404) {
+        hasError.value = true;
+        errorMessage.value = 'Global league not found. Please try again later.';
+        logger.e('404 global league not found');
+        return false;
       } else {
         hasError.value = true;
-        errorMessage.value = 'Failed to submit player selection';
-        logger.e('Failed to submit player selection: ${response.statusCode}');
+        final detail = response.body?['detail'] as String? ?? 'Unknown error';
+        errorMessage.value = 'Failed to save team (${response.statusCode}): $detail';
+        logger.e('Failed to submit player selection: ${response.statusCode} - $detail');
         return false;
       }
     } catch (e) {
       hasError.value = true;
-      errorMessage.value = 'Error submitting players: $e';
+      errorMessage.value = 'Network error: $e';
       logger.e('Error submitting player selection: $e');
       return false;
     } finally {

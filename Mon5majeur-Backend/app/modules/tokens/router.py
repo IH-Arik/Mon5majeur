@@ -1,8 +1,11 @@
+from datetime import datetime, timedelta, timezone
+
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
+from app.exceptions.errors import BadRequestException
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
-from app.modules.tokens.model import BONUS_COSTS, TokenWallet
+from app.modules.tokens.model import BONUS_COSTS, DAILY_VIDEO_REWARD, TokenWallet
 from app.modules.tokens.schema import (
     AdminGrantRequest,
     IAPWebhookPayload,
@@ -13,6 +16,10 @@ from app.modules.tokens.service import TokenService
 from app.modules.users.model import User
 
 router = APIRouter(prefix="/tokens", tags=["Tokens"])
+
+# Token rewards for game events
+MATCH_WIN_REWARD = 10
+LEAGUE_WIN_REWARD = 50
 
 
 def get_token_service() -> TokenService:
@@ -63,6 +70,35 @@ async def iap_webhook(
         payload.transaction_id,
         payload.platform,
     )
+    return WalletResponse(user_id=wallet.user_id, balance=wallet.balance)
+
+
+@router.post(
+    "/earn/daily-video/",
+    response_model=WalletResponse,
+    summary="Earn tokens by watching a rewarded ad (once per 24 h)",
+)
+async def earn_daily_video(
+    user: User = Depends(get_current_user),
+    service: TokenService = Depends(get_token_service),
+) -> WalletResponse:
+    now = datetime.now(timezone.utc)
+    if user.last_daily_video_claim is not None:
+        next_claim = user.last_daily_video_claim + timedelta(hours=24)
+        if now < next_claim:
+            seconds_left = int((next_claim - now).total_seconds())
+            raise BadRequestException(
+                f"Daily video already claimed. Try again in {seconds_left // 3600}h "
+                f"{(seconds_left % 3600) // 60}m."
+            )
+
+    wallet = await service.credit(
+        user.id,
+        DAILY_VIDEO_REWARD,
+        tx_type="earn_daily_video",
+        note="Rewarded ad video",
+    )
+    await user.save_updated(last_daily_video_claim=now)
     return WalletResponse(user_id=wallet.user_id, balance=wallet.balance)
 
 

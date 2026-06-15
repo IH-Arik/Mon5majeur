@@ -1,5 +1,3 @@
-// Create this new file: lib/data/models/game_model.dart
-
 class Game {
   final int id;
   final String homeTeam;
@@ -11,6 +9,8 @@ class Game {
   final String venue;
   final String timezone;
   final String datetimeUtc;
+  final int? homeScore;
+  final int? awayScore;
 
   Game({
     required this.id,
@@ -23,6 +23,8 @@ class Game {
     required this.venue,
     required this.timezone,
     required this.datetimeUtc,
+    this.homeScore,
+    this.awayScore,
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,8 @@ class Game {
       venue: json['venue'] ?? '',
       timezone: json['timezone'] ?? '',
       datetimeUtc: json['datetime_utc'] ?? '',
+      homeScore: json['home_score'] as int?,
+      awayScore: json['away_score'] as int?,
     );
   }
 
@@ -52,6 +56,8 @@ class Game {
       'venue': venue,
       'timezone': timezone,
       'datetime_utc': datetimeUtc,
+      'home_score': homeScore,
+      'away_score': awayScore,
     };
   }
 }

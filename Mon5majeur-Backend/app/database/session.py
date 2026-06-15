@@ -15,7 +15,7 @@ def get_motor_client() -> AsyncIOMotorClient:
 
 async def init_db() -> None:
     from app.modules.auth.model import OTPToken, RefreshToken
-    from app.modules.bonuses.model import UserBonusQuota
+    from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
     from app.modules.competitions.model import Competition, CompetitionEntry
     from app.modules.fantasy_teams.model import FantasyTeam
     from app.modules.files.model import UploadedFile
@@ -55,6 +55,7 @@ async def init_db() -> None:
             LineupSubmission,
             FlutterPlayerSelection,
             UserBonusQuota,
+            UserBonusInventory,
             TokenWallet,
             TokenTransaction,
         ],

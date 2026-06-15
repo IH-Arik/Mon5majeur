@@ -29,10 +29,20 @@ def start_scheduler() -> None:
         daily_close_job,
         reminder_push_job,
         sync_live_games_job,
+        sync_player_roster_job,
         sync_today_schedule_job,
     )
 
     scheduler = get_scheduler()
+
+    # 06:00 Paris — sync NBA player roster (trades, signings, injuries)
+    scheduler.add_job(
+        sync_player_roster_job,
+        CronTrigger(hour=6, minute=0, timezone=PARIS_TZ),
+        id="sync_player_roster",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
 
     # 12:00 Paris — fetch tonight's game schedule from Goalserve
     scheduler.add_job(

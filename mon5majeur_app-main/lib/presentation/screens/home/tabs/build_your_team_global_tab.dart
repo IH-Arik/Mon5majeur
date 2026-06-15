@@ -326,8 +326,10 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       Get.snackbar(
         'Incomplete Team',
         'Please select all 5 players before saving',
-        backgroundColor: Colors.red.withValues(alpha: 0.8),
+        backgroundColor: Colors.red,
         colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
       );
       return;
     }
@@ -338,21 +340,24 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
     if (success) {
       Get.snackbar(
-        'Success',
-        'Team saved successfully!',
-        backgroundColor: Colors.green.withValues(alpha: 0.8),
+        'Team Saved!',
+        'Your team has been confirmed successfully.',
+        backgroundColor: Colors.green,
         colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
       );
-
       widget.onTeamSaved?.call();
     } else {
       Get.snackbar(
         'Error',
         _controller.errorMessage.value.isNotEmpty
             ? _controller.errorMessage.value
-            : 'Failed to save team',
-        backgroundColor: Colors.red.withValues(alpha: 0.8),
+            : 'Failed to save team. Please try again.',
+        backgroundColor: Colors.red,
         colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 5),
       );
     }
   }

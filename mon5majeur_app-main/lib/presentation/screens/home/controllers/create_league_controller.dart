@@ -707,7 +707,11 @@ class CreateLeagueController extends GetxController {
         }
 
         if (context.mounted) {
-          final matchDay = currentLeague.value?.currentMatchDay ?? 1;
+          // Use current_match_day from the start_league response (backend sets it to 1).
+          // Do NOT use currentLeague.value?.currentMatchDay — it is 0 before the
+          // league starts and `0 ?? 1` stays 0, causing "League has not started" errors.
+          final matchDay =
+              (response.body['current_match_day'] as num?)?.toInt() ?? 1;
 
           context.go(
             '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/$leagueId?matchDay=$matchDay',

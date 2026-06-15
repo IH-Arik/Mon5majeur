@@ -452,10 +452,12 @@ class AuthController extends GetxController {
         });
       } else {
         final errorMessage =
-            response.body['message'] ??
-            response.body['detail'] ??
-            response.body['error']?.toString() ??
-            "Invalid credentials";
+            response.body?['message']?.toString() ??
+            response.body?['detail']?.toString() ??
+            response.body?['error']?.toString() ??
+            (response.statusCode == null
+                ? "Connection failed. Check your internet."
+                : "Invalid credentials (${response.statusCode})");
         showSnackbar(context, "Error", errorMessage, isError: true);
       }
     } catch (e) {
@@ -463,7 +465,7 @@ class AuthController extends GetxController {
       showSnackbar(
         context,
         "Error",
-        "Login failed. Please try again.",
+        "Connection error. Make sure you have internet.",
         isError: true,
       );
     } finally {
