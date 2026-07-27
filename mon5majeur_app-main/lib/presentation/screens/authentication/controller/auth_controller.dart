@@ -31,14 +31,14 @@ class AuthController extends GetxController {
   Timer? _otpTimer;
 
   // Text controllers
-  final emailController = TextEditingController(text: 'sadid.jones@gmail.com');
+  final emailController = TextEditingController(text: 'arikittesaf@gmail.com');
   // final emailController = TextEditingController(
   //   text: 'abdullah.muhtasim@gmail.com',
   // );
   // final emailController = TextEditingController(text: 'fahad1001mir@gmail.com');
   // final emailController = TextEditingController(text: 'fahad1000mir@gmail.com');
   // final emailController = TextEditingController(text: 'admin@gmail.com');
-  final passwordController = TextEditingController(text: 'admin');
+  final passwordController = TextEditingController(text: '12345678');
   final confirmPasswordController = TextEditingController();
 
   // Form keys for validation
@@ -754,7 +754,8 @@ class AuthController extends GetxController {
 
     try {
       final googleSignIn = GoogleSignIn(
-        serverClientId: '814440155142-nk7uuemujlkr6jlbs2fa378kjcidn9d9.apps.googleusercontent.com',
+        serverClientId:
+            '814440155142-nk7uuemujlkr6jlbs2fa378kjcidn9d9.apps.googleusercontent.com',
       );
 
       // Sign out first to force account picker on every tap
@@ -771,7 +772,12 @@ class AuthController extends GetxController {
       final idToken = auth.idToken;
 
       if (idToken == null) {
-        showSnackbar(context, "Error", "Failed to get Google token", isError: true);
+        showSnackbar(
+          context,
+          "Error",
+          "Failed to get Google token",
+          isError: true,
+        );
         return;
       }
 
@@ -790,11 +796,23 @@ class AuthController extends GetxController {
       if (response.statusCode == 200) {
         final data = response.body;
 
-        await SharedPrefsHelper.setString(AppConstants.token, data['access'] ?? '');
-        await SharedPrefsHelper.setString(AppConstants.refreshToken, data['refresh'] ?? '');
+        await SharedPrefsHelper.setString(
+          AppConstants.token,
+          data['access'] ?? '',
+        );
+        await SharedPrefsHelper.setString(
+          AppConstants.refreshToken,
+          data['refresh'] ?? '',
+        );
         if (data['user'] != null) {
-          await SharedPrefsHelper.setString(AppConstants.userId, data['user']['id'].toString());
-          await SharedPrefsHelper.setString(AppConstants.userEmail, data['user']['email'] ?? '');
+          await SharedPrefsHelper.setString(
+            AppConstants.userId,
+            data['user']['id'].toString(),
+          );
+          await SharedPrefsHelper.setString(
+            AppConstants.userEmail,
+            data['user']['email'] ?? '',
+          );
         }
 
         showSnackbar(context, "Success", "Google login successful!");
@@ -805,25 +823,36 @@ class AuthController extends GetxController {
               final homeController = Get.put(HomeController());
               final hasProfile = await homeController.checkProfileExists();
               if (context.mounted) {
-                context.go(hasProfile
-                    ? RoutePath.home.addBasePath
-                    : RoutePath.profileSetup.addBasePath);
+                context.go(
+                  hasProfile
+                      ? RoutePath.home.addBasePath
+                      : RoutePath.profileSetup.addBasePath,
+                );
               }
             } catch (e) {
               logger.e("Navigation error after Google login: $e");
-              if (context.mounted) context.go(RoutePath.profileSetup.addBasePath);
+              if (context.mounted)
+                context.go(RoutePath.profileSetup.addBasePath);
             }
           }
         });
       } else {
         if (!context.mounted) return;
-        final error = response.body['detail'] ?? response.body['message'] ?? "Google login failed";
+        final error =
+            response.body['detail'] ??
+            response.body['message'] ??
+            "Google login failed";
         showSnackbar(context, "Error", error.toString(), isError: true);
       }
     } catch (e) {
       logger.e("Google sign-in error: $e");
       if (!context.mounted) return;
-      showSnackbar(context, "Error", "Google sign-in failed: $e", isError: true);
+      showSnackbar(
+        context,
+        "Error",
+        "Google sign-in failed: $e",
+        isError: true,
+      );
     } finally {
       isLoading.value = false;
     }

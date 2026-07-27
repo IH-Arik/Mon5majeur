@@ -12,4 +12,7 @@ class AppConstants {
   // App settings
   static const String language = 'language';
   static const String isProfileCompleted = 'is_profile_completed';
+
+  // Notifications
+  static const String notificationPromptHandled = 'notification_prompt_handled';
 }

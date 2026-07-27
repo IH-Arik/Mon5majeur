@@ -74,6 +74,9 @@ class AppString {
   static const String selectedToday = 'Selected Today';
   static const String buildYourTeam = 'Build your team';
   static const String saveMyTeam = 'Save My Team';
+  static const String confirmMyTeam = 'Confirm my team';
+  static const String teamConfirmed = 'Team confirmed';
+  static const String teamValidated = 'Team validated!';
   static const String sixthManBonusActivated = '6th Man Bonus Activated';
   static const String chefsCurryBonusActivated = 'Chefs Curry Bonus Activated';
   static const String luxuryTaxBonusActivated = 'Luxury Tax Bonus Activated';
@@ -349,9 +352,22 @@ class AppString {
   static const String seeAllMatches = 'See all matches';
   static const String myLeagues = 'My Leagues';
   static const String seeAllLeagues = 'See all leagues';
+
+  // Home launch update (Night's Results + section links + league validation)
+  static const String nightsResults = "Night's Results";
+  static const String allMatches = 'All matches';
+  static const String allLeagues = 'All leagues';
+  static const String liveLabel = 'LIVE';
+  static const String finalLabel = 'FINAL';
+  static const String setYourFive = 'Set your 5';
+  static const String fiveValidated = '5 Validated';
+  static const String tapToEdit = 'Tap to edit';
+  static const String lockInPlaceholder = 'Lock in 2h15';
+  static const String noResultPlaceholder = '—';
   static const String earnFreeTokens = 'Earn 6 free tokens';
   static const String celebrationEmoji = '🎉';
   static const String nbaGlobalLeague = 'NBA Global League';
+  static const String nightScore = 'Night Score';
   static const String competeAgainstEveryone = 'Compete against everyone.';
   static const String weeklyMonthlyPrizes = 'Weekly + Monthly prizes';
   static const String joinNow = 'Join now';
@@ -442,6 +458,13 @@ class AppString {
   static const String dateOfBirth = "Date of Birth";
   static const String acceptTerms = "I accept the Terms & Conditions";
   static const String acceptNotifications = "I accept to receive notifications";
+
+  // Notification opt-in pop-up (shown after first team validation)
+  static const String enableNotificationsTitle = "Enable notifications?";
+  static const String enableNotificationsBody =
+      "Get your team results and a reminder before lineup lock";
+  static const String notNow = "Not now";
+  static const String enableAction = "Enable";
   static const String notifOptionMakeTeam = "Don't forget to make your team";
   static const String notifOptionResultsIn = "The results are in";
   static const String saveAndContinue = "Save & Continue";

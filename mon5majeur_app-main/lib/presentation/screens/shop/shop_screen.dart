@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/feature_flags.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
@@ -61,10 +62,11 @@ class ShopScreen extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      /// Daily video earn button
-                      Obx(() {
-                        final c = Get.find<ShopController>();
-                        return GestureDetector(
+                      /// Daily video earn button (ads disabled for launch)
+                      if (kAdsEnabled)
+                        Obx(() {
+                          final c = Get.find<ShopController>();
+                          return GestureDetector(
                           onTap: c.isEarningVideo.value
                               ? null
                               : () => c.earnDailyVideoTokens(),
@@ -232,29 +234,31 @@ class ShopScreen extends StatelessWidget {
 
                     SizedBox(height: 16.h),
 
-                    /// Stop-Pub
-                    _BonusCard(
-                      backgroundColor: const Color(0xFF2d1a1a),
-                      borderColor: const Color(0xFF6b2d2d),
-                      iconAsset: Assets.icons.livescoring,
-                      title: 'Stop-Pub',
-                      subtitle: 'Remove all ads',
-                      description:
-                          'Enjoy the app without any advertisements for a full year.',
-                      tokenAmount: '450',
-                      tokenSuffix: AppString.perYear.tr,
-                      buttonText:
-                          inv.stopPubActive ? 'Active ✓' : AppString.unlock.tr,
-                      buttonColor: inv.stopPubActive
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444),
-                      onUnlock: inv.stopPubActive
-                          ? null
-                          : () => _confirmPurchase(
-                              context, c, 'stop_pub', 'Stop-Pub', 450),
-                    ),
-
-                    SizedBox(height: 16.h),
+                    /// Stop-Pub (ads disabled for launch)
+                    if (kAdsEnabled) ...[
+                      _BonusCard(
+                        backgroundColor: const Color(0xFF2d1a1a),
+                        borderColor: const Color(0xFF6b2d2d),
+                        iconAsset: Assets.icons.livescoring,
+                        title: 'Stop-Pub',
+                        subtitle: 'Remove all ads',
+                        description:
+                            'Enjoy the app without any advertisements for a full year.',
+                        tokenAmount: '450',
+                        tokenSuffix: AppString.perYear.tr,
+                        buttonText: inv.stopPubActive
+                            ? 'Active ✓'
+                            : AppString.unlock.tr,
+                        buttonColor: inv.stopPubActive
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFEF4444),
+                        onUnlock: inv.stopPubActive
+                            ? null
+                            : () => _confirmPurchase(
+                                context, c, 'stop_pub', 'Stop-Pub', 450),
+                      ),
+                      SizedBox(height: 16.h),
+                    ],
 
                     /// Jersey — coming soon
                     _BonusCard(

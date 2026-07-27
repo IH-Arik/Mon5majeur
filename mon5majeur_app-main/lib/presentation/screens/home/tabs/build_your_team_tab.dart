@@ -9,6 +9,10 @@ import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../screens/select_player_screen.dart';
 import 'jersey_selection_screen.dart';
+import 'team_confirm_controls.dart';
+
+/// The three activatable bonuses. Only one can be active at a time.
+enum BonusType { sixthMan, chefsCurry, luxuryTax }
 
 class BuildYourTeamTab extends StatefulWidget {
   final int? leagueId;
@@ -32,20 +36,22 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   final double totalBudget = 100.0;
   List<Player?> selectedPlayers = List.filled(5, null);
   Player? sixthManPlayer;
+
+  // Client-side confirmed flag (no backend field). True after a successful
+  // submit or when a complete saved team is loaded; reset to false on any edit.
+  bool isConfirmed = false;
   int selectedJerseyIndex = 0;
   List<Game> todaysGames = [];
   bool isLoadingGames = true;
   String? gamesErrorMessage;
 
-  // Bonus states
-  bool sixthManActivated = false;
-  bool chefsCurryActivated = false;
-  bool luxuryTaxActivated = false;
+  // Bonus state — only one bonus can be active at a time (null = none).
+  BonusType? activeBonus;
 
-  // Show bonus messages temporarily
-  bool showSixthManMessage = false;
-  bool showChefsCurryMessage = false;
-  bool showLuxuryTaxMessage = false;
+  // Derived flags so existing read-sites keep working.
+  bool get sixthManActivated => activeBonus == BonusType.sixthMan;
+  bool get chefsCurryActivated => activeBonus == BonusType.chefsCurry;
+  bool get luxuryTaxActivated => activeBonus == BonusType.luxuryTax;
 
   // Show bonus options
   bool showBonusOptions = false;
@@ -340,7 +346,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           positionCategory: positionCategory,
           excludedPlayerIds: selectedIds,
           remainingBudget: totalBudget - usedBudget,
-          onPlayerSelected: (p) => setState(() => selectedPlayers[index] = p),
+          onPlayerSelected: (p) => setState(() {
+            selectedPlayers[index] = p;
+            isConfirmed = false; // editing after confirm → back to orange
+          }),
           onLoadMore: _loadMorePlayers,
         ),
       ),
@@ -371,7 +380,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           positionCategory: null,
           excludedPlayerIds: selectedIds,
           remainingBudget: totalBudget - usedBudget,
-          onPlayerSelected: (p) => setState(() => sixthManPlayer = p),
+          onPlayerSelected: (p) => setState(() {
+            sixthManPlayer = p;
+            isConfirmed = false; // editing after confirm → back to orange
+          }),
           onLoadMore: _loadMorePlayers,
         ),
       ),
@@ -390,65 +402,60 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
   }
 
-  void _activateSixthMan() {
-    if (sixthManAvailable > 0 && !sixthManActivated) {
-      setState(() {
-        sixthManActivated = true;
-        sixthManAvailable--;
-        showBonusOptions = false;
-        showSixthManMessage = true;
-      });
-      _selectSixthMan();
-
-      // Hide message after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            showSixthManMessage = false;
-          });
-        }
-      });
+  // Remaining charges available for a given bonus type.
+  int _availableFor(BonusType type) {
+    switch (type) {
+      case BonusType.sixthMan:
+        return sixthManAvailable;
+      case BonusType.chefsCurry:
+        return chefsCurryAvailable;
+      case BonusType.luxuryTax:
+        return luxuryTaxAvailable;
     }
   }
 
-  void _activateChefsCurry() {
-    if (chefsCurryAvailable > 0 && !chefsCurryActivated) {
-      setState(() {
-        chefsCurryActivated = true;
-        chefsCurryAvailable--;
-        showBonusOptions = false;
-        showChefsCurryMessage = true;
-      });
-
-      // Hide message after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            showChefsCurryMessage = false;
-          });
-        }
-      });
+  // Adjust the local charge count for a bonus type by [delta] (must be inside setState).
+  void _adjustCharge(BonusType type, int delta) {
+    switch (type) {
+      case BonusType.sixthMan:
+        sixthManAvailable += delta;
+        break;
+      case BonusType.chefsCurry:
+        chefsCurryAvailable += delta;
+        break;
+      case BonusType.luxuryTax:
+        luxuryTaxAvailable += delta;
+        break;
     }
   }
 
-  void _activateLuxuryTax() {
-    if (luxuryTaxAvailable > 0 && !luxuryTaxActivated) {
-      setState(() {
-        luxuryTaxActivated = true;
-        luxuryTaxAvailable--;
-        showBonusOptions = false;
-        showLuxuryTaxMessage = true;
-      });
-
-      // Hide message after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          setState(() {
-            showLuxuryTaxMessage = false;
-          });
-        }
-      });
+  // Activate or change the active bonus. Only one bonus is active at a time;
+  // switching refunds the previously active bonus's charge and consumes the new one.
+  void _selectBonus(BonusType type) {
+    // Tapping the already-active bonus: just close the menu (re-pick 6th man player).
+    if (activeBonus == type) {
+      setState(() => showBonusOptions = false);
+      if (type == BonusType.sixthMan) _selectSixthMan();
+      return;
     }
+
+    // Need at least one available charge to activate a new bonus.
+    if (_availableFor(type) <= 0) {
+      setState(() => showBonusOptions = false);
+      return;
+    }
+
+    final previous = activeBonus;
+    setState(() {
+      if (previous != null) _adjustCharge(previous, 1); // refund old
+      activeBonus = type;
+      _adjustCharge(type, -1); // consume new
+      showBonusOptions = false;
+      // Switching away from 6th man clears the on-court substitute slot.
+      if (previous == BonusType.sixthMan) sixthManPlayer = null;
+    });
+
+    if (type == BonusType.sixthMan) _selectSixthMan();
   }
 
   bool isSubmitting = false; // Add this
@@ -523,12 +530,11 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       if (response.statusCode == 200) {
         // Success
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Team saved successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          setState(() => isConfirmed = true);
+          await showTeamValidatedDialog(context);
+          if (mounted) {
+            await maybeShowNotificationPromptAfterFirstValidation(context);
+          }
 
           // Notify parent that team was saved
           widget.onTeamSaved?.call(); // ADD THIS LINE
@@ -631,6 +637,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                 savedPlayers[i] as Map<String, dynamic>,
               );
             }
+
+            // A complete saved lineup loads as already-confirmed (green state).
+            isConfirmed = selectedPlayers.every((p) => p != null);
           });
 
           debugPrint('✅ Team loaded successfully');
@@ -712,7 +721,13 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
           _buildCourtField(),
           SizedBox(height: 12.h),
-          _buildTeamStatus(),
+          TeamStatusBanner(
+            state: lineupStateFor(
+              selectedCount: 5 - remainingPlayers,
+              isConfirmed: isConfirmed,
+            ),
+            remainingPlayers: remainingPlayers,
+          ),
           SizedBox(height: 12.h),
           _buildActivatedBonuses(),
           SizedBox(height: 12.h),
@@ -720,53 +735,13 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           SizedBox(height: 12.h),
           _buildTimeLeft(),
           SizedBox(height: 12.h),
-          GestureDetector(
-            onTap: isSubmitting ? null : _submitPlayerSelection,
-            child: Container(
-              width: 235.w,
-              padding: EdgeInsets.all(10.w),
-              decoration: ShapeDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(0.00, 0.50),
-                  end: Alignment(1.00, 0.50),
-                  colors: isSubmitting
-                      ? [Color(0xFF666666), Color(0xFF888888)]
-                      : [Color(0xFFE8632C), Color(0xFFFF8A50)],
-                ),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(width: 1.r, color: Color(0xFF2C2C2C)),
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (isSubmitting)
-                    SizedBox(
-                      width: 16.w,
-                      height: 16.h,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.r,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  else
-                    Text(
-                      AppString.saveMyTeam,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        height: 1.57,
-                      ),
-                    ),
-                ],
-              ),
+          TeamConfirmButton(
+            state: lineupStateFor(
+              selectedCount: 5 - remainingPlayers,
+              isConfirmed: isConfirmed,
             ),
+            isSubmitting: isSubmitting,
+            onConfirm: _submitPlayerSelection,
           ),
           SizedBox(height: 24.h),
         ],
@@ -774,82 +749,47 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     );
   }
 
+  // Persistent "… Bonus Activated" label for the currently active bonus.
   Widget _buildActivatedBonuses() {
-    List<Widget> bonuses = [];
+    if (activeBonus == null) return const SizedBox.shrink();
 
-    if (showSixthManMessage) {
-      bonuses.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Assets.icons.sixman.image(width: 24.w, height: 24.h),
-            SizedBox(width: 8.w),
-            Text(
-              AppString.sixthManBonusActivated,
-              style: TextStyle(
-                color: Color(0xFF2941F1),
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      );
+    final AssetGenImage icon;
+    final String label;
+    final Color color;
+    switch (activeBonus!) {
+      case BonusType.sixthMan:
+        icon = Assets.icons.sixman;
+        label = AppString.sixthManBonusActivated;
+        color = const Color(0xFF2941F1);
+        break;
+      case BonusType.chefsCurry:
+        icon = Assets.icons.chefcurry;
+        label = AppString.chefsCurryBonusActivated;
+        color = const Color(0xFFFECD56);
+        break;
+      case BonusType.luxuryTax:
+        icon = Assets.icons.luxarytax;
+        label = AppString.luxuryTaxBonusActivated;
+        color = const Color(0xFF3CDF1C);
+        break;
     }
-
-    if (showChefsCurryMessage) {
-      bonuses.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Assets.icons.chefcurry.image(width: 24.w, height: 24.h),
-            SizedBox(width: 8.w),
-            Text(
-              AppString.chefsCurryBonusActivated,
-              style: TextStyle(
-                color: Color(0xFFFECD56),
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (showLuxuryTaxMessage) {
-      bonuses.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Assets.icons.luxarytax.image(width: 24.w, height: 24.h),
-            SizedBox(width: 8.w),
-            Text(
-              AppString.luxuryTaxBonusActivated,
-              style: TextStyle(
-                color: Color(0xFF3CDF1C),
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (bonuses.isEmpty) return SizedBox.shrink();
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Column(
-        children: bonuses
-            .map(
-              (bonus) => Padding(
-                padding: EdgeInsets.only(bottom: 8.h),
-                child: bonus,
-              ),
-            )
-            .toList(),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          icon.image(width: 24.w, height: 24.h),
+          SizedBox(width: 8.w),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1033,7 +973,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                 label: AppString.sixthMan,
                 count: sixthManAvailable,
                 isActivated: sixthManActivated,
-                onTap: _activateSixthMan,
+                onTap: () => _selectBonus(BonusType.sixthMan),
               ),
             ],
           ),
@@ -1043,7 +983,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             label: AppString.chefsCurry,
             count: chefsCurryAvailable,
             isActivated: chefsCurryActivated,
-            onTap: _activateChefsCurry,
+            onTap: () => _selectBonus(BonusType.chefsCurry),
           ),
           SizedBox(height: 12.h),
           _buildBonusOptionItem(
@@ -1051,7 +991,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             label: AppString.luxuryTax,
             count: luxuryTaxAvailable,
             isActivated: luxuryTaxActivated,
-            onTap: _activateLuxuryTax,
+            onTap: () => _selectBonus(BonusType.luxuryTax),
           ),
         ],
       ),
@@ -1428,7 +1368,22 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     );
   }
 
+  // Icon of the currently active bonus, for the top-right corner button.
+  AssetGenImage? get _activeBonusIcon {
+    switch (activeBonus) {
+      case BonusType.sixthMan:
+        return Assets.icons.sixman;
+      case BonusType.chefsCurry:
+        return Assets.icons.chefcurry;
+      case BonusType.luxuryTax:
+        return Assets.icons.luxarytax;
+      case null:
+        return null;
+    }
+  }
+
   Widget _buildBonusButton() {
+    final activeIcon = _activeBonusIcon;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -1447,95 +1402,32 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             borderRadius: BorderRadius.circular(6.r),
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppString.plus,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-            Text(
-              AppString.bonuses,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 8.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w300,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTeamStatus() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: SizedBox(
-        height: 27.h,
-        child: Stack(
-          children: [
-            Positioned(
-              left: isTeamComplete ? 4.w : 0,
-              top: 0,
-              right: isTeamComplete ? 7.w : 11.w,
-              child: Container(
-                height: 27.h,
-                decoration: ShapeDecoration(
-                  color: isTeamComplete
-                      ? const Color(0xFF5DD344)
-                      : const Color(0xFFFF4C4C),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.r),
+        // When a bonus is active, show its icon; tap to change the bonus.
+        child: activeIcon != null
+            ? Center(child: activeIcon.image(width: 24.w, height: 24.h))
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    AppString.plus,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: isTeamComplete ? 6.w : 2.w,
-              top: 0,
-              right: isTeamComplete ? 5.w : 9.w,
-              child: Container(
-                height: 27.h,
-                decoration: ShapeDecoration(
-                  color: isTeamComplete
-                      ? const Color(0xFF536150)
-                      : const Color(0xFF311F1F),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.r),
+                  Text(
+                    AppString.bonuses,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8.sp,
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-            Positioned.fill(
-              top: 3.h,
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  isTeamComplete
-                      ? AppString.teamComplete
-                      : AppString.youNeedMorePlayers(remainingPlayers),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isTeamComplete
-                        ? const Color(0xFF5DD243)
-                        : const Color(0xFFF84A4A),
-                    fontSize: 10.sp,
-                    fontFamily: 'Roboto',
-                    fontWeight: FontWeight.w400,
-                    height: 2.20,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

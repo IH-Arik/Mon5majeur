@@ -11,6 +11,7 @@ import '../../../../data/services/api_url.dart';
 import '../../../../controllers/global_league_controller.dart';
 import '../screens/select_player_screen.dart';
 import 'jersey_selection_screen.dart';
+import 'team_confirm_controls.dart';
 
 class BuildYourTeamTabGlobal extends StatefulWidget {
   final VoidCallback? onTeamSaved;
@@ -28,6 +29,11 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   final double totalBudget = 100.0;
   List<Player?> selectedPlayers = List.filled(5, null);
   Player? sixthManPlayer;
+
+  // Client-side confirmed flag (no backend field). True after a successful
+  // submit or when a complete saved team is loaded; reset to false on any edit.
+  bool isConfirmed = false;
+
   int selectedJerseyIndex = 0;
   List<Game> todaysGames = [];
   bool isLoadingGames = true;
@@ -84,6 +90,8 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
         for (int i = 0; i < _controller.selectedPlayers.length && i < 5; i++) {
           selectedPlayers[i] = _controller.selectedPlayers[i];
         }
+        // A complete saved lineup loads as already-confirmed (green state).
+        isConfirmed = selectedPlayers.every((p) => p != null);
       });
     }
   }
@@ -300,7 +308,10 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           getHasMorePages: () => hasMorePages,
           getIsLoadingMore: () => _isLoadingMore,
           remainingBudget: totalBudget - usedBudget,
-          onPlayerSelected: (p) => setState(() => selectedPlayers[index] = p),
+          onPlayerSelected: (p) => setState(() {
+            selectedPlayers[index] = p;
+            isConfirmed = false; // editing after confirm → back to orange
+          }),
           onLoadMore: _loadMorePlayers,
           positionCategory: positionCategory,
           excludedPlayerIds: selectedIds,
@@ -339,14 +350,13 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     final success = await _controller.submitPlayerSelection(playersToSave);
 
     if (success) {
-      Get.snackbar(
-        'Team Saved!',
-        'Your team has been confirmed successfully.',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 4),
-      );
+      setState(() => isConfirmed = true);
+      if (mounted) {
+        await showTeamValidatedDialog(context);
+        if (mounted) {
+          await maybeShowNotificationPromptAfterFirstValidation(context);
+        }
+      }
       widget.onTeamSaved?.call();
     } else {
       Get.snackbar(
@@ -383,65 +393,26 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           SizedBox(height: 12.h),
           _buildCourtField(),
           SizedBox(height: 12.h),
-          _buildTeamStatus(),
+          TeamStatusBanner(
+            state: lineupStateFor(
+              selectedCount: 5 - remainingPlayers,
+              isConfirmed: isConfirmed,
+            ),
+            remainingPlayers: remainingPlayers,
+          ),
           SizedBox(height: 12.h),
           _buildTodaysGames(),
           SizedBox(height: 12.h),
           _buildTimeLeft(),
           SizedBox(height: 12.h),
           Obx(
-            () => GestureDetector(
-              onTap: _controller.isSaving.value ? null : _saveTeam,
-              child: Container(
-                width: 235.w,
-                padding: EdgeInsets.all(10.r),
-                decoration: ShapeDecoration(
-                  gradient: LinearGradient(
-                    begin: const Alignment(0.00, 0.50),
-                    end: const Alignment(1.00, 0.50),
-                    colors: _controller.isSaving.value
-                        ? [Colors.grey, Colors.grey]
-                        : [const Color(0xFFE8632C), const Color(0xFFFF8A50)],
-                  ),
-                  shape: RoundedRectangleBorder(
-                    side: BorderSide(
-                      width: 1.r,
-                      color: const Color(0xFF2C2C2C),
-                    ),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (_controller.isSaving.value)
-                      SizedBox(
-                        width: 16.w,
-                        height: 16.h,
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    if (_controller.isSaving.value) SizedBox(width: 8.w),
-                    Text(
-                      _controller.isSaving.value
-                          ? 'Saving...'
-                          : AppString.saveMyTeam.tr,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w700,
-                        height: 1.57,
-                      ),
-                    ),
-                  ],
-                ),
+            () => TeamConfirmButton(
+              state: lineupStateFor(
+                selectedCount: 5 - remainingPlayers,
+                isConfirmed: isConfirmed,
               ),
+              isSubmitting: _controller.isSaving.value,
+              onConfirm: _saveTeam,
             ),
           ),
           SizedBox(height: 24.h),
@@ -759,70 +730,6 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildTeamStatus() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: SizedBox(
-        height: 27.h,
-        child: Stack(
-          children: [
-            Positioned(
-              left: isTeamComplete ? 4.w : 0,
-              top: 0,
-              right: isTeamComplete ? 7.w : 11.w,
-              child: Container(
-                height: 27.h,
-                decoration: ShapeDecoration(
-                  color: isTeamComplete
-                      ? const Color(0xFF4CAF50)
-                      : const Color(0xFFFF4C4C),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: isTeamComplete ? 6.w : 2.w,
-              top: 0,
-              right: isTeamComplete ? 5.w : 9.w,
-              child: Container(
-                height: 27.h,
-                decoration: ShapeDecoration(
-                  color: isTeamComplete
-                      ? const Color(0xFF1F3121)
-                      : const Color(0xFF311F1F),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              top: 3.h,
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  isTeamComplete
-                      ? AppString.teamComplete.tr
-                      : AppString.youNeedMorePlayers(remainingPlayers).tr,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.sp,
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.w700,
-                    height: 2.20,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
