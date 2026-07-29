@@ -15,6 +15,9 @@ class PrivateLeagueModel {
   final bool? isStarted;
   final bool? isActive;
   final int? creator;
+  // Per-user "today" lineup validation state (My Leagues launch spec).
+  final bool lineupSubmitted;
+  final int? lockInSeconds;
 
   PrivateLeagueModel({
     this.id,
@@ -32,6 +35,8 @@ class PrivateLeagueModel {
     this.isStarted,
     this.isActive,
     this.creator,
+    this.lineupSubmitted = false,
+    this.lockInSeconds,
   });
 
   // To JSON - for API request (create/update)
@@ -67,6 +72,8 @@ class PrivateLeagueModel {
       isStarted: json['is_started'],
       isActive: json['is_active'],
       creator: json['creator'],
+      lineupSubmitted: json['lineup_submitted'] ?? false,
+      lockInSeconds: json['lock_in_seconds'],
     );
   }
 

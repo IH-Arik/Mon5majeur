@@ -45,8 +45,9 @@ def compute_price(last_5: list[PlayerGameStats]) -> float:
         coef_sum = 1 + 1 + 2 * (n - 2)
         weighted_avg = (s[-1] + s[0] + sum(s[1:-1]) * 2) / coef_sum
 
-    # Zone A: ≤16 FP (i.e., weighted_avg < 17), Zone B: 17-25 FP, Zone C: >25 FP
-    if weighted_avg < 17:
+    # Zone A: ≤16, Zone B: >16 and ≤25, Zone C: >25 (spec §4.3 — boundaries are
+    # continuous over the real-valued weighted average, not just integer FP).
+    if weighted_avg <= 16:
         divisor = 1.2
     elif weighted_avg <= 25:
         divisor = 1.1

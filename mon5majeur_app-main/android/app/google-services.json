@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "814440155142",
-    "project_id": "mon5majeur-app",
-    "storage_bucket": "mon5majeur-app.appspot.com"
+    "project_number": "144976760248",
+    "project_id": "mon5majeur",
+    "storage_bucket": "mon5majeur.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:814440155142:android:mon5majeur0000000000",
+        "mobilesdk_app_id": "1:144976760248:android:78515b2fa27b36a5bf134d",
         "android_client_info": {
-          "package_name": "com.example.mon5majeur_app"
+          "package_name": "com.mon5majeur.app"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "814440155142-nk7uuemujlkr6jlbs2fa378kjcidn9d9.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyPlaceholder_ReplaceWithRealKeyFromFirebase"
+          "current_key": "AIzaSyCo6P2P_D65tB8YEYWslcSmdyLXNnm4VCY"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "814440155142-nk7uuemujlkr6jlbs2fa378kjcidn9d9.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

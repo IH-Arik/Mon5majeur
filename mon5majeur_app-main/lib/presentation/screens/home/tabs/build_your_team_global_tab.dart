@@ -393,23 +393,29 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           SizedBox(height: 12.h),
           _buildCourtField(),
           SizedBox(height: 12.h),
-          TeamStatusBanner(
-            state: lineupStateFor(
-              selectedCount: 5 - remainingPlayers,
-              isConfirmed: isConfirmed,
+          Obx(
+            () => TeamStatusBanner(
+              state: lineupStateFor(
+                selectedCount: 5 - remainingPlayers,
+                isConfirmed: isConfirmed,
+                lockInSeconds:
+                    _controller.globalLeagueSelection.value?.lockInSeconds,
+              ),
+              remainingPlayers: remainingPlayers,
             ),
-            remainingPlayers: remainingPlayers,
           ),
           SizedBox(height: 12.h),
           _buildTodaysGames(),
           SizedBox(height: 12.h),
-          _buildTimeLeft(),
+          Obx(() => _buildTimeLeft()),
           SizedBox(height: 12.h),
           Obx(
             () => TeamConfirmButton(
               state: lineupStateFor(
                 selectedCount: 5 - remainingPlayers,
                 isConfirmed: isConfirmed,
+                lockInSeconds:
+                    _controller.globalLeagueSelection.value?.lockInSeconds,
               ),
               isSubmitting: _controller.isSaving.value,
               onConfirm: _saveTeam,
@@ -825,7 +831,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           Icon(Icons.access_time, color: Colors.white70, size: 20.r),
           SizedBox(width: 8.w),
           Text(
-            AppString.fourHoursLeft.tr,
+            formatTimeLeft(_controller.globalLeagueSelection.value?.lockInSeconds),
             style: TextStyle(
               color: Colors.white70,
               fontSize: 16.sp,

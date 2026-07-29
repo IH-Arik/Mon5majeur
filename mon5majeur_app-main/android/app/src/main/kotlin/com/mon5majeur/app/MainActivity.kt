@@ -1,4 +1,4 @@
-package com.example.mon5majeur_app
+package com.mon5majeur.app
 
 import io.flutter.embedding.android.FlutterActivity
 

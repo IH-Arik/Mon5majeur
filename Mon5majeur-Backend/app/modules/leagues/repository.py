@@ -56,3 +56,17 @@ class MatchRepository(BaseRepository[LeagueMatch]):
             LeagueMatch.league_id == league_id,
             LeagueMatch.match_day == match_day,
         ).to_list()
+
+    async def get_latest_completed_match(self, user_id: PydanticObjectId) -> LeagueMatch | None:
+        """Most recent finished match for this user — Night's Results fallback
+        when today's match is live but the user has no live-access, or there's
+        no match today at all."""
+        return await LeagueMatch.find(
+            LeagueMatch.status == "completed",
+            {
+                "$or": [
+                    {"home_user_id": user_id},
+                    {"away_user_id": user_id},
+                ]
+            },
+        ).sort(-LeagueMatch.nba_date).first_or_none()

@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_v1_router
 from app.core.config import settings
 from app.core.events import lifespan
+from app.core.sentry import init_sentry
 from app.exceptions.handlers import register_exception_handlers
 from app.middleware.cors import add_cors_middleware
 from app.middleware.logging import RequestLoggingMiddleware
@@ -17,11 +18,14 @@ from app.modules.leagues.rules_router import router as league_rules_router
 from app.modules.leagues.ws_router import router as ws_router
 from app.modules.players.compat_router import router as players_compat_router
 from app.modules.bonuses.router import router as bonuses_compat_router
+from app.modules.content.router import router as content_router
 from app.modules.tokens.router import router as tokens_compat_router
 from app.modules.users.profile_router import router as user_profiles_compat_router
 
 
 def create_application() -> FastAPI:
+    init_sentry()
+
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
@@ -46,6 +50,7 @@ def create_application() -> FastAPI:
     app.include_router(bonuses_compat_router, prefix="/api")
     app.include_router(tokens_compat_router, prefix="/api")
     app.include_router(league_rules_router, prefix="/api")
+    app.include_router(content_router, prefix="/api")
     # WebSocket: wss://api.mon5majeur.com/ws/public-leagues/{id}/ and /ws/private-leagues/{id}/
     app.include_router(ws_router)
 

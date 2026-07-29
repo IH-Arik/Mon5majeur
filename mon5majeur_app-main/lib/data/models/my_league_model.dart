@@ -71,6 +71,11 @@ class MyLeagueModel {
   bool get isReady => status == LeagueStatus.ready;
   bool get isActive => status == LeagueStatus.active;
 
+  // Per-user "today" lineup validation state, from the backend
+  // (replaces the old isActive-as-validated-proxy on Home).
+  bool get lineupSubmitted => league.lineupSubmitted;
+  int? get lockInSeconds => league.lockInSeconds;
+
   String get statusText {
     switch (status) {
       case LeagueStatus.waiting:

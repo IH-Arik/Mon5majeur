@@ -79,7 +79,10 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
                     matchDay: widget.matchDay,
                     isPrivate: widget.isPrivate,
                   ),
-                  const LeaderboardTab(),
+                  LeaderboardTab(
+                    leagueId: widget.leagueId,
+                    isPrivate: widget.isPrivate,
+                  ),
                   const RulesTab(),
                 ],
               ),

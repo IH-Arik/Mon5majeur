@@ -14,6 +14,11 @@ class GlobalLeagueSelection {
   final int totalPoints;
   final String maxBalance;
   final String currentBalance;
+  // Real validated/lock state from the backend (Home "NBA Global League" card).
+  final bool lineupSubmitted;
+  final int? lockInSeconds;
+  final int? weeklyRank;
+  final int? monthlyRank;
 
   GlobalLeagueSelection({
     required this.matchDay,
@@ -21,6 +26,10 @@ class GlobalLeagueSelection {
     required this.totalPoints,
     required this.maxBalance,
     required this.currentBalance,
+    this.lineupSubmitted = false,
+    this.lockInSeconds,
+    this.weeklyRank,
+    this.monthlyRank,
   });
 
   factory GlobalLeagueSelection.fromJson(Map<String, dynamic> json) {
@@ -34,6 +43,10 @@ class GlobalLeagueSelection {
       totalPoints: json['total_points'] ?? 0,
       maxBalance: json['max_balance'] ?? '100M',
       currentBalance: json['current_balance'] ?? '100M',
+      lineupSubmitted: json['lineup_submitted'] ?? false,
+      lockInSeconds: json['lock_in_seconds'],
+      weeklyRank: json['weekly_rank'],
+      monthlyRank: json['monthly_rank'],
     );
   }
 
@@ -44,6 +57,10 @@ class GlobalLeagueSelection {
       'total_points': totalPoints,
       'max_balance': maxBalance,
       'current_balance': currentBalance,
+      'lineup_submitted': lineupSubmitted,
+      'lock_in_seconds': lockInSeconds,
+      'weekly_rank': weeklyRank,
+      'monthly_rank': monthlyRank,
     };
   }
 

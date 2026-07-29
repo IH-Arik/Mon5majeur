@@ -436,9 +436,9 @@ class _GlobalLeagueCard extends StatelessWidget {
             final nightScore = selection == null
                 ? AppString.noResultPlaceholder
                 : '${controller.totalPoints.value} pts';
-            // TODO(backend): real per-user validated/locked lineup flag.
-            // Using "5 players picked" as the validated proxy for now.
-            final validated = controller.selectedPlayers.length >= 5;
+            // Real per-user validated/locked lineup flag from the backend.
+            final validated = selection?.lineupSubmitted ?? false;
+            final lockInSeconds = selection?.lockInSeconds;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,16 +461,25 @@ class _GlobalLeagueCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _statLine('${AppString.nightScore.tr} $nightScore'),
-                          SizedBox(height: 6.h),
-                          // TODO(backend): real weekly rank.
-                          _statLine(
-                            '${AppString.weekly.tr} #${AppString.noResultPlaceholder}',
+                          Row(
+                            children: [
+                              Assets.icons.basketBall.image(
+                                width: 12.r,
+                                height: 12.r,
+                              ),
+                              SizedBox(width: 4.w),
+                              _statLine(
+                                '${AppString.nightScore.tr} $nightScore',
+                              ),
+                            ],
                           ),
                           SizedBox(height: 6.h),
-                          // TODO(backend): real monthly rank.
                           _statLine(
-                            '${AppString.monthly.tr} #${AppString.noResultPlaceholder}',
+                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder}',
+                          ),
+                          SizedBox(height: 6.h),
+                          _statLine(
+                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder}',
                           ),
                         ],
                       ),
@@ -478,7 +487,7 @@ class _GlobalLeagueCard extends StatelessWidget {
                     SizedBox(width: 12.w),
 
                     /// Right: team status / CTA
-                    _validationStatus(validated),
+                    _validationStatus(validated, lockInSeconds),
                   ],
                 ),
               ],
@@ -499,7 +508,7 @@ class _GlobalLeagueCard extends StatelessWidget {
   // Right-side team status / CTA:
   //   validated=false → 🔴 Set your 5    + "Lock in ..."
   //   validated=true  → 🟢 5 Validated   + "Tap to edit"
-  static Widget _validationStatus(bool validated) {
+  static Widget _validationStatus(bool validated, int? lockInSeconds) {
     final color = validated
         ? const Color(0xFF22C55E)
         : const Color(0xFFEF4444);
@@ -527,12 +536,25 @@ class _GlobalLeagueCard extends StatelessWidget {
         ),
         SizedBox(height: 2.h),
         Text(
-          validated ? AppString.tapToEdit.tr : AppString.lockInPlaceholder.tr,
+          validated ? AppString.tapToEdit.tr : formatLockCountdown(lockInSeconds),
           style: TextStyle(color: Colors.grey, fontSize: 8.sp),
         ),
       ],
     );
   }
+}
+
+/// Formats a lock countdown ("Lock in 2h15") from seconds-until-lock.
+/// Falls back to the static placeholder once locked / with no scheduled game.
+String formatLockCountdown(int? lockInSeconds) {
+  if (lockInSeconds == null || lockInSeconds <= 0) {
+    return AppString.lockInPlaceholder.tr;
+  }
+  final duration = Duration(seconds: lockInSeconds);
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
+  return '${AppString.lockInPrefix.tr}$hours'
+      'h${minutes.toString().padLeft(2, '0')}';
 }
 
 /// Animated Action Card (Join/Create League)
@@ -733,21 +755,15 @@ class _AnimatedMatchCard extends StatelessWidget {
                         ),
                         SizedBox(width: 8.w),
                         // Only two states now: LIVE or FINAL.
-                        // TODO(backend): gate LIVE on premium live-access flag.
-                        _statusBadge(_isMatchLive(match.status)),
+                        // Backend gates LIVE on the user's premium live-access flag.
+                        _statusBadge(match.isLiveForUser),
                       ],
                     ),
                     SizedBox(height: 16.h),
                     if (mainPair != null)
                       Builder(
                         builder: (context) {
-                          final bool live = _isMatchLive(match.status);
-                          // TODO(backend): drive from real completed-result
-                          // availability instead of inferring from scores.
-                          final bool hasResult =
-                              live ||
-                              mainPair.scoreA > 0 ||
-                              mainPair.scoreB > 0;
+                          final bool hasResult = match.resultAvailable;
                           return Row(
                             children: [
                               _teamLogo(Assets.icons.logo1),
@@ -808,13 +824,6 @@ class _AnimatedMatchCard extends StatelessWidget {
         },
       );
     });
-  }
-
-  // A game counts as LIVE only for these raw statuses; everything else
-  // (finished, scheduled, cancelled, …) collapses to FINAL per the spec.
-  static bool _isMatchLive(String status) {
-    final s = status.toLowerCase();
-    return s == 'live' || s == 'in_progress';
   }
 
   static Widget _statusBadge(bool isLive) {
@@ -1072,10 +1081,13 @@ class _AnimatedLeagueCard extends StatelessWidget {
                                   ),
                                 ),
                                 SizedBox(width: 8.w),
-                                // Validation status (right side).
-                                // TODO(backend): real per-user "5 validated"
-                                // state + lock countdown; using placeholders.
-                                _leagueValidationStatus(league.isActive),
+                                // Validation status (right side) — real
+                                // per-user "5 validated" state + lock
+                                // countdown from the backend.
+                                _leagueValidationStatus(
+                                  league.lineupSubmitted,
+                                  league.lockInSeconds,
+                                ),
                               ],
                             ),
                             SizedBox(height: 14.h),
@@ -1142,7 +1154,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
   // Right-side validation status:
   //   validated=false → 🔴 Set your 5   + "Lock in ..."
   //   validated=true  → 🟢 5 Validated  + "Tap to edit"
-  static Widget _leagueValidationStatus(bool validated) {
+  static Widget _leagueValidationStatus(bool validated, int? lockInSeconds) {
     final color = validated
         ? const Color(0xFF22C55E)
         : const Color(0xFFEF4444);
@@ -1172,9 +1184,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
         ),
         SizedBox(height: 2.h),
         Text(
-          validated
-              ? AppString.tapToEdit.tr
-              : AppString.lockInPlaceholder.tr,
+          validated ? AppString.tapToEdit.tr : formatLockCountdown(lockInSeconds),
           style: TextStyle(color: Colors.grey, fontSize: 8.sp),
         ),
       ],

@@ -20,6 +20,10 @@ coverage.xml
 .env.local
 *.env
 
+# Secrets
+firebase-service-account.json
+*serviceAccountKey*.json
+
 # Uploads
 uploads/
 !uploads/.gitkeep

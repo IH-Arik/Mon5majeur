@@ -5,12 +5,13 @@ Schedule (all times are Europe/Paris):
   12:00  sync_today_schedule_job — fetch tonight's NBA games from Goalserve → NBAGame docs
   01:00–09:00 every 20 min — sync_live_games_job — pull box-scores for live/finished games
   09:00  daily_close_job  — score finalize → standings → price recompute
+  09:05  weekly_monthly_rewards_job — Mon: Top-8 weekly bonus; 1st: monthly jersey winner
   19:00  reminder_job     — push "don't forget your team" to users who haven't submitted
 """
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,42 @@ async def daily_close_job() -> None:
         price_count = await player_svc.recompute_all_prices()
         logger.info("CRON: recomputed %d player prices", price_count)
 
+        # 4. Archive last night's Global League scores (feeds Weekly/Monthly rank)
+        from app.modules.leagues.global_score_service import archive_daily_scores
+        archived = await archive_daily_scores(today)
+        logger.info("CRON: archived %d Global League daily scores", archived)
+
     except Exception as exc:
         logger.error("CRON daily_close_job failed: %s", exc, exc_info=True)
+
+
+# ---------------------------------------------------------------------------
+# 09:05 Paris — weekly/monthly Global League rewards (spec §4.6.1 / §5.2)
+# Runs daily but only acts on the days the reset actually happens, right
+# after daily_close_job has archived that night's scores.
+# ---------------------------------------------------------------------------
+
+async def weekly_monthly_rewards_job() -> None:
+    from app.modules.leagues.global_score_service import (
+        grant_monthly_winner_reward,
+        grant_weekly_top8_reward,
+    )
+
+    today = datetime.now(timezone.utc).date()
+    yesterday = today - timedelta(days=1)
+    logger.info("CRON weekly_monthly_rewards_job: checking resets for %s", today)
+
+    try:
+        if today.weekday() == 0:  # Monday → the week ending yesterday (Sunday) just closed
+            granted = await grant_weekly_top8_reward(yesterday)
+            logger.info("CRON: granted weekly Top-8 reward to %d users", granted)
+
+        if today.day == 1:  # 1st of month → the month ending yesterday just closed
+            granted = await grant_monthly_winner_reward(yesterday)
+            logger.info("CRON: recorded monthly winner (%d)", granted)
+
+    except Exception as exc:
+        logger.error("CRON weekly_monthly_rewards_job failed: %s", exc, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -66,18 +101,23 @@ async def reminder_push_job() -> None:
 
 async def _send_reminder_pushes() -> None:
     from app.modules.leagues.model import League, LeagueMembership
-    from app.modules.lineups.model import LineupSubmission
+    from app.modules.lineups.compat_model import FlutterPlayerSelection
 
-    today = datetime.now(timezone.utc).date()
-
-    # Find all active leagues
+    # NOTE: the team builder actually saves to FlutterPlayerSelection (the
+    # Django-compat store keyed by league_auto_id + match_day), not
+    # LineupSubmission — checking LineupSubmission here meant this reminder
+    # fired for every user every night regardless of whether they'd already
+    # set their team. See engine.py::score_match_day for the same root cause.
     active_leagues = await League.find(
-        {"status": {"$in": ["waiting", "regular_season", "playoffs"]}}
+        {"status": {"$in": ["regular_season", "playoffs"]}}  # "waiting" = no night to remind about yet
     ).to_list()
 
     notified: set = set()
 
     for league in active_leagues:
+        if league.auto_id is None:
+            continue
+
         memberships = await LeagueMembership.find(
             LeagueMembership.league_id == league.id
         ).to_list()
@@ -86,10 +126,10 @@ async def _send_reminder_pushes() -> None:
             if m.user_id in notified:
                 continue
 
-            already_submitted = await LineupSubmission.find_one(
-                LineupSubmission.user_id == m.user_id,
-                LineupSubmission.league_id == league.id,
-                LineupSubmission.nba_date == today,
+            already_submitted = await FlutterPlayerSelection.find_one(
+                FlutterPlayerSelection.user_id == m.user_id,
+                FlutterPlayerSelection.league_auto_id == league.auto_id,
+                FlutterPlayerSelection.match_day == league.current_match_day,
             )
 
             if not already_submitted:

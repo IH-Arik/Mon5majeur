@@ -31,6 +31,7 @@ def start_scheduler() -> None:
         sync_live_games_job,
         sync_player_roster_job,
         sync_today_schedule_job,
+        weekly_monthly_rewards_job,
     )
 
     scheduler = get_scheduler()
@@ -68,6 +69,15 @@ def start_scheduler() -> None:
         daily_close_job,
         CronTrigger(hour=9, minute=0, timezone=PARIS_TZ),
         id="daily_close",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
+    # 09:05 Paris — weekly Top-8 / monthly winner rewards (after daily_close archives scores)
+    scheduler.add_job(
+        weekly_monthly_rewards_job,
+        CronTrigger(hour=9, minute=5, timezone=PARIS_TZ),
+        id="weekly_monthly_rewards",
         replace_existing=True,
         misfire_grace_time=300,
     )

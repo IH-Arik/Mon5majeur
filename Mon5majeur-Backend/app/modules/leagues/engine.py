@@ -114,11 +114,22 @@ def _round_robin_schedule(user_ids: list[PydanticObjectId]) -> list[list[tuple]]
 
 async def score_match_day(league_id: PydanticObjectId, match_day: int, nba_date: date) -> int:
     """
-    Pull LineupSubmission total_scores for both sides, set match scores,
-    determine winner, mark complete.
-    Returns number of matches processed.
+    Score both sides of every duel from the team each user actually built.
+
+    NOTE: the Flutter team-builder writes to FlutterPlayerSelection (the
+    Django-compat store), NOT LineupSubmission — that's a separate, unused
+    system. Reading LineupSubmission here (as before) meant every duel
+    silently resolved 0-0/home-wins regardless of what anyone picked. This
+    reads the selection that's actually saved, and scores it the same way
+    the Result tab does — including strategic bonuses (Luxury Tax/Chef
+    Curry/6th Man, spec §4.4) via selection_service.score_full_selection.
     """
-    from app.modules.lineups.model import LineupSubmission
+    from app.modules.leagues.selection_service import score_full_selection
+    from app.modules.lineups.compat_model import FlutterPlayerSelection
+
+    league = await League.get(league_id)
+    if not league:
+        return 0
 
     matches = await LeagueMatch.find(
         LeagueMatch.league_id == league_id,
@@ -126,23 +137,20 @@ async def score_match_day(league_id: PydanticObjectId, match_day: int, nba_date:
         LeagueMatch.nba_date == nba_date,
     ).to_list()
 
+    async def _user_score(user_id: PydanticObjectId) -> float:
+        sel = await FlutterPlayerSelection.find_one(
+            FlutterPlayerSelection.user_id == user_id,
+            FlutterPlayerSelection.league_auto_id == league.auto_id,
+            FlutterPlayerSelection.match_day == match_day,
+        )
+        if not sel:
+            return 0.0  # forfeit — no lineup submitted (spec §4.1)
+        return await score_full_selection(sel, nba_date)
+
     count = 0
     for match in matches:
-        home_sub = await LineupSubmission.find_one(
-            LineupSubmission.user_id == match.home_user_id,
-            LineupSubmission.league_id == league_id,
-            LineupSubmission.nba_date == nba_date,
-            LineupSubmission.score_finalized == True,  # noqa: E712
-        )
-        away_sub = await LineupSubmission.find_one(
-            LineupSubmission.user_id == match.away_user_id,
-            LineupSubmission.league_id == league_id,
-            LineupSubmission.nba_date == nba_date,
-            LineupSubmission.score_finalized == True,  # noqa: E712
-        )
-
-        home_score = home_sub.total_score if home_sub else 0.0
-        away_score = away_sub.total_score if away_sub else 0.0
+        home_score = await _user_score(match.home_user_id)
+        away_score = await _user_score(match.away_user_id)
 
         # Tie → home wins (spec §4.6.2: "there are never draws")
         if home_score >= away_score:

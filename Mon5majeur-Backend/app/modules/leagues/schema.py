@@ -197,6 +197,13 @@ class PublicLeagueCompatResponse(BaseSchema):
     start_date: datetime | None = None
     teams: list[TeamInfoResponse] = []
 
+    # My Leagues launch spec: per-user lineup validation for *today* (not the
+    # league in general). Only populated by get_my_leagues_compat(); every
+    # other builder of this response (create/join/detail) leaves the defaults
+    # since "today's lineup" isn't meaningful outside the My Leagues list.
+    lineup_submitted: bool = False
+    lock_in_seconds: int | None = None
+
 
 class LeagueDetailResponse(BaseSchema):
     """
@@ -305,6 +312,14 @@ class MyMatchTodayCompatResponse(BaseSchema):
     pairs: list[MatchPairCompatResponse] = []
     created_at: str = ""
 
+    # Home "Night's Results" launch spec: only LIVE or FINAL are ever shown.
+    # is_live_for_user: true only if the match is actually live AND this user
+    # has an active premium/live-access subscription — otherwise it collapses
+    # to FINAL (and this may be a fallback to the last *completed* match, not
+    # necessarily today's, per spec §"last completed result").
+    is_live_for_user: bool = False
+    result_available: bool = False
+
 
 # ── Match Result (Flutter Result tab) ────────────────────────────────────────
 
@@ -354,11 +369,24 @@ class MatchResultCompatResponse(BaseSchema):
 class PlayersSelectionRequest(BaseSchema):
     """Body Flutter sends to POST /api/{type}-leagues/{id}/{matchDay}/players-selection/."""
     selected_players: list[dict]
+    # Strategic bonuses (spec §4.4) — omitted/false = not activated. Not
+    # applicable to the Global League (separate endpoint, no bonuses there).
+    luxury_tax: bool = False
+    chef_curry: bool = False
+    sixth_man_player: dict | None = None
 
 
 class PlayersSelectionGetResponse(BaseSchema):
     """Response for GET /api/{type}-leagues/{id}/{matchDay}/players-selection/."""
     selected_players: list[dict] = []
+    # Team-builder lock countdown (spec: 3-state Confirm CTA gated on
+    # now < lock_time). None = no game scheduled for this match day,
+    # 0 = already locked, >0 = seconds until lock.
+    lock_in_seconds: int | None = None
+    # Echo back the saved bonus state so the app can restore it on reload.
+    luxury_tax: bool = False
+    chef_curry: bool = False
+    sixth_man_player: dict | None = None
 
 
 class PlayersSelectionPostResponse(BaseSchema):
@@ -366,6 +394,7 @@ class PlayersSelectionPostResponse(BaseSchema):
     match_id: int = 0
     total_points: float = 0.0
     current_balance: float = 0.0
+    lock_in_seconds: int | None = None
 
 
 # ── Games Today & Players Today compat (Flutter Build-Your-Team screen) ──────
@@ -524,3 +553,13 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     total_points: int = 0
     max_balance: str = "100M"      # always "100M" for global
     current_balance: str = "100M"  # remaining after summing player prices
+
+    # Home "NBA Global League" card launch spec: real validated/lock state
+    # instead of the Flutter-side "5 players picked" proxy.
+    lineup_submitted: bool = False
+    lock_in_seconds: int | None = None
+
+    # Weekly/monthly rank among all Global League members, from the daily
+    # score archive. None until the user has at least joined the league.
+    weekly_rank: int | None = None
+    monthly_rank: int | None = None

@@ -10,6 +10,9 @@ class MyMatchTodayModel {
   final List<dynamic> playerScores;
   final List<MatchPair> pairs;
   final String createdAt;
+  // Backend-gated Night's Results state (spec: only LIVE or FINAL are shown).
+  final bool isLiveForUser;
+  final bool resultAvailable;
 
   MyMatchTodayModel({
     required this.id,
@@ -22,6 +25,8 @@ class MyMatchTodayModel {
     required this.playerScores,
     required this.pairs,
     required this.createdAt,
+    this.isLiveForUser = false,
+    this.resultAvailable = false,
   });
 
   factory MyMatchTodayModel.fromJson(Map<String, dynamic> json) {
@@ -40,6 +45,8 @@ class MyMatchTodayModel {
               .toList() ??
           [],
       createdAt: json['created_at'] ?? '',
+      isLiveForUser: json['is_live_for_user'] ?? false,
+      resultAvailable: json['result_available'] ?? false,
     );
   }
 
@@ -55,6 +62,8 @@ class MyMatchTodayModel {
       'player_scores': playerScores,
       'pairs': pairs.map((pair) => pair.toJson()).toList(),
       'created_at': createdAt,
+      'is_live_for_user': isLiveForUser,
+      'result_available': resultAvailable,
     };
   }
 

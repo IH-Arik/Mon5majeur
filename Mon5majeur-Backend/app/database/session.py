@@ -19,8 +19,10 @@ async def init_db() -> None:
     from app.modules.competitions.model import Competition, CompetitionEntry
     from app.modules.fantasy_teams.model import FantasyTeam
     from app.modules.files.model import UploadedFile
+    from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
     from app.modules.leagues.model import League, LeagueMembership, LeagueMatch
     from app.modules.leagues.playoff_model import PlayoffSeries
+    from app.modules.leagues.reward_model import GlobalLeagueReward
     from app.modules.lineups.compat_model import FlutterPlayerSelection
     from app.modules.lineups.model import LineupSlot, LineupSubmission
     from app.modules.notifications.model import Notification
@@ -54,6 +56,8 @@ async def init_db() -> None:
             LineupSlot,
             LineupSubmission,
             FlutterPlayerSelection,
+            GlobalLeagueDailyScore,
+            GlobalLeagueReward,
             UserBonusQuota,
             UserBonusInventory,
             TokenWallet,

@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # ── FCM (Firebase Cloud Messaging) ───────────────────────────────────────
     FCM_CREDENTIALS_PATH: str = ""         # path to serviceAccountKey.json
 
+    # ── Sentry (error monitoring — spec §5.3) ────────────────────────────────
+    SENTRY_DSN: str = ""                   # empty = disabled
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
+
     # ── Email ─────────────────────────────────────────────────────────────────
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

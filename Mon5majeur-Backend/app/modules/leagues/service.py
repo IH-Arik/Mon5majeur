@@ -35,6 +35,42 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+async def _lineup_lock_info(
+    user_id: PydanticObjectId, league_id: PydanticObjectId, today: date
+) -> tuple[bool, int | None]:
+    """(lineup_submitted, lock_in_seconds) for a user/league on `today`.
+
+    Lock = earliest game tip-off for `today` (same rule LineupService enforces
+    at submit time). lock_in_seconds contract: None = no game scheduled today
+    (nothing to lock against), 0 = already locked, >0 = seconds until lock.
+    """
+    from app.modules.lineups.model import LineupSubmission
+    from app.modules.players.model import NBAGame
+
+    submission = await LineupSubmission.find_one(
+        LineupSubmission.user_id == user_id,
+        LineupSubmission.league_id == league_id,
+        LineupSubmission.nba_date == today,
+    )
+    submitted = submission is not None
+
+    earliest_game = await NBAGame.find(
+        NBAGame.nba_date == today,
+        NBAGame.tip_off_time != None,  # noqa: E711
+    ).sort(+NBAGame.tip_off_time).first_or_none()
+
+    lock_in_seconds: int | None = None
+    if earliest_game and earliest_game.tip_off_time:
+        now_utc = datetime.now(timezone.utc)
+        tip_off = earliest_game.tip_off_time
+        if tip_off.tzinfo is None:
+            tip_off = tip_off.replace(tzinfo=timezone.utc)
+        remaining = (tip_off - now_utc).total_seconds()
+        lock_in_seconds = max(0, int(remaining))
+
+    return submitted, lock_in_seconds
+
+
 class LeagueService:
     def __init__(
         self,
@@ -570,35 +606,50 @@ class LeagueService:
 
         leagues = await query.to_list()
         result: list[PublicLeagueCompatResponse] = []
+        today = date.today()
         for league in leagues:
             members = await self.membership_repo.get_league_members(league.id)
             user_ids = [m.user_id for m in members]
             users = await UserModel.find({"_id": {"$in": user_ids}}).to_list() if user_ids else []
-            result.append(await self._to_compat_response(league, users))
+            compat = await self._to_compat_response(league, users)
+            compat.lineup_submitted, compat.lock_in_seconds = await _lineup_lock_info(
+                user.id, league.id, today
+            )
+            result.append(compat)
         return result
 
     async def get_my_matches_today_compat(self, user: User) -> list[MyMatchTodayCompatResponse]:
+        from app.modules.live_scores.service import _is_premium
         from app.modules.users.model import User as UserModel
-        from datetime import date
 
         today = date.today()
+        has_live_access = _is_premium(user)
+
         matches = await self.match_repo.get_user_matches_today(user.id, today)
-        if not matches:
+        # A live match this user can't watch live doesn't count as "today's
+        # result" per spec — fall back to the last completed match instead.
+        displayable = [m for m in matches if not (m.status == "live" and not has_live_access)]
+        if not displayable:
+            fallback = await self.match_repo.get_latest_completed_match(user.id)
+            if fallback:
+                displayable = [fallback]
+
+        if not displayable:
             return []
 
-        league_ids = list({m.league_id for m in matches})
+        league_ids = list({m.league_id for m in displayable})
         leagues = await League.find({"_id": {"$in": league_ids}}).to_list()
         league_map = {l.id: l for l in leagues}
 
         user_ids: set = set()
-        for m in matches:
+        for m in displayable:
             user_ids.add(m.home_user_id)
             user_ids.add(m.away_user_id)
         users = await UserModel.find({"_id": {"$in": list(user_ids)}}).to_list()
         user_map = {u.id: u for u in users}
 
         result: list[MyMatchTodayCompatResponse] = []
-        for match in matches:
+        for match in displayable:
             league = league_map.get(match.league_id)
             home_u = user_map.get(match.home_user_id)
             away_u = user_map.get(match.away_user_id)
@@ -610,6 +661,7 @@ class LeagueService:
                 score_a=match.home_score or 0,
                 score_b=match.away_score or 0,
             )
+            is_live_for_user = match.status == "live" and has_live_access
             result.append(MyMatchTodayCompatResponse(
                 id=match.auto_id or 0,
                 league_id=(league.auto_id or 0) if league else 0,
@@ -621,6 +673,8 @@ class LeagueService:
                 player_scores=[],
                 pairs=[pair],
                 created_at=match.created_at.isoformat(),
+                is_live_for_user=is_live_for_user,
+                result_available=match.status in ("live", "completed"),
             ))
         return result
 

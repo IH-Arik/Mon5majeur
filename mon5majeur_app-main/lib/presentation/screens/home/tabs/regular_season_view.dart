@@ -5,119 +5,62 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:mon5majeur_app/core/custom_assets/assets.gen.dart';
 import 'package:mon5majeur_app/core/constants/app_strings.dart';
 
+import '../../../../data/models/standings_model.dart';
+import '../controllers/leaderboard_controller.dart';
+
 class RegularSeasonView extends StatelessWidget {
-  const RegularSeasonView({super.key});
+  final LeaderboardController controller;
+
+  const RegularSeasonView({super.key, required this.controller});
+
+  static final List<AssetGenImage> _logos = [
+    Assets.icons.logo1,
+    Assets.icons.logo2,
+    Assets.icons.logo3,
+    Assets.icons.logo4,
+    Assets.icons.logo5,
+    Assets.icons.logo6,
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildTableHeader(),
-        SizedBox(height: 12.h),
-        _buildTeamRow(
-          1,
-          Assets.icons.logo1,
-          AppString.parisFC,
-          AppString.wl_3_0,
-          288,
-          260,
-          28,
-          true,
-        ),
-        _buildTeamRow(
-          2,
-          Assets.icons.logo2,
-          AppString.fc,
-          AppString.wl_2_1,
-          288,
-          260,
-          28,
-          true,
-        ),
-        _buildTeamRow(
-          3,
-          Assets.icons.logo3,
-          AppString.fc,
-          AppString.wl_1_2,
-          288,
-          260,
-          28,
-          true,
-        ),
-        _buildTeamRow(
-          4,
-          Assets.icons.logo4,
-          AppString.fc,
-          AppString.wl_1_2,
-          288,
-          260,
-          28,
-          true,
-        ),
-        _buildTeamRow(
-          5,
-          Assets.icons.logo5,
-          AppString.fc,
-          AppString.wl_1_2,
-          288,
-          260,
-          28,
-          false,
-        ),
-        _buildTeamRow(
-          6,
-          Assets.icons.logo6,
-          AppString.fc,
-          AppString.wl_3_0,
-          288,
-          260,
-          28,
-          false,
-        ),
-        _buildTeamRow(
-          7,
-          Assets.icons.logo1,
-          AppString.fc,
-          AppString.wl_3_0,
-          288,
-          260,
-          28,
-          false,
-        ),
-        _buildTeamRow(
-          8,
-          Assets.icons.logo2,
-          AppString.fc,
-          AppString.wl_3_0,
-          288,
-          260,
-          28,
-          false,
-        ),
-        _buildTeamRow(
-          9,
-          Assets.icons.logo3,
-          AppString.fc,
-          AppString.wl_3_0,
-          288,
-          260,
-          28,
-          false,
-        ),
-        _buildTeamRow(
-          10,
-          Assets.icons.logo4,
-          AppString.fc,
-          AppString.wl_3_0,
-          288,
-          260,
-          28,
-          false,
-        ),
-        SizedBox(height: 20.h),
-        _buildPlayoffInfo(),
-      ],
-    );
+    return Obx(() {
+      if (controller.isLoadingStandings.value) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 40.h),
+          child: const Center(
+            child: CircularProgressIndicator(color: Color(0xFFFF6B35)),
+          ),
+        );
+      }
+
+      final standings = controller.standings.value;
+      if (standings == null || standings.teams.isEmpty) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 40.h),
+          child: Center(
+            child: Text(
+              AppString.noStandingsYet.tr,
+              style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+            ),
+          ),
+        );
+      }
+
+      return Column(
+        children: [
+          _buildTableHeader(),
+          SizedBox(height: 12.h),
+          for (final team in standings.teams)
+            _buildTeamRow(
+              team,
+              _logos[(team.rank - 1) % _logos.length],
+            ),
+          SizedBox(height: 20.h),
+          _buildPlayoffInfo(standings.playoffSpots),
+        ],
+      );
+    });
   }
 
   Widget _buildTableHeader() {
@@ -170,20 +113,7 @@ class RegularSeasonView extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamRow(
-    int rank,
-    AssetGenImage logo,
-    String name,
-    String wl,
-    int pts,
-    int ptc,
-    int diff,
-    bool isTopFour,
-  ) {
-    final wlParts = wl.split('-');
-    final wins = int.parse(wlParts[0]);
-    final losses = int.parse(wlParts[1]);
-
+  Widget _buildTeamRow(StandingsEntry team, AssetGenImage logo) {
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
@@ -191,7 +121,9 @@ class RegularSeasonView extends StatelessWidget {
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(8.r),
         border: Border.all(
-          color: isTopFour ? const Color(0xFF007EF3) : const Color(0xFF2C2C2C),
+          color: team.isPlayoffSpot
+              ? const Color(0xFF007EF3)
+              : const Color(0xFF2C2C2C),
           width: 1.r,
         ),
       ),
@@ -205,7 +137,7 @@ class RegularSeasonView extends StatelessWidget {
                 SizedBox(
                   width: 12.w,
                   child: Text(
-                    '$rank',
+                    '${team.rank}',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 12.sp,
@@ -218,12 +150,14 @@ class RegularSeasonView extends StatelessWidget {
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Text(
-                    name,
+                    team.teamName,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -234,9 +168,9 @@ class RegularSeasonView extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(
-                    text: '$wins',
+                    text: '${team.wins}',
                     style: TextStyle(
-                      color: Color(0xFF5DD344),
+                      color: const Color(0xFF5DD344),
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w400,
                     ),
@@ -250,9 +184,9 @@ class RegularSeasonView extends StatelessWidget {
                     ),
                   ),
                   TextSpan(
-                    text: '$losses',
+                    text: '${team.losses}',
                     style: TextStyle(
-                      color: Color(0xFFD32F2F),
+                      color: const Color(0xFFD32F2F),
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w400,
                     ),
@@ -264,10 +198,10 @@ class RegularSeasonView extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              '$pts',
+              team.pointsFor.toStringAsFixed(0),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF85AFB6),
+                color: const Color(0xFF85AFB6),
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w400,
               ),
@@ -275,10 +209,10 @@ class RegularSeasonView extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              '$ptc',
+              team.pointsAgainst.toStringAsFixed(0),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFFBEBB94),
+                color: const Color(0xFFBEBB94),
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w400,
               ),
@@ -286,10 +220,12 @@ class RegularSeasonView extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              '$diff',
+              team.differential > 0
+                  ? '+${team.differential.toStringAsFixed(0)}'
+                  : team.differential.toStringAsFixed(0),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFFA88E53),
+                color: const Color(0xFFA88E53),
                 fontSize: 12.sp,
                 fontWeight: FontWeight.w400,
               ),
@@ -300,7 +236,7 @@ class RegularSeasonView extends StatelessWidget {
     );
   }
 
-  Widget _buildPlayoffInfo() {
+  Widget _buildPlayoffInfo(int playoffSpots) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(

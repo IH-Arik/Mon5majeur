@@ -85,6 +85,8 @@ class AppString {
   static const String chooseYourJersey = 'Choose your Jersey';
   static const String confirm = 'Confirm';
   static const String leagueStandings = 'League Standings';
+  static const String noStandingsYet = 'noStandingsYet';
+  static const String noPlayoffBracketYet = 'noPlayoffBracketYet';
   static const String regularSeason = 'Regular Season';
   static const String playOff = 'Play-Off';
   static const String quarterFinalMatchday1 = 'Quarter Final Matchday 1';
@@ -203,6 +205,7 @@ class AppString {
   static const String bonuses = 'Bonuses';
   static const String teamComplete = 'Team Complete';
   static String youNeedMorePlayers(int n) => 'You need $n more players.';
+  static const String lineupLocked = 'Locked — night has started';
   static const String todaysGames = "Today's Games";
   static const String lalVsGsw = 'LAL Vs GSW';
   static const String bosVsMia = 'BOS Vs MIA';
@@ -363,6 +366,7 @@ class AppString {
   static const String fiveValidated = '5 Validated';
   static const String tapToEdit = 'Tap to edit';
   static const String lockInPlaceholder = 'Lock in 2h15';
+  static const String lockInPrefix = 'Lock in ';
   static const String noResultPlaceholder = '—';
   static const String earnFreeTokens = 'Earn 6 free tokens';
   static const String celebrationEmoji = '🎉';

@@ -40,6 +40,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // Client-side confirmed flag (no backend field). True after a successful
   // submit or when a complete saved team is loaded; reset to false on any edit.
   bool isConfirmed = false;
+  // Real lock countdown from the backend: null = no game scheduled, 0 =
+  // already locked, >0 = seconds until lock.
+  int? lockInSeconds;
   int selectedJerseyIndex = 0;
   List<Game> todaysGames = [];
   bool isLoadingGames = true;
@@ -501,12 +504,19 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     });
 
     try {
-      // Prepare request body
+      // Prepare request body — bonus flags tell the backend which strategic
+      // bonus (if any) to consume from the free quota / purchased charges
+      // and apply when this duel is scored (spec §4.4).
       final requestBody = {
         'selected_players': selectedPlayers
             .where((p) => p != null)
             .map((p) => p!.toApiJson())
             .toList(),
+        'luxury_tax': luxuryTaxActivated,
+        'chef_curry': chefsCurryActivated,
+        'sixth_man_player': sixthManActivated
+            ? sixthManPlayer?.toApiJson()
+            : null,
       };
 
       // Make API call - UPDATED TO USE publicPlayersSelection
@@ -528,9 +538,17 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       );
 
       if (response.statusCode == 200) {
-        // Success
+        // Optionally update UI with response data
+        final responseData = response.body as Map<String, dynamic>;
+        debugPrint('✅ Match ID: ${responseData['match_id']}');
+        debugPrint('✅ Total Points: ${responseData['total_points']}');
+        debugPrint('✅ Current Balance: ${responseData['current_balance']}');
+
         if (mounted) {
-          setState(() => isConfirmed = true);
+          setState(() {
+            isConfirmed = true;
+            lockInSeconds = responseData['lock_in_seconds'];
+          });
           await showTeamValidatedDialog(context);
           if (mounted) {
             await maybeShowNotificationPromptAfterFirstValidation(context);
@@ -539,12 +557,18 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           // Notify parent that team was saved
           widget.onTeamSaved?.call(); // ADD THIS LINE
         }
-
-        // Optionally update UI with response data
-        final responseData = response.body as Map<String, dynamic>;
-        debugPrint('✅ Match ID: ${responseData['match_id']}');
-        debugPrint('✅ Total Points: ${responseData['total_points']}');
-        debugPrint('✅ Current Balance: ${responseData['current_balance']}');
+      } else if (response.statusCode == 403) {
+        // Night locked server-side (first tip-off already passed).
+        final errorBody = response.body;
+        final detail = (errorBody is Map && errorBody['detail'] != null)
+            ? errorBody['detail'].toString()
+            : 'Night is locked — the first game has already tipped off.';
+        if (mounted) {
+          setState(() => lockInSeconds = 0);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(detail), backgroundColor: Colors.red),
+          );
+        }
       } else if (response.statusCode == 404) {
         // Specific handling for 404
         final errorBody = response.body;
@@ -623,6 +647,24 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       if (response.statusCode == 200) {
         final data = response.body as Map<String, dynamic>;
         final savedPlayers = data['selected_players'] as List<dynamic>?;
+        final savedSixthMan = data['sixth_man_player'] as Map<String, dynamic>?;
+
+        setState(() {
+          lockInSeconds = data['lock_in_seconds'];
+          // Restore whichever bonus was saved server-side (only one is ever
+          // active at a time from this screen's own UI).
+          if (data['luxury_tax'] == true) {
+            activeBonus = BonusType.luxuryTax;
+          } else if (data['chef_curry'] == true) {
+            activeBonus = BonusType.chefsCurry;
+          } else if (savedSixthMan != null) {
+            activeBonus = BonusType.sixthMan;
+            sixthManPlayer = Player.fromJson(savedSixthMan);
+          } else {
+            activeBonus = null;
+            sixthManPlayer = null;
+          }
+        });
 
         if (savedPlayers != null && savedPlayers.isNotEmpty) {
           debugPrint('✅ Found ${savedPlayers.length} saved players');
@@ -725,6 +767,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             state: lineupStateFor(
               selectedCount: 5 - remainingPlayers,
               isConfirmed: isConfirmed,
+              lockInSeconds: lockInSeconds,
             ),
             remainingPlayers: remainingPlayers,
           ),
@@ -739,6 +782,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             state: lineupStateFor(
               selectedCount: 5 - remainingPlayers,
               isConfirmed: isConfirmed,
+              lockInSeconds: lockInSeconds,
             ),
             isSubmitting: isSubmitting,
             onConfirm: _submitPlayerSelection,
@@ -1562,7 +1606,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           Icon(Icons.access_time, color: Colors.white70, size: 20.r),
           SizedBox(width: 8.w),
           Text(
-            AppString.fourHoursLeft,
+            formatTimeLeft(lockInSeconds),
             style: TextStyle(
               color: Colors.white70,
               fontSize: 16.sp,

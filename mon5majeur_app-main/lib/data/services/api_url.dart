@@ -27,6 +27,9 @@ class ApiUrl {
   static String updateProfile(int profileId) => "/api/UserProfiles/$profileId/";
   static const tokenBalance = "/api/UserProfiles/token-balance/";
 
+  // Push notifications
+  static const registerFcmToken = "/api/v1/users/me/fcm-token";
+
   // Private League endpoints
   static const privateLeagues = "/api/private-leagues/";
   static const myPrivateLeagues = "/api/private-leagues/my_leagues/";
@@ -71,6 +74,13 @@ class ApiUrl {
   static String matchResult(int leagueId, int matchDay) =>
       "/api/private-leagues/matches/$leagueId/$matchDay/";
 
+  // Private League - Standings & Playoffs (Leaderboard tab)
+  static String privateStandings(int leagueId) =>
+      "/api/private-leagues/$leagueId/standings/";
+
+  static String privatePlayoffs(int leagueId) =>
+      "/api/private-leagues/$leagueId/playoffs/";
+
   // Public League endpoints
   static const publicLeagues = "/api/public-leagues/";
   static const activePublicLeagues = "/api/public-leagues/active_leagues/";
@@ -87,6 +97,13 @@ class ApiUrl {
       "/api/public-leagues/matches/$leagueId/$matchDay/";
   static String playerDetails(String playerId, String gameId) =>
       "/api/player-details/$playerId/$gameId/";
+
+  // Public League - Standings & Playoffs (Leaderboard tab)
+  static String publicStandings(int leagueId) =>
+      "/api/public-leagues/$leagueId/standings/";
+
+  static String publicPlayoffs(int leagueId) =>
+      "/api/public-leagues/$leagueId/playoffs/";
 
   // Global League endpoints
   static const globalLeaguePlayersSelection =

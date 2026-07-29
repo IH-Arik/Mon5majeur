@@ -3,14 +3,91 @@ Player selection service — handles save/load of Flutter Build-Your-Team select
 and builds match result responses for the Result tab.
 Stored in `flutter_player_selections` collection keyed by (user_id, league_auto_id, match_day).
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from beanie import PydanticObjectId
 
-from app.exceptions.errors import NotFoundException
+from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.users.model import User
+
+
+async def _score_one_player(raw_id, nba_date: date) -> float:
+    from app.modules.players.model import PlayerGameStats
+
+    if not raw_id:
+        return 0.0
+    try:
+        player_id = PydanticObjectId(str(raw_id))
+    except Exception:
+        return 0.0
+    stat = await PlayerGameStats.find_one(
+        PlayerGameStats.player_id == player_id,
+        PlayerGameStats.nba_date == nba_date,
+        PlayerGameStats.score_computed == True,  # noqa: E712
+    )
+    return stat.fantasy_score if stat and stat.fantasy_score is not None else 0.0
+
+
+async def score_selection_for_date(selected_players: list[dict], nba_date: date) -> float:
+    """Sum a Flutter selection's real Fantasy Score for `nba_date` from
+    PlayerGameStats. Shared by duel scoring (engine.py) and the Result tab
+    (get_match_result) so both agree on the same number for the same night."""
+    total = 0.0
+    for p in selected_players:
+        total += await _score_one_player(p.get("id"), nba_date)
+    return round(total, 2)
+
+
+async def score_full_selection(sel: FlutterPlayerSelection, nba_date: date) -> float:
+    """Duel score including strategic bonuses (spec §4.4):
+    6th Man = top 5 of 6 (starters + the 6th man, best 5 counted);
+    Chef Curry = +3 applied after summing the 5 counted scores.
+    Luxury Tax doesn't appear here — it only affects the selection budget."""
+    scores = [await _score_one_player(p.get("id"), nba_date) for p in sel.selected_players]
+
+    if sel.sixth_man_player is not None:
+        scores.append(await _score_one_player(sel.sixth_man_player.get("id"), nba_date))
+        scores = sorted(scores, reverse=True)[:5]
+
+    total = sum(scores)
+    if sel.chef_curry:
+        total += 3
+    return round(total, 2)
+
+
+async def _lock_in_seconds(league_auto_id: int, match_day: int) -> int | None:
+    """Seconds until this match day's lock (earliest tip-off for its NBA
+    date). None = no scheduled match/game for this day, 0 = already locked,
+    >0 = seconds until lock. Same lock rule as the Global League/private
+    lineup submission."""
+    from app.modules.players.model import NBAGame
+
+    league = await League.find_one(League.auto_id == league_auto_id)
+    if not league:
+        return None
+
+    match = await LeagueMatch.find_one(
+        LeagueMatch.league_id == league.id,
+        LeagueMatch.match_day == match_day,
+    )
+    if not match:
+        return None
+
+    earliest_game = await NBAGame.find(
+        NBAGame.nba_date == match.nba_date,
+        NBAGame.tip_off_time != None,  # noqa: E711
+    ).sort(+NBAGame.tip_off_time).first_or_none()
+    if not earliest_game or not earliest_game.tip_off_time:
+        return None
+
+    now_utc = datetime.now(timezone.utc)
+    tip_off = earliest_game.tip_off_time
+    if tip_off.tzinfo is None:
+        tip_off = tip_off.replace(tzinfo=timezone.utc)
+    remaining = (tip_off - now_utc).total_seconds()
+    return max(0, int(remaining))
 
 
 async def get_player_selection(
@@ -23,7 +100,39 @@ async def get_player_selection(
         FlutterPlayerSelection.league_auto_id == league_auto_id,
         FlutterPlayerSelection.match_day == match_day,
     )
-    return {"selected_players": doc.selected_players if doc else []}
+    lock_in_seconds = await _lock_in_seconds(league_auto_id, match_day)
+    return {
+        "selected_players": doc.selected_players if doc else [],
+        "lock_in_seconds": lock_in_seconds,
+        "luxury_tax": doc.luxury_tax if doc else False,
+        "chef_curry": doc.chef_curry if doc else False,
+        "sixth_man_player": doc.sixth_man_player if doc else None,
+    }
+
+
+async def _sync_bonus(
+    current_user: User,
+    league_id,
+    bonus: str,
+    was_active: bool,
+    now_active: bool,
+) -> None:
+    """Consume on False→True, refund on True→False. No-op if unchanged.
+    Duel leagues only — the Global League never passes bonus flags."""
+    from app.modules.bonuses.service import BonusService
+
+    if was_active == now_active:
+        return
+
+    svc = BonusService()
+    if now_active:
+        if not await svc.can_use(current_user.id, league_id, bonus):
+            raise ForbiddenException(
+                f"No {bonus.replace('_', ' ')} uses left (free quota and purchased charges both exhausted)"
+            )
+        await svc.consume(current_user.id, league_id, bonus)
+    else:
+        await svc.refund(current_user.id, league_id, bonus)
 
 
 async def save_player_selection(
@@ -31,10 +140,29 @@ async def save_player_selection(
     match_day: int,
     selected_players: list[dict],
     current_user: User,
+    luxury_tax: bool = False,
+    chef_curry: bool = False,
+    sixth_man_player: dict | None = None,
 ) -> dict:
     league = await League.find_one(League.auto_id == league_auto_id)
     if not league:
         raise NotFoundException(f"League {league_auto_id} not found")
+
+    lock_in_seconds = await _lock_in_seconds(league_auto_id, match_day)
+    if lock_in_seconds == 0:
+        raise ForbiddenException(
+            "Night is locked — the first game has already tipped off"
+        )
+
+    if sixth_man_player is not None:
+        try:
+            sixth_man_price = _parse_price(sixth_man_player.get("price", "0"))
+        except Exception:
+            sixth_man_price = 0.0
+        if sixth_man_price > 8:
+            raise ForbiddenException(
+                f"6th Man player costs {sixth_man_price}M — must be ≤ 8M"
+            )
 
     now = datetime.now(timezone.utc)
 
@@ -43,9 +171,32 @@ async def save_player_selection(
         FlutterPlayerSelection.league_auto_id == league_auto_id,
         FlutterPlayerSelection.match_day == match_day,
     )
+
+    # Only the Global League's own endpoint calls this without bonus support
+    # (private/public leagues only) — this module is duel-leagues-only, so
+    # bonus quota is always checked/consumed here.
+    await _sync_bonus(current_user, league.id, "luxury_tax", existing.luxury_tax if existing else False, luxury_tax)
+    await _sync_bonus(current_user, league.id, "chef_curry", existing.chef_curry if existing else False, chef_curry)
+    await _sync_bonus(
+        current_user, league.id, "sixth_man",
+        existing.sixth_man_player is not None if existing else False,
+        sixth_man_player is not None,
+    )
+
+    # Budget check (spec §4.1/§4.4): Luxury Tax adds +5M before validating.
+    effective_budget = float(league.budget) + (5.0 if luxury_tax else 0.0)
+    used = sum(_parse_price(p.get("price", "0")) for p in selected_players)
+    if used > effective_budget:
+        raise ForbiddenException(
+            f"Total price {used}M exceeds budget {effective_budget}M"
+        )
+
     if existing:
         existing.selected_players = selected_players
         existing.submitted_at = now
+        existing.luxury_tax = luxury_tax
+        existing.chef_curry = chef_curry
+        existing.sixth_man_player = sixth_man_player
         await existing.save()
     else:
         await FlutterPlayerSelection(
@@ -55,6 +206,9 @@ async def save_player_selection(
             match_day=match_day,
             selected_players=selected_players,
             submitted_at=now,
+            luxury_tax=luxury_tax,
+            chef_curry=chef_curry,
+            sixth_man_player=sixth_man_player,
         ).insert()
 
     match = await LeagueMatch.find_one(
@@ -63,13 +217,13 @@ async def save_player_selection(
     )
     match_id = (match.auto_id or 0) if match else 0
 
-    used = sum(_parse_price(p.get("price", "0")) for p in selected_players)
-    remaining = max(0.0, float(league.budget) - used)
+    remaining = max(0.0, effective_budget - used)
 
     return {
         "match_id": match_id,
         "total_points": 0.0,
         "current_balance": round(remaining, 2),
+        "lock_in_seconds": lock_in_seconds,
     }
 
 
@@ -138,7 +292,11 @@ async def get_match_result(league_auto_id: int, match_day: int) -> dict:
         total = 0
 
         if sel_doc:
-            for p in sel_doc.selected_players:
+            all_players = list(sel_doc.selected_players)
+            if sel_doc.sixth_man_player is not None:
+                all_players.append(sel_doc.sixth_man_player)
+
+            for p in all_players:
                 fscore = 0
                 pid_str = p.get("id", "")
                 try:
@@ -152,13 +310,18 @@ async def get_match_result(league_auto_id: int, match_day: int) -> dict:
                         fscore = int(round(stats.fantasy_score))
                 except Exception:
                     pass
-                total += fscore
                 selection_items.append({
                     "id": pid_str,
                     "name": p.get("name", ""),
                     "position": p.get("position", ""),
                     "score": fscore,
                 })
+
+            # Authoritative total: same bonus-aware calculation that decides
+            # the duel (score_full_selection) — top-5-of-6 + Chef Curry, not
+            # a plain sum of the list above (which may include a dropped 6th
+            # Man score, shown for transparency but not counted).
+            total = int(round(await score_full_selection(sel_doc, nba_date)))
 
         user_totals[user_oid] = total
         display_name = user.team_name or (user.email.split("@")[0] if user.email else "Unknown")

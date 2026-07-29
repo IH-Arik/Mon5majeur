@@ -8,21 +8,23 @@ from app.database.base import BaseDocument
 
 class UserBonusQuota(BaseDocument):
     """
-    Tracks per-user per-league bonus usage.
-    Each bonus can only be used once per season per league.
+    Tracks per-user per-league FREE bonus usage this season.
+    Free quota is sized by league.max_size (spec §4.4: 1-3 uses depending on
+    4/6/8/10-team league) — see bonuses.constants.FREE_QUOTA_BY_SIZE. Once the
+    free quota is exhausted, further uses are drawn from UserBonusInventory
+    (shop-purchased charges).
     """
     user_id: PydanticObjectId
     league_id: PydanticObjectId
 
-    # One-use bonuses per season
-    luxury_tax_used: bool = False          # +5M budget before lock
-    luxury_tax_used_date: date | None = None
+    luxury_tax_used_count: int = 0         # +5M budget before lock
+    luxury_tax_last_used_date: date | None = None
 
-    chef_curry_used: bool = False          # double points that matchday
-    chef_curry_used_date: date | None = None
+    chef_curry_used_count: int = 0         # +3pts to final duel score
+    chef_curry_last_used_date: date | None = None
 
-    sixth_man_used: bool = False           # best 5 of 6 players
-    sixth_man_used_date: date | None = None
+    sixth_man_used_count: int = 0          # best 5 of 6 players
+    sixth_man_last_used_date: date | None = None
 
     class Settings:
         name = "user_bonus_quotas"

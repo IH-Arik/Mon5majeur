@@ -9,7 +9,6 @@ from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.bonuses.service import BonusService
 from app.modules.leagues.model import League, LeagueMembership
 from app.modules.lineups.constants import (
-    BASE_BUDGET,
     LUXURY_TAX_EXTRA,
     REQUIRED_SLOTS,
     SIXTH_MAN_MAX_PRICE,
@@ -74,19 +73,22 @@ class LineupService:
         if existing_sub and existing_sub.is_locked:
             raise ForbiddenException("Lineup is locked — tip-off has started")
 
-        # 3. Validate bonuses (server-side, all bonuses are one-use per season)
+        # 3. Validate bonuses (server-side; free quota scaled by league size,
+        #    then purchased charges — see BonusService.can_use)
         if payload.luxury_tax:
             if not await self.bonuses.can_use(user.id, league_id, "luxury_tax"):
-                raise ForbiddenException("Luxury Tax bonus already used in this league")
+                raise ForbiddenException("No Luxury Tax uses left (free quota and purchased charges both exhausted)")
         if payload.chef_curry:
             if not await self.bonuses.can_use(user.id, league_id, "chef_curry"):
-                raise ForbiddenException("Chef Curry bonus already used in this league")
+                raise ForbiddenException("No Chef Curry uses left (free quota and purchased charges both exhausted)")
         if payload.sixth_man:
             if not await self.bonuses.can_use(user.id, league_id, "sixth_man"):
-                raise ForbiddenException("6th Man bonus already used in this league")
+                raise ForbiddenException("No 6th Man uses left (free quota and purchased charges both exhausted)")
 
-        # 4. Budget computation
-        budget = BASE_BUDGET + (LUXURY_TAX_EXTRA if payload.luxury_tax else 0)
+        # 4. Budget computation — league.budget respects the 80M/100M choice
+        #    made at league creation (spec §4.1); Global League isn't submitted
+        #    through this path (100M fixed, no bonuses — see global_router.py).
+        budget = league.budget + (LUXURY_TAX_EXTRA if payload.luxury_tax else 0)
 
         # 5. Resolve and validate each slot
         slot_data: list[dict] = []
@@ -216,8 +218,8 @@ class LineupService:
         if not league:
             raise NotFoundException("League not found")
 
-        quota = await self.bonuses.get_quota(user.id, league_id)
-        budget = BASE_BUDGET + (LUXURY_TAX_EXTRA if not quota.luxury_tax_used else 0)
+        luxury_tax_available = await self.bonuses.can_use(user.id, league_id, "luxury_tax")
+        budget = league.budget + (LUXURY_TAX_EXTRA if luxury_tax_available else 0)
 
         submission = await LineupSubmission.find_one(
             LineupSubmission.user_id == user.id,

@@ -6,20 +6,40 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../core/services/notification_service.dart';
 
-/// The three states of the team-builder confirm flow.
+/// The states of the team-builder confirm flow.
 ///
-/// Driven purely by [players selected] + [isConfirmed] for now. A real
-/// `now < lockTime` gate can be added inside [lineupStateFor] later when the
-/// backend exposes a lock time.
-enum LineupState { incomplete, ready, confirmed }
+/// [locked] = the night's first tip-off has passed (`lockInSeconds <= 0`)
+/// and the team was never confirmed in time — edits are no longer possible.
+/// A team that *was* confirmed before lock stays in [confirmed] even after
+/// lock passes (nothing more to represent — it's the final, locked-in team).
+enum LineupState { incomplete, ready, confirmed, locked }
+
+/// True once `lockInSeconds` says the night's first tip-off has passed.
+/// `null` means no game is scheduled for this day (never locks).
+bool isLineupLocked(int? lockInSeconds) =>
+    lockInSeconds != null && lockInSeconds <= 0;
 
 LineupState lineupStateFor({
   required int selectedCount,
   required bool isConfirmed,
+  int? lockInSeconds,
 }) {
+  if (isConfirmed) return LineupState.confirmed;
+  if (isLineupLocked(lockInSeconds)) return LineupState.locked;
   if (selectedCount < 5) return LineupState.incomplete;
-  return isConfirmed ? LineupState.confirmed : LineupState.ready;
-  // later: `if (!(now < lockTime)) return LineupState.locked;`
+  return LineupState.ready;
+}
+
+/// "3h 42m Left" from real backend seconds-until-lock. Falls back to
+/// [AppString.fourHoursLeft] while lock data hasn't loaded yet, since there's
+/// nothing truthful to show in that brief window.
+String formatTimeLeft(int? lockInSeconds) {
+  if (lockInSeconds == null) return AppString.fourHoursLeft.tr;
+  if (lockInSeconds <= 0) return AppString.lineupLocked;
+  final duration = Duration(seconds: lockInSeconds);
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
+  return '${hours}h ${minutes}m Left';
 }
 
 /// Green ("Team complete") / red ("You need X more players") status banner.
@@ -35,7 +55,8 @@ class TeamStatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool complete = state != LineupState.incomplete;
+    final bool complete =
+        state == LineupState.ready || state == LineupState.confirmed;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -80,9 +101,11 @@ class TeamStatusBanner extends StatelessWidget {
               child: Align(
                 alignment: Alignment.center,
                 child: Text(
-                  complete
-                      ? AppString.teamComplete
-                      : AppString.youNeedMorePlayers(remainingPlayers),
+                  state == LineupState.locked
+                      ? AppString.lineupLocked
+                      : complete
+                          ? AppString.teamComplete
+                          : AppString.youNeedMorePlayers(remainingPlayers),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: complete
@@ -125,7 +148,8 @@ class TeamConfirmButton extends StatelessWidget {
     List<Color> gradientColors;
     if (isSubmitting) {
       gradientColors = const [Color(0xFF666666), Color(0xFF888888)];
-    } else if (state == LineupState.incomplete) {
+    } else if (state == LineupState.incomplete ||
+        state == LineupState.locked) {
       gradientColors = const [Color(0xFF666666), Color(0xFF888888)];
     } else if (confirmed) {
       gradientColors = const [Color(0xFF2E9E2E), Color(0xFF43D043)];

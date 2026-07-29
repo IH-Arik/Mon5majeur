@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
 import 'package:mon5majeur_app/core/constants/app_strings.dart';
 
+import '../controllers/leaderboard_controller.dart';
 import 'regular_season_view.dart';
 import 'play_off_view.dart';
 
 class LeaderboardTab extends StatefulWidget {
-  const LeaderboardTab({super.key});
+  final int? leagueId;
+  final bool isPrivate;
+
+  const LeaderboardTab({super.key, this.leagueId, this.isPrivate = true});
 
   @override
   State<LeaderboardTab> createState() => _LeaderboardTabState();
@@ -15,6 +20,21 @@ class LeaderboardTab extends StatefulWidget {
 
 class _LeaderboardTabState extends State<LeaderboardTab> {
   bool isRegularSeason = true;
+  late final LeaderboardController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(LeaderboardController());
+    if (widget.leagueId != null) {
+      controller.setLeague(widget.leagueId!, isPrivate: widget.isPrivate);
+    }
+  }
+
+  void _selectPlayoffTab() {
+    setState(() => isRegularSeason = false);
+    controller.fetchPlayoffBracket();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +55,9 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           _buildTabSelector(),
           SizedBox(height: 12.h),
           if (isRegularSeason)
-            const RegularSeasonView()
+            RegularSeasonView(controller: controller)
           else
-            const PlayOffView(),
+            PlayOffView(controller: controller),
         ],
       ),
     );
@@ -79,7 +99,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => isRegularSeason = false),
+              onTap: _selectPlayoffTab,
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 12.h),
                 decoration: BoxDecoration(

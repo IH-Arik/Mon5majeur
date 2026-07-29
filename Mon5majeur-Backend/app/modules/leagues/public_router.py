@@ -159,7 +159,10 @@ async def post_public_players_selection(
     current_user: User = Depends(get_current_user),
 ) -> PlayersSelectionPostResponse:
     data = await selection_service.save_player_selection(
-        league_id, match_day, payload.selected_players, current_user
+        league_id, match_day, payload.selected_players, current_user,
+        luxury_tax=payload.luxury_tax,
+        chef_curry=payload.chef_curry,
+        sixth_man_player=payload.sixth_man_player,
     )
     return PlayersSelectionPostResponse(**data)
 

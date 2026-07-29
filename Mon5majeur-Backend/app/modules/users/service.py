@@ -54,5 +54,32 @@ class UserService:
         return await self.repo.update(user, **updates)
 
     async def delete_user(self, user_id: PydanticObjectId) -> None:
+        """Erase the account and everything solely tied to it (spec §5.3 GDPR:
+        "must erase ALL data ... not just deactivate"). Records shared with
+        other users (e.g. a LeagueMatch's opponent side) are left intact —
+        only this user's own documents are removed."""
         user = await self.get_user(user_id)
+
+        from app.modules.auth.model import OTPToken, RefreshToken
+        from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
+        from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
+        from app.modules.leagues.model import LeagueMembership
+        from app.modules.lineups.compat_model import FlutterPlayerSelection
+        from app.modules.lineups.model import LineupSlot, LineupSubmission
+        from app.modules.notifications.model import Notification
+        from app.modules.tokens.model import TokenTransaction, TokenWallet
+
+        await LineupSubmission.find(LineupSubmission.user_id == user_id).delete()
+        await LineupSlot.find(LineupSlot.user_id == user_id).delete()
+        await FlutterPlayerSelection.find(FlutterPlayerSelection.user_id == user_id).delete()
+        await LeagueMembership.find(LeagueMembership.user_id == user_id).delete()
+        await GlobalLeagueDailyScore.find(GlobalLeagueDailyScore.user_id == user_id).delete()
+        await UserBonusQuota.find(UserBonusQuota.user_id == user_id).delete()
+        await UserBonusInventory.find(UserBonusInventory.user_id == user_id).delete()
+        await TokenTransaction.find(TokenTransaction.user_id == user_id).delete()
+        await TokenWallet.find(TokenWallet.user_id == user_id).delete()
+        await Notification.find(Notification.recipient_id == user_id).delete()
+        await OTPToken.find(OTPToken.user_id == user_id).delete()
+        await RefreshToken.find(RefreshToken.user_id == user_id).delete()
+
         await self.repo.delete(user)
