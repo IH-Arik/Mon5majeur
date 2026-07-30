@@ -110,6 +110,56 @@ async def get_player_selection(
     }
 
 
+_BACKCOURT = {"PG", "SG", "G"}
+_WING = {"SF", "PF", "F"}
+
+
+async def _validate_selection(selected_players: list[dict], nba_date: date | None) -> None:
+    """Spec §4.1 validation rules 1-4 (budget/lock are handled separately by
+    the caller). Rejects with ForbiddenException on the first violation."""
+    from app.modules.players.model import NBAGame, Player
+
+    if len(selected_players) != 5:
+        raise ForbiddenException(f"Exactly 5 players required — got {len(selected_players)}")
+
+    raw_ids = [p.get("id") for p in selected_players]
+    if any(not rid for rid in raw_ids):
+        raise ForbiddenException("Each selected player must have an id")
+    if len(set(raw_ids)) != 5:
+        raise ForbiddenException("A player can only be selected once")
+
+    players: list[Player] = []
+    for rid in raw_ids:
+        try:
+            player = await Player.get(PydanticObjectId(str(rid)))
+        except Exception:
+            player = None
+        if not player:
+            raise ForbiddenException(f"Player {rid} not found")
+        players.append(player)
+
+    # 2 backcourt (PG/SG) + 2 wings (SF/PF) + 1 center — order-independent,
+    # since the Flutter payload doesn't carry explicit slot names.
+    backcourt = sum(1 for p in players if p.position in _BACKCOURT)
+    wing = sum(1 for p in players if p.position in _WING)
+    center = sum(1 for p in players if p.position == "C")
+    if (backcourt, wing, center) != (2, 2, 1):
+        raise ForbiddenException(
+            "Lineup must be 2 backcourt (PG/SG) + 2 wings (SF/PF) + 1 center"
+        )
+
+    if nba_date is not None:
+        games_tonight = await NBAGame.find(NBAGame.nba_date == nba_date).to_list()
+        team_ids_playing = {g.home_team_id for g in games_tonight} | {
+            g.away_team_id for g in games_tonight
+        }
+        for p in players:
+            if p.team_goalserve_id not in team_ids_playing:
+                raise ForbiddenException(f"{p.full_name} does not play tonight")
+            if p.is_out:
+                raise ForbiddenException(f"{p.full_name} is OUT and cannot be selected")
+
+
 async def _sync_bonus(
     current_user: User,
     league_id,
@@ -153,6 +203,12 @@ async def save_player_selection(
         raise ForbiddenException(
             "Night is locked — the first game has already tipped off"
         )
+
+    match = await LeagueMatch.find_one(
+        LeagueMatch.league_id == league.id,
+        LeagueMatch.match_day == match_day,
+    )
+    await _validate_selection(selected_players, match.nba_date if match else None)
 
     if sixth_man_player is not None:
         try:
@@ -211,10 +267,6 @@ async def save_player_selection(
             sixth_man_player=sixth_man_player,
         ).insert()
 
-    match = await LeagueMatch.find_one(
-        LeagueMatch.league_id == league.id,
-        LeagueMatch.match_day == match_day,
-    )
     match_id = (match.auto_id or 0) if match else 0
 
     remaining = max(0.0, effective_budget - used)
