@@ -44,39 +44,31 @@ class HomeDrawer extends StatelessWidget {
             SizedBox(height: 40.h),
 
             /// FAQs Menu Item
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: GestureDetector(
-                onTap: () {
-                  // Navigate to FAQs screen
-                  context.go(RoutePath.faqScreen.addBasePath);
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: 16.h,
-                    horizontal: 20.w,
-                  ),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.white, width: 1),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        AppString.faqs.tr,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Icon(Icons.help_outline, color: Colors.white, size: 24.r),
-                    ],
-                  ),
-                ),
-              ),
+            _buildMenuItem(
+              label: AppString.faqs.tr,
+              icon: Icons.help_outline,
+              onTap: () => context.go(RoutePath.faqScreen.addBasePath),
+            ),
+
+            /// About Us Menu Item
+            _buildMenuItem(
+              label: AppString.aboutUs.tr,
+              icon: Icons.info_outline,
+              onTap: () => context.go(RoutePath.aboutUsScreen.addBasePath),
+            ),
+
+            /// Legal Notices Menu Item
+            _buildMenuItem(
+              label: AppString.legalNotices.tr,
+              icon: Icons.gavel_outlined,
+              onTap: () => context.go(RoutePath.legalNoticesScreen.addBasePath),
+            ),
+
+            /// Privacy Policy Menu Item
+            _buildMenuItem(
+              label: AppString.privacyPolicy.tr,
+              icon: Icons.privacy_tip_outlined,
+              onTap: () => context.go(RoutePath.privacyPolicyScreen.addBasePath),
             ),
 
             const Spacer(),
@@ -94,6 +86,41 @@ class HomeDrawer extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 20.w),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white, width: 1),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Icon(icon, color: Colors.white, size: 24.r),
+            ],
+          ),
         ),
       ),
     );

@@ -42,6 +42,9 @@ class RoutePath {
       'privateLeagueWaitingRoomScreen';
   static const String globalLeagueScreen = 'globalLeagueScreen';
   static const String faqScreen = 'faqScreen';
+  static const String aboutUsScreen = 'aboutUsScreen';
+  static const String legalNoticesScreen = 'legalNoticesScreen';
+  static const String privacyPolicyScreen = 'privacyPolicyScreen';
   static const String fantasyLeagueScreenPrivate = 'fantasyLeagueScreenPrivate';
   static const String fantasyLeagueScreenForJoin = 'fantasyLeagueScreenForJoin';
 

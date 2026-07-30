@@ -213,6 +213,9 @@ class EnglishTranslation {
         'Monthly winner will win a Official NBA Jersey',
     AppString.searchTeamsByName: 'Search Teams by name',
     AppString.faqs: 'FAQs',
+    AppString.aboutUs: 'About Us',
+    AppString.legalNotices: 'Legal Notices',
+    AppString.privacyPolicy: 'Privacy Policy',
     AppString.connectWithYourFriends: "Connect with your friend's",
     AppString.accessYourLeague: 'Access your league',
     AppString.enterCodeToJoinPrivateLeague:

@@ -14,6 +14,7 @@ export 'controllers/result_controller.dart' hide logger;
 
 // Screens
 export 'screens/faq_screen.dart';
+export 'screens/static_content_screen.dart';
 export 'screens/my_leagues_screen.dart';
 export 'screens/my_match_today_screen.dart';
 export 'screens/create_league_screen.dart';

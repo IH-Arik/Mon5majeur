@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_strings.dart';
+import '../../data/services/api_url.dart';
 import '../../presentation/screens/authentication/forget_password_screen.dart';
 import '../../presentation/screens/authentication/language_selection.dart';
 import '../../presentation/screens/authentication/otp_screen.dart';
@@ -255,6 +256,30 @@ class AppRouter {
         name: RoutePath.faqScreen,
         path: RoutePath.faqScreen.addBasePath,
         builder: (context, state) => const FaqScreen(),
+      ),
+      GoRoute(
+        name: RoutePath.aboutUsScreen,
+        path: RoutePath.aboutUsScreen.addBasePath,
+        builder: (context, state) => StaticContentScreen(
+          screenTitle: AppString.aboutUs.tr,
+          endpoint: ApiUrl.aboutUs,
+        ),
+      ),
+      GoRoute(
+        name: RoutePath.legalNoticesScreen,
+        path: RoutePath.legalNoticesScreen.addBasePath,
+        builder: (context, state) => StaticContentScreen(
+          screenTitle: AppString.legalNotices.tr,
+          endpoint: ApiUrl.legalNotices,
+        ),
+      ),
+      GoRoute(
+        name: RoutePath.privacyPolicyScreen,
+        path: RoutePath.privacyPolicyScreen.addBasePath,
+        builder: (context, state) => StaticContentScreen(
+          screenTitle: AppString.privacyPolicy.tr,
+          endpoint: ApiUrl.privacyPolicy,
+        ),
       ),
       GoRoute(
         name: RoutePath.fantasyLeagueScreenPrivate,

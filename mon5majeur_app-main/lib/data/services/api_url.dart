@@ -30,6 +30,11 @@ class ApiUrl {
   // Push notifications
   static const registerFcmToken = "/api/v1/users/me/fcm-token";
 
+  // Static content & GDPR (About Us / Legal Notices / Privacy Policy)
+  static const aboutUs = "/api/aboutus/";
+  static const legalNotices = "/api/legal-notices/";
+  static const privacyPolicy = "/api/privacy-policies/";
+
   // Private League endpoints
   static const privateLeagues = "/api/private-leagues/";
   static const myPrivateLeagues = "/api/private-leagues/my_leagues/";

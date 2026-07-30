@@ -253,6 +253,9 @@ class AppString {
   static const String rockFC = 'Rock FC';
   static const String courtFC = 'Court FC';
   static const String faqs = 'FAQs';
+  static const String aboutUs = 'About Us';
+  static const String legalNotices = 'Legal Notices';
+  static const String privacyPolicy = 'Privacy Policy';
   static const String connectWithYourFriends = "Connect with your friend's";
   static const String accessYourLeague = 'Access your league';
   static const String enterCodeToJoinPrivateLeague =
