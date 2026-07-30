@@ -816,6 +816,43 @@ class _AnimatedMatchCard extends StatelessWidget {
                           );
                         },
                       ),
+                    if (match.isLiveForUser && mainPair?.matchObjectId != null) ...[
+                      SizedBox(height: 12.h),
+                      GestureDetector(
+                        onTap: () {
+                          context.push(
+                            '${RoutePath.liveScoreScreen.addBasePath}?matchId=${mainPair!.matchObjectId}',
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          decoration: ShapeDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE8632C), Color(0xFFFF8A50)],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.bolt, color: Colors.white, size: 14.r),
+                              SizedBox(width: 6.w),
+                              Text(
+                                AppString.watchLive.tr,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
