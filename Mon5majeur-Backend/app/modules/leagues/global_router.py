@@ -10,8 +10,13 @@ from datetime import datetime, timezone
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
 
-from app.exceptions.errors import ForbiddenException, NotFoundException
+from app.exceptions.errors import ForbiddenException
 from app.modules.auth.dependencies import get_current_user
+from app.modules.leagues.constants import (
+    GLOBAL_LEAGUE_BUDGET,
+    LEAGUE_STATUS_WAITING,
+    LEAGUE_TYPE_GLOBAL,
+)
 from app.modules.leagues.model import League
 from app.modules.leagues.schema import GlobalLeagueSelectionResponse, PlayersSelectionRequest
 from app.modules.lineups.compat_model import FlutterPlayerSelection
@@ -33,14 +38,30 @@ def _parse_price(raw) -> float:
 
 
 async def _get_global_league() -> League:
-    # Prefer active (regular_season) global league; fall back to any global league
+    """Prefer active (regular_season) global league; fall back to any global
+    league; auto-create it if none exists yet (same lazy-create the old
+    join_global_league() flow already relied on — GET/POST players-selection
+    can be the very first Global League call a user makes, before ever
+    hitting "join", so this endpoint can't just 404 on a missing league)."""
+    from app.database.counters import next_seq
+
     league = await League.find_one(
         League.type == "global", League.status == "regular_season"
     )
     if not league:
         league = await League.find_one(League.type == "global")
-    if not league:
-        raise NotFoundException("Global league not found")
+    if league:
+        return league
+
+    league = await League(
+        name="NBA Global League",
+        type=LEAGUE_TYPE_GLOBAL,
+        budget=GLOBAL_LEAGUE_BUDGET,
+        max_size=999999,
+        status=LEAGUE_STATUS_WAITING,
+    ).insert()
+    league.auto_id = await next_seq("leagues")
+    await league.save()
     return league
 
 
