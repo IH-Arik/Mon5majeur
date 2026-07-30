@@ -126,6 +126,11 @@ async def purchase_bonus(
         current_expiry = inv.live_scoring_until
         base = current_expiry if current_expiry and current_expiry > now else now
         inv.live_scoring_until = base + timedelta(days=365)
+        # This is what live_scores/service.py._is_premium actually checks —
+        # without syncing it here, a purchase would update the inventory but
+        # never actually unlock the live-score endpoint (403 forever).
+        current_user.premium_until = inv.live_scoring_until
+        await current_user.save()
     elif payload.bonus == "stop_pub":
         current_expiry = inv.stop_pub_until
         base = current_expiry if current_expiry and current_expiry > now else now
