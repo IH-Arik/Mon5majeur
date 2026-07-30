@@ -1,10 +1,9 @@
-from datetime import timedelta
-
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
 from app.modules.live_scores.schema import (
+    LiveGlobalScore,
     LiveMatchScore,
     PremiumStatusResponse,
 )
@@ -41,6 +40,18 @@ async def live_match(
     service: LiveScoreService = Depends(get_live_service),
 ) -> LiveMatchScore:
     return await service.get_live_match(user, match_id)
+
+
+@router.get(
+    "/global",
+    response_model=LiveGlobalScore,
+    summary="Live score for the user's Global League selection (premium only)",
+)
+async def live_global(
+    user: User = Depends(get_current_user),
+    service: LiveScoreService = Depends(get_live_service),
+) -> LiveGlobalScore:
+    return await service.get_global_live(user)
 
 
 # Admin -----------------------------------------------------------------------

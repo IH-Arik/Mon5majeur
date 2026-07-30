@@ -20,6 +20,8 @@ from app.modules.leagues.constants import (
     LEAGUE_STATUS_WAITING,
     MATCH_DAYS_BY_SIZE,
     MATCH_STATUS_COMPLETED,
+    MATCH_STATUS_LIVE,
+    MATCH_STATUS_UPCOMING,
 )
 from app.modules.leagues.model import League, LeagueMatch, LeagueMembership
 
@@ -162,6 +164,38 @@ async def score_match_day(league_id: PydanticObjectId, match_day: int, nba_date:
         match.away_score = away_score
         match.winner_id = winner_id
         match.status = MATCH_STATUS_COMPLETED
+        await match.save()
+        count += 1
+
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Live status sync (spec §4.5 / Night's Results)
+# ---------------------------------------------------------------------------
+
+async def sync_match_live_status(nba_date: date) -> int:
+    """Flip today's still-"upcoming" LeagueMatch rows to "live" once any game
+    for this NBA date has tipped off. Without this, LeagueMatch.status only
+    ever moves upcoming -> completed (at the 09:00 close) and never passes
+    through "live" — which silently breaks both the Night's Results LIVE
+    badge and the Live Score feature, since both gate on this field.
+    Called every 20 min from sync_live_games_job, alongside the box-score
+    poll — cheap since it only touches rows still stuck at "upcoming"."""
+    from app.modules.players.model import NBAGame
+
+    games = await NBAGame.find(NBAGame.nba_date == nba_date).to_list()
+    if not any(g.status in ("live", "final") for g in games):
+        return 0
+
+    matches = await LeagueMatch.find(
+        LeagueMatch.nba_date == nba_date,
+        LeagueMatch.status == MATCH_STATUS_UPCOMING,
+    ).to_list()
+
+    count = 0
+    for match in matches:
+        match.status = MATCH_STATUS_LIVE
         await match.save()
         count += 1
 

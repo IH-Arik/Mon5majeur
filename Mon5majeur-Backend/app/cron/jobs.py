@@ -220,6 +220,13 @@ async def sync_live_games_job() -> None:
             logger.info("CRON sync_live_games_job: no games today, skipping")
             return
 
+        # Flip tonight's matches from upcoming -> live (feeds Night's Results
+        # LIVE badge + Live Score; only the 09:00 close ever marks "completed")
+        from app.modules.leagues.engine import sync_match_live_status
+        flipped = await sync_match_live_status(today)
+        if flipped:
+            logger.info("CRON: marked %d matches live", flipped)
+
         for game in games:
             if game.status not in ("live", "final"):
                 continue
