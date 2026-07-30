@@ -160,6 +160,26 @@ async def _validate_selection(selected_players: list[dict], nba_date: date | Non
                 raise ForbiddenException(f"{p.full_name} is OUT and cannot be selected")
 
 
+async def get_bonus_availability(league_auto_id: int, current_user: User) -> dict:
+    """Combined free-quota + purchased-charge count per bonus for the
+    team-builder UI (spec §4.4). The free quota (1-3 uses, sized by league
+    size) is otherwise invisible to the app — it only ever showed purchased
+    charges from /api/bonuses/my-inventory/, so a user with free uses left
+    but zero purchased charges saw "0" and the UI silently refused to even
+    try activating the bonus."""
+    from app.modules.bonuses.service import BonusService
+
+    league = await League.find_one(League.auto_id == league_auto_id)
+    if not league:
+        raise NotFoundException(f"League {league_auto_id} not found")
+
+    status = await BonusService().get_status(current_user.id, league.id)
+    return {
+        bonus: data["free_remaining"] + data["purchased_charges"]
+        for bonus, data in status.items()
+    }
+
+
 async def _sync_bonus(
     current_user: User,
     league_id,

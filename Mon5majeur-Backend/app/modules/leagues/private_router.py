@@ -169,6 +169,17 @@ async def post_private_players_selection(
 
 
 @router.get(
+    "/{league_id}/bonus-status/",
+    summary="Combined free-quota + purchased-charge availability per bonus (Flutter: BuildYourTeamTab)",
+)
+async def get_private_bonus_status(
+    league_id: int,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return await selection_service.get_bonus_availability(league_id, current_user)
+
+
+@router.get(
     "/{league_id}/standings/",
     response_model=StandingsResponse,
     summary="Regular season standings for a private league (Flutter: Leaderboard > Regular Season tab)",

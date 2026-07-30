@@ -86,6 +86,10 @@ class ApiUrl {
   static String privatePlayoffs(int leagueId) =>
       "/api/private-leagues/$leagueId/playoffs/";
 
+  // Private League - combined free-quota + purchased bonus availability
+  static String privateBonusStatus(int leagueId) =>
+      "/api/private-leagues/$leagueId/bonus-status/";
+
   // Public League endpoints
   static const publicLeagues = "/api/public-leagues/";
   static const activePublicLeagues = "/api/public-leagues/active_leagues/";
@@ -109,6 +113,10 @@ class ApiUrl {
 
   static String publicPlayoffs(int leagueId) =>
       "/api/public-leagues/$leagueId/playoffs/";
+
+  // Public League - combined free-quota + purchased bonus availability
+  static String publicBonusStatus(int leagueId) =>
+      "/api/public-leagues/$leagueId/bonus-status/";
 
   // Global League endpoints
   static const globalLeaguePlayersSelection =

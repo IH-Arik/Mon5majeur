@@ -119,6 +119,34 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   }
 
   Future<void> _fetchBonusInventory() async {
+    // Prefer the per-league combined count (free quota by league size +
+    // purchased charges) — the free quota is otherwise invisible to the UI:
+    // a user with free uses left but 0 purchased charges would see "0" and
+    // the bonus button would silently refuse to activate at all.
+    if (widget.leagueId != null) {
+      try {
+        final endpoint = widget.isPrivate
+            ? ApiUrl.privateBonusStatus(widget.leagueId!)
+            : ApiUrl.publicBonusStatus(widget.leagueId!);
+        final response = await _apiClient.get(
+          url: '${ApiUrl.baseUrl}$endpoint',
+        );
+        if (response.statusCode == 200 && response.body != null) {
+          final data = response.body as Map<String, dynamic>;
+          if (mounted) {
+            setState(() {
+              sixthManAvailable = (data['sixth_man'] as num?)?.toInt() ?? 0;
+              chefsCurryAvailable = (data['chef_curry'] as num?)?.toInt() ?? 0;
+              luxuryTaxAvailable = (data['luxury_tax'] as num?)?.toInt() ?? 0;
+            });
+          }
+          return;
+        }
+      } catch (_) {
+        // fall through to the purchased-only inventory below
+      }
+    }
+
     try {
       final response = await _apiClient.get(
         url: '${ApiUrl.baseUrl}${ApiUrl.bonusInventory}',
