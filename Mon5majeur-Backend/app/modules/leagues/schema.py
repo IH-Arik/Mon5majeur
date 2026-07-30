@@ -297,6 +297,9 @@ class MatchPairCompatResponse(BaseSchema):
     player_b_name: str | None = None
     score_a: float = 0
     score_b: float = 0
+    # Mongo LeagueMatch._id (as str) — lets Flutter call GET /api/v1/live/match/{id}
+    # for this specific duel; the int fields above are only Django-compat auto_ids.
+    match_object_id: str | None = None
 
 
 class MyMatchTodayCompatResponse(BaseSchema):
@@ -348,6 +351,9 @@ class MatchPairItem(BaseSchema):
     player_b_name: str = ""
     score_a: int = 0
     score_b: int = 0
+    # Mongo LeagueMatch._id (as str) — lets Flutter call GET /api/v1/live/match/{id}
+    # for this specific duel; the int fields above are only Django-compat auto_ids.
+    match_object_id: str | None = None
 
 
 class MatchResultCompatResponse(BaseSchema):

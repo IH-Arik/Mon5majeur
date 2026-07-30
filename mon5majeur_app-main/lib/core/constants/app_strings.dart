@@ -535,4 +535,15 @@ class AppString {
   static const String joinedTeams = 'Joined Teams';
   static const String morePlayers = 'more players';
   static const String noMatchesToday = 'noMatchesToday';
+
+  // Live Score (spec §4.5)
+  static const String liveScoreTitle = 'Live Score';
+  static const String watchLive = 'Watch Live';
+  static const String liveScoreLockedTitle = 'Live Score is a Premium Feature';
+  static const String liveScoreLockedDesc =
+      'Unlock real-time scoring to follow every player\'s points as the games happen.';
+  static const String unlockNow = 'Unlock Now';
+  static const String staleDataNotice = 'Scores may be a few minutes behind';
+  static const String sixthManDropped = 'Not counted (6th Man)';
+  static const String noLineupSubmitted = 'No lineup submitted';
 }

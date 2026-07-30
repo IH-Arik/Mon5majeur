@@ -434,6 +434,16 @@ class FrenchTranslation {
     AppString.comingSoon: 'Bientôt DISPO',
     AppString.tokens: ' Jetons',
     AppString.appTitle: "MON5MAJEUR",
+
+    AppString.liveScoreTitle: 'Score en Direct',
+    AppString.watchLive: 'Voir en Direct',
+    AppString.liveScoreLockedTitle: 'Le Score en Direct est une fonctionnalité Premium',
+    AppString.liveScoreLockedDesc:
+        'Débloquez le score en temps réel pour suivre les points de chaque joueur pendant les matchs.',
+    AppString.unlockNow: 'Débloquer',
+    AppString.staleDataNotice: 'Les scores peuvent avoir quelques minutes de retard',
+    AppString.sixthManDropped: 'Non comptabilisé (6ème Homme)',
+    AppString.noLineupSubmitted: 'Aucune équipe soumise',
   };
 
   // --- Handling Dynamic Strings (Methods) ---

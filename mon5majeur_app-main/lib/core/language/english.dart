@@ -436,6 +436,16 @@ class EnglishTranslation {
     AppString.comingSoon: 'Coming Soon',
     AppString.tokens: ' Tokens',
     AppString.appTitle: "MON5MAJEUR",
+
+    AppString.liveScoreTitle: 'Live Score',
+    AppString.watchLive: 'Watch Live',
+    AppString.liveScoreLockedTitle: 'Live Score is a Premium Feature',
+    AppString.liveScoreLockedDesc:
+        'Unlock real-time scoring to follow every player\'s points as the games happen.',
+    AppString.unlockNow: 'Unlock Now',
+    AppString.staleDataNotice: 'Scores may be a few minutes behind',
+    AppString.sixthManDropped: 'Not counted (6th Man)',
+    AppString.noLineupSubmitted: 'No lineup submitted',
   };
 
   // --- Handling Dynamic Strings (Methods) ---

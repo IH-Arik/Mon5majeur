@@ -224,7 +224,36 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
           _buildTab(AppString.result.tr, Icons.bar_chart, 2),
           _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
           _buildTab(AppString.rules.tr, Icons.menu_book, 4),
+          _buildLiveTab(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLiveTab() {
+    // Pushed instead of switched into the IndexedStack — it polls the
+    // backend every 60s and shouldn't keep doing that in the background
+    // while another tab is active.
+    return GestureDetector(
+      onTap: () => context.push(RoutePath.liveScoreScreen.addBasePath),
+      child: Container(
+        color: Colors.transparent,
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        child: Column(
+          children: [
+            Icon(Icons.bolt, color: Colors.white54, size: 24.r),
+            SizedBox(height: 4.h),
+            Text(
+              AppString.liveScoreTitle.tr,
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 4.h),
+          ],
+        ),
       ),
     );
   }

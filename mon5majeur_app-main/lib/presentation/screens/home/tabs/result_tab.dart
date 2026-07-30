@@ -1,9 +1,12 @@
 // lib/presentation/screens/home/my_league_screens/tabs/result.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/routes/route_path.dart';
+import '../../../../core/routes/routes.dart';
 import '../controllers/result_controller.dart';
 
 class ResultTab extends StatefulWidget {
@@ -321,6 +324,12 @@ class _ResultTabState extends State<ResultTab> {
                 ),
                 SizedBox(height: 8.h),
                 _buildViewDetailsButton(index),
+                if (isCurrentUser &&
+                    controller.matchResult.value?.status == 'live' &&
+                    pair.matchObjectId != null) ...[
+                  SizedBox(height: 8.h),
+                  _buildWatchLiveButton(pair.matchObjectId!),
+                ],
               ],
             ),
           ),
@@ -366,6 +375,42 @@ class _ResultTabState extends State<ResultTab> {
           color: Colors.white70,
           fontSize: 10.sp,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWatchLiveButton(String matchObjectId) {
+    return GestureDetector(
+      onTap: () {
+        context.push(
+          '${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchObjectId',
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 8.h),
+        decoration: ShapeDecoration(
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Colors.green),
+            borderRadius: BorderRadius.circular(6.r),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bolt, color: Colors.green, size: 14.r),
+            SizedBox(width: 6.w),
+            Text(
+              AppString.watchLive.tr,
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );

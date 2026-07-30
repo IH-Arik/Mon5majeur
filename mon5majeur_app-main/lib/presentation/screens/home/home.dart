@@ -11,6 +11,7 @@ export 'home_screen.dart';
 export 'controllers/home_controller.dart' hide logger;
 export 'controllers/create_league_controller.dart' hide logger;
 export 'controllers/result_controller.dart' hide logger;
+export 'controllers/live_score_controller.dart';
 
 // Screens
 export 'screens/faq_screen.dart';
@@ -28,6 +29,7 @@ export 'screens/explore_leagues_screen.dart';
 export 'screens/global_league_screen.dart';
 export 'screens/league_fantasy_screen.dart';
 export 'screens/select_player_screen.dart';
+export 'screens/live_score_screen.dart';
 
 // Widgets
 export 'widgets/home_drawer.dart';

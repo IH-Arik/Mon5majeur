@@ -316,6 +316,18 @@ class AppRouter {
         },
       ),
 
+      GoRoute(
+        name: RoutePath.liveScoreScreen,
+        path: RoutePath.liveScoreScreen.addBasePath,
+        builder: (BuildContext context, GoRouterState state) {
+          final matchId = state.uri.queryParameters['matchId'];
+          return LiveScoreScreen(
+            mode: matchId != null ? LiveScoreMode.duel : LiveScoreMode.global,
+            matchId: matchId,
+          );
+        },
+      ),
+
       /// Shop screen
       GoRoute(
         name: RoutePath.shopScreen,

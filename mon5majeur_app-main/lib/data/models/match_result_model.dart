@@ -108,6 +108,8 @@ class MatchPair {
   final String playerBName;
   final int scoreA;
   final int scoreB;
+  // Mongo LeagueMatch id — needed to call GET /live/match/{id}.
+  final String? matchObjectId;
 
   MatchPair({
     required this.playerAId,
@@ -116,6 +118,7 @@ class MatchPair {
     required this.playerBName,
     required this.scoreA,
     required this.scoreB,
+    this.matchObjectId,
   });
 
   factory MatchPair.fromJson(Map<String, dynamic> json) {
@@ -126,6 +129,7 @@ class MatchPair {
       playerBName: json['player_b_name'] ?? '',
       scoreA: json['score_a'] ?? 0,
       scoreB: json['score_b'] ?? 0,
+      matchObjectId: json['match_object_id'],
     );
   }
 }

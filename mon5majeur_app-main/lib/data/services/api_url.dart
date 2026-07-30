@@ -121,4 +121,9 @@ class ApiUrl {
   // Global League endpoints
   static const globalLeaguePlayersSelection =
       "/api/global-leagues/players-selection/";
+
+  // Live Score endpoints (premium, spec §4.5)
+  static const livePremiumStatus = "/api/v1/live/premium-status";
+  static String liveMatch(String matchId) => "/api/v1/live/match/$matchId";
+  static const liveGlobal = "/api/v1/live/global";
 }

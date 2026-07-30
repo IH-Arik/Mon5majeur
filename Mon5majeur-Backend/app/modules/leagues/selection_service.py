@@ -423,6 +423,7 @@ async def get_match_result(league_auto_id: int, match_day: int) -> dict:
             "player_b_name": a_name,
             "score_a": score_a,
             "score_b": score_b,
+            "match_object_id": str(m.id),
         })
 
     first = matches[0]

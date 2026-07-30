@@ -660,6 +660,7 @@ class LeagueService:
                 player_b_name=away_u.team_name if away_u else None,
                 score_a=match.home_score or 0,
                 score_b=match.away_score or 0,
+                match_object_id=str(match.id),
             )
             is_live_for_user = match.status == "live" and has_live_access
             result.append(MyMatchTodayCompatResponse(
