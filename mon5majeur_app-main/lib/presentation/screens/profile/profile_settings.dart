@@ -627,6 +627,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 _buildSettingItem(
                   icon: Icons.article_outlined,
                   title: AppString.legalNotice.tr,
+                  onTap: () =>
+                      context.go(RoutePath.legalNoticesScreen.addBasePath),
                 ),
 
                 SizedBox(height: 24.h),
