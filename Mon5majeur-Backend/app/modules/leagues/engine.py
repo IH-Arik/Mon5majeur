@@ -14,7 +14,6 @@ from beanie import PydanticObjectId
 from app.core.logging import get_logger
 from app.exceptions.errors import BadRequestException, NotFoundException
 from app.modules.leagues.constants import (
-    LEAGUE_STATUS_COMPLETED,
     LEAGUE_STATUS_PLAYOFFS,
     LEAGUE_STATUS_REGULAR,
     LEAGUE_STATUS_WAITING,
@@ -99,8 +98,18 @@ def _round_robin_schedule(user_ids: list[PydanticObjectId]) -> list[list[tuple]]
     n = len(players)
 
     aller: list[list[tuple]] = []
-    for _ in range(n - 1):
-        pairings = [(players[i], players[n - 1 - i]) for i in range(n // 2)]
+    for r in range(n - 1):
+        pairings = []
+        for i in range(n // 2):
+            home, away = players[i], players[n - 1 - i]
+            # Alternate home/away by round parity (spec pseudocode) — without
+            # this, the player fixed at index 0 by the rotation below plays
+            # every single aller match at home and every retour match away,
+            # instead of alternating through the season. Since ties go to
+            # the home team, that's a real fairness gap, not just cosmetic.
+            if r % 2 == 1:
+                home, away = away, home
+            pairings.append((home, away))
         aller.append(pairings)
         # Standard circle rotation: fix first player, rotate the rest
         players = [players[0]] + [players[-1]] + players[1:-1]
@@ -246,12 +255,17 @@ async def update_standings(league_id: PydanticObjectId) -> None:
             elif match.winner_id == match.home_user_id:
                 away.losses += 1
 
-    # Sort by: wins desc → point differential desc → total points scored desc (spec §4.6.2)
-    sorted_members = sorted(
-        memberships,
-        key=lambda m: (m.wins, m.points_for - m.points_against, m.points_for),
-        reverse=True,
-    )
+    # Full tie-break cascade (spec §4.6.2): wins → differential → points_for →
+    # head-to-head → alphabetical pseudo. Shared with the Standings tab and
+    # playoff seeding so all three agree on the same order.
+    from app.modules.leagues.leaderboard_service import ranked_memberships
+    from app.modules.users.model import User as UserModel
+
+    user_ids = [m.user_id for m in memberships]
+    users = await UserModel.find({"_id": {"$in": user_ids}}).to_list() if user_ids else []
+    umap = {u.id: u for u in users}
+
+    sorted_members = await ranked_memberships(league_id, umap, memberships)
     for rank, m in enumerate(sorted_members, start=1):
         m.rank = rank
         await m.save()
@@ -263,7 +277,11 @@ async def update_standings(league_id: PydanticObjectId) -> None:
 
 async def advance_match_day(league_id: PydanticObjectId) -> League:
     """
-    Increment current_match_day. If all regular-season days done → playoffs or complete.
+    Increment current_match_day. Once all regular-season days are done, hand
+    off to the playoff engine (spec §4.6.3: every league — min size is 4 —
+    goes Regular season → Playoffs → winner, there's no size-based skip).
+    Playoff-status leagues are advanced by playoff_engine.advance_playoffs
+    instead (called from run_daily_close), not from here.
     """
     league = await League.get(league_id)
     if not league:
@@ -271,20 +289,15 @@ async def advance_match_day(league_id: PydanticObjectId) -> League:
 
     if league.status == LEAGUE_STATUS_REGULAR:
         if league.current_match_day >= league.total_match_days:
-            # Regular season over — check if we need playoffs
-            if league.max_size >= 4:
-                league.status = LEAGUE_STATUS_PLAYOFFS
-            else:
-                league.status = LEAGUE_STATUS_COMPLETED
-                league.ended_at = datetime.now(timezone.utc)
+            league.status = LEAGUE_STATUS_PLAYOFFS
+            await league.save()
+
+            from app.modules.leagues.playoff_engine import start_playoffs
+            await start_playoffs(league)
+            return league
         else:
             league.current_match_day += 1
             league.current_week = (league.current_match_day - 1) // 2 + 1
-
-    elif league.status == LEAGUE_STATUS_PLAYOFFS:
-        # Playoffs are handled separately; this just marks completion
-        league.status = LEAGUE_STATUS_COMPLETED
-        league.ended_at = datetime.now(timezone.utc)
 
     await league.save()
     return league
@@ -297,11 +310,18 @@ async def advance_match_day(league_id: PydanticObjectId) -> League:
 async def run_daily_close(nba_date: date) -> dict:
     """
     Run the full daily close in strict order:
-    1. Score match days for all active leagues
-    2. Update standings
-    3. Advance match days
+    1. Score match days for all active leagues (regular season and playoffs
+       alike — playoff games are just tagged LeagueMatch rows, scored the
+       same way)
+    2. Regular season: update standings, advance match day (or hand off to
+       playoffs once the season's done)
+       Playoffs: advance the bracket (next game / next round / completion)
+       — regular-season standings are frozen once playoffs start, so
+       update_standings does not run for them.
     Returns a summary dict.
     """
+    from app.modules.leagues.playoff_engine import advance_playoffs
+
     active_leagues = await League.find(
         {"status": {"$in": [LEAGUE_STATUS_REGULAR, LEAGUE_STATUS_PLAYOFFS]}}
     ).to_list()
@@ -313,11 +333,37 @@ async def run_daily_close(nba_date: date) -> dict:
             scored = await score_match_day(league.id, league.current_match_day, nba_date)
             results["matches_scored"] += scored
 
-            await update_standings(league.id)
-            await advance_match_day(league.id)
+            if league.status == LEAGUE_STATUS_REGULAR:
+                await update_standings(league.id)
+                await advance_match_day(league.id)
+            else:
+                await advance_playoffs(league, nba_date)
             results["leagues_processed"] += 1
         except Exception as exc:
             logger.error("Daily close failed for league %s: %s", league.id, exc)
 
     logger.info("Daily close done: %s", results)
     return results
+
+
+# ---------------------------------------------------------------------------
+# Auto-delete leagues the creator never started (spec §4.6.2: "A league not
+# started within 7 days is auto deleted"). Called once a day by CRON.
+# ---------------------------------------------------------------------------
+
+async def delete_stale_waiting_leagues() -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    stale = await League.find(
+        League.status == LEAGUE_STATUS_WAITING,
+        League.created_at < cutoff,
+    ).to_list()
+
+    count = 0
+    for league in stale:
+        await LeagueMembership.find(LeagueMembership.league_id == league.id).delete()
+        await league.delete()
+        count += 1
+
+    if count:
+        logger.info("Auto-deleted %d league(s) not started within 7 days", count)
+    return count

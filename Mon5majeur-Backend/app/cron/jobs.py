@@ -6,6 +6,7 @@ Schedule (all times are Europe/Paris):
   01:00–09:00 every 20 min — sync_live_games_job — pull box-scores for live/finished games
   09:00  daily_close_job  — score finalize → standings → price recompute
   09:05  weekly_monthly_rewards_job — Mon: Top-8 weekly bonus; 1st: monthly jersey winner
+  09:10  cleanup_stale_leagues_job — delete leagues not started within 7 days
   19:00  reminder_job     — push "don't forget your team" to users who haven't submitted
 """
 from __future__ import annotations
@@ -151,6 +152,19 @@ async def _send_fcm_reminder(user_id) -> None:
 # ---------------------------------------------------------------------------
 # 06:00 Paris — sync NBA player roster (daily, catches trades & signings)
 # ---------------------------------------------------------------------------
+
+async def cleanup_stale_leagues_job() -> None:
+    """Delete private/public leagues the creator never started within 7 days
+    (spec §4.6.2). Runs once a day, well clear of the scoring/close jobs."""
+    from app.modules.leagues.engine import delete_stale_waiting_leagues
+
+    logger.info("CRON cleanup_stale_leagues_job: checking for stale waiting leagues")
+    try:
+        deleted = await delete_stale_waiting_leagues()
+        logger.info("CRON: deleted %d stale waiting league(s)", deleted)
+    except Exception as exc:
+        logger.error("CRON cleanup_stale_leagues_job failed: %s", exc, exc_info=True)
+
 
 async def sync_player_roster_job() -> None:
     """

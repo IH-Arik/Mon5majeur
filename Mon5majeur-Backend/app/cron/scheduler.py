@@ -26,6 +26,7 @@ def get_scheduler() -> AsyncIOScheduler:
 
 def start_scheduler() -> None:
     from app.cron.jobs import (
+        cleanup_stale_leagues_job,
         daily_close_job,
         reminder_push_job,
         sync_live_games_job,
@@ -78,6 +79,15 @@ def start_scheduler() -> None:
         weekly_monthly_rewards_job,
         CronTrigger(hour=9, minute=5, timezone=PARIS_TZ),
         id="weekly_monthly_rewards",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
+    # 09:10 Paris — delete leagues the creator never started within 7 days
+    scheduler.add_job(
+        cleanup_stale_leagues_job,
+        CronTrigger(hour=9, minute=10, timezone=PARIS_TZ),
+        id="cleanup_stale_leagues",
         replace_existing=True,
         misfire_grace_time=300,
     )

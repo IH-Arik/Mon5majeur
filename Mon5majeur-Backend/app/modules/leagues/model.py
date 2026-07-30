@@ -103,6 +103,16 @@ class LeagueMatch(BaseDocument):
     home_chef_curry_used: bool = False
     away_chef_curry_used: bool = False
 
+    # Playoffs (spec §4.6.3) — reuses the regular-season lineup/lock/budget
+    # pipeline for playoff games too, just tagged with which series/game this
+    # is and each side's frozen regular-season seed (1-4, for the seeding
+    # budget bonus applied at lineup-save time).
+    is_playoff: bool = False
+    playoff_series_id: PydanticObjectId | None = None
+    playoff_game_number: int | None = None
+    home_seed: int | None = None
+    away_seed: int | None = None
+
     class Settings:
         name = "league_matches"
         indexes = [

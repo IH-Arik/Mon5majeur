@@ -506,7 +506,7 @@ class PlayoffSeriesResponse(BaseSchema):
 
 
 class PlayoffRoundResponse(BaseSchema):
-    """One round in the bracket (quarter_final / semi_final / final)."""
+    """One round in the bracket (semi_final / final)."""
     round_type: str = ""
     round_name: str = ""
     series: list[PlayoffSeriesResponse] = []

@@ -259,8 +259,18 @@ async def save_player_selection(
         sixth_man_player is not None,
     )
 
-    # Budget check (spec §4.1/§4.4): Luxury Tax adds +5M before validating.
-    effective_budget = float(league.budget) + (5.0 if luxury_tax else 0.0)
+    # Budget check (spec §4.1/§4.4/§4.6.3): Luxury Tax adds +5M, and — for a
+    # playoff game — the seeding budget bonus from this user's frozen
+    # regular-season rank (+4M/+2M/+1M/+0M for seed 1-4) adds on top.
+    seed_bonus = 0.0
+    if match and match.is_playoff:
+        from app.modules.leagues.playoff_engine import SEED_BUDGET_BONUS
+        my_seed = (
+            match.home_seed if current_user.id == match.home_user_id else match.away_seed
+        )
+        seed_bonus = SEED_BUDGET_BONUS.get(my_seed, 0.0)
+
+    effective_budget = float(league.budget) + (5.0 if luxury_tax else 0.0) + seed_bonus
     used = sum(_parse_price(p.get("price", "0")) for p in selected_players)
     if used > effective_budget:
         raise ForbiddenException(

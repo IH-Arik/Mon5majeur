@@ -4,8 +4,13 @@ Leaderboard service — Regular Season standings + Playoff bracket.
 Standings:  reads LeagueMembership records, ranks by wins → differential → FP → head-to-head.
 Playoffs:   reads PlayoffSeries documents for the given league.
 """
+from functools import cmp_to_key
+
+from beanie import PydanticObjectId
+
 from app.exceptions.errors import NotFoundException
-from app.modules.leagues.model import League, LeagueMembership
+from app.modules.leagues.constants import MATCH_STATUS_COMPLETED
+from app.modules.leagues.model import League, LeagueMatch, LeagueMembership
 from app.modules.leagues.playoff_model import PlayoffSeries
 from app.modules.leagues.schema import (
     PlayoffBracketResponse,
@@ -18,12 +23,11 @@ from app.modules.leagues.schema import (
 from app.modules.users.model import User
 
 _ROUND_LABELS: dict[str, str] = {
-    "quarter_final": "Quarter Finals",
-    "semi_final":    "Semi Finals",
-    "final":         "Final",
+    "semi_final": "Semi Finals",
+    "final":      "Final",
 }
 
-_ROUND_ORDER: list[str] = ["quarter_final", "semi_final", "final"]
+_ROUND_ORDER: list[str] = ["semi_final", "final"]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,6 +51,79 @@ def _display_name(user: User | None) -> str:
     return user.team_name or (user.email.split("@")[0] if user.email else "Unknown")
 
 
+async def _head_to_head_winner(
+    league_id: PydanticObjectId, user_a: PydanticObjectId, user_b: PydanticObjectId
+) -> PydanticObjectId | None:
+    """Who won more of the regular-season meetings between these two
+    (spec §4.6.2 tie-break step 3). None if never played or perfectly split —
+    the caller falls through to the alphabetical last resort in that case."""
+    matches = await LeagueMatch.find(
+        LeagueMatch.league_id == league_id,
+        LeagueMatch.status == MATCH_STATUS_COMPLETED,
+        LeagueMatch.is_playoff == False,  # noqa: E712 — regular-season standings only
+        {"$or": [
+            {"home_user_id": user_a, "away_user_id": user_b},
+            {"home_user_id": user_b, "away_user_id": user_a},
+        ]},
+    ).to_list()
+
+    wins_a = sum(1 for m in matches if m.winner_id == user_a)
+    wins_b = sum(1 for m in matches if m.winner_id == user_b)
+    if wins_a == wins_b:
+        return None
+    return user_a if wins_a > wins_b else user_b
+
+
+async def ranked_memberships(
+    league_id: PydanticObjectId,
+    umap: dict,
+    memberships: list[LeagueMembership] | None = None,
+) -> list[LeagueMembership]:
+    """Full standings order (spec §4.6.2): wins → differential → points_for →
+    head-to-head → alphabetical pseudo (deterministic last resort). Shared by
+    the Standings tab and playoff seeding so both agree on the same order.
+    Pass `memberships` when the caller already holds in-memory, not-yet-saved
+    updates (e.g. update_standings mid-recompute) — otherwise this re-queries
+    the DB itself, which would rank on stale wins/points_for."""
+    if memberships is None:
+        memberships = await LeagueMembership.find(
+            LeagueMembership.league_id == league_id
+        ).to_list()
+
+    async def _cmp(a: LeagueMembership, b: LeagueMembership) -> int:
+        if a.wins != b.wins:
+            return -1 if a.wins > b.wins else 1
+        diff_a, diff_b = a.differential, b.differential
+        if diff_a != diff_b:
+            return -1 if diff_a > diff_b else 1
+        if a.points_for != b.points_for:
+            return -1 if a.points_for > b.points_for else 1
+
+        h2h = await _head_to_head_winner(league_id, a.user_id, b.user_id)
+        if h2h is not None:
+            return -1 if h2h == a.user_id else 1
+
+        name_a = _display_name(umap.get(a.user_id))
+        name_b = _display_name(umap.get(b.user_id))
+        return -1 if name_a < name_b else (1 if name_a > name_b else 0)
+
+    # cmp_to_key's comparator must be sync; _cmp is async (needs DB lookups
+    # for head-to-head), so pre-resolve every pairwise comparison once up
+    # front — memberships lists are tiny (max 10), this is cheap.
+    resolved: dict[tuple, int] = {}
+    for i, a in enumerate(memberships):
+        for b in memberships[i + 1:]:
+            resolved[(a.user_id, b.user_id)] = await _cmp(a, b)
+            resolved[(b.user_id, a.user_id)] = -resolved[(a.user_id, b.user_id)]
+
+    def _sync_cmp(a: LeagueMembership, b: LeagueMembership) -> int:
+        if a.user_id == b.user_id:
+            return 0
+        return resolved[(a.user_id, b.user_id)]
+
+    return sorted(memberships, key=cmp_to_key(_sync_cmp))
+
+
 # ── Standings ─────────────────────────────────────────────────────────────────
 
 async def get_standings(league_auto_id: int) -> StandingsResponse:
@@ -67,11 +144,7 @@ async def get_standings(league_auto_id: int) -> StandingsResponse:
     user_ids = [m.user_id for m in memberships]
     umap = await _user_map(user_ids)
 
-    def _sort_key(m: LeagueMembership):
-        diff = m.points_for - m.points_against
-        return (-m.wins, -diff, -m.points_for)
-
-    sorted_ms = sorted(memberships, key=_sort_key)
+    sorted_ms = await ranked_memberships(league.id, umap, memberships)
     playoff_spots = min(4, len(sorted_ms))
 
     teams: list[StandingsEntry] = []
