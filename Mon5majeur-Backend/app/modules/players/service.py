@@ -7,7 +7,7 @@ from beanie import PydanticObjectId
 from app.core.logging import get_logger
 from app.exceptions.errors import NotFoundException
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
-from app.modules.players.nba_cdn import fetch_boxscore, fetch_player_index, fetch_schedule_for_date, fetch_today_scoreboard
+from app.modules.players.nba_cdn import fetch_player_index
 from app.modules.players.pricing import recompute_player_price
 from app.modules.players.repository import PlayerRepository
 from app.modules.players.schema import PlayerSearchParams, PlayerTodayItem
@@ -99,11 +99,17 @@ class PlayerService:
         return result
 
     # ------------------------------------------------------------------
-    # NBA CDN: sync players roster (replaces Goalserve)
+    # NBA CDN roster (best-effort) — no Goalserve roster/squad feed is
+    # reachable on this account (see goalserve_client.py's module docstring),
+    # and cdn.nba.com itself blocks most requests with an intermittent 403.
+    # This exists only to catch a brand-new signee/rookie BEFORE their first
+    # tracked game — sync_scores_for_date creates/matches players from actual
+    # box scores regardless, which is the reliable path for anyone who's
+    # played at least once.
     # ------------------------------------------------------------------
 
     async def sync_from_goalserve(self, league: str = "nba") -> int:
-        """Fetch current NBA roster from NBA CDN playerIndex."""
+        """Fetch current NBA roster from NBA CDN playerIndex (best-effort)."""
         try:
             players_data = await fetch_player_index()
         except Exception as exc:
@@ -135,29 +141,26 @@ class PlayerService:
         return count
 
     # ------------------------------------------------------------------
-    # NBA CDN: sync schedule (replaces Goalserve)
+    # Goalserve: sync schedule (any date, incl. upcoming — nba-shedule feed)
     # ------------------------------------------------------------------
 
     async def sync_schedule(self, nba_date: date | None = None) -> int:
-        """
-        Sync today's NBA game schedule.
-        Uses todaysScoreboard for current day; scheduleLeagueV2 for specific dates.
-        """
+        """Sync the game schedule for one date (defaults to today UTC)."""
+        from app.modules.players.goalserve_client import fetch_schedule_for_date
+
+        target_date = nba_date or datetime.now(timezone.utc).date()
         try:
-            if nba_date is None:
-                games_data = await fetch_today_scoreboard()
-            else:
-                games_data = await fetch_schedule_for_date(nba_date)
+            games_data = await fetch_schedule_for_date(target_date)
         except Exception as exc:
-            logger.error("NBA CDN schedule fetch failed: %s", exc)
+            logger.error("Goalserve schedule fetch failed: %s", exc)
             return 0
 
         count = 0
         for g in games_data:
             try:
-                existing = await NBAGame.find_one(NBAGame.goalserve_id == g["nba_game_id"])
+                existing = await NBAGame.find_one(NBAGame.goalserve_id == g["goalserve_game_id"])
                 game_doc = {
-                    "goalserve_id": g["nba_game_id"],
+                    "goalserve_id": g["goalserve_game_id"],
                     "nba_date": g["nba_date"],
                     "home_team_id": g["home_team_id"],
                     "away_team_id": g["away_team_id"],
@@ -177,85 +180,140 @@ class PlayerService:
                     await NBAGame(**game_doc).insert()
                 count += 1
             except Exception as exc:
-                logger.warning("Failed to upsert game %s: %s", g.get("nba_game_id"), exc)
+                logger.warning("Failed to upsert game %s: %s", g.get("goalserve_game_id"), exc)
 
-        logger.info("Synced %d games from NBA CDN", count)
+        logger.info("Synced %d games from Goalserve for %s", count, target_date)
         return count
 
     # ------------------------------------------------------------------
-    # NBA CDN: sync box-score stats (replaces Goalserve)
+    # Goalserve: sync scores + full box score for a date, in one call
     # ------------------------------------------------------------------
 
-    async def sync_game_stats(self, goalserve_game_id: str) -> int:
-        """Fetch box-score from NBA CDN and upsert PlayerGameStats."""
-        boxscore = await fetch_boxscore(goalserve_game_id)
-        if not boxscore:
+    async def sync_scores_for_date(self, nba_date: date) -> int:
+        """Fetch scores + box score for every game on `nba_date` and upsert
+        NBAGame + PlayerGameStats. Also resolves each player against the
+        Player collection by full name (there's no Goalserve roster/squad
+        feed available on this account — see goalserve_client.py) — on a
+        match, backfills that Player's goalserve_id/team_goalserve_id from
+        this NBA-CDN-sourced legacy value to Goalserve's own IDs so future
+        lookups are a direct id match; unmatched players get a new minimal
+        Player record."""
+        from app.modules.players.goalserve_client import fetch_scores_for_date
+
+        try:
+            games_data = await fetch_scores_for_date(nba_date)
+        except Exception as exc:
+            logger.error("Goalserve scores fetch failed for %s: %s", nba_date, exc)
             return 0
 
-        # Update game status/score in NBAGame
-        try:
-            game_doc = await NBAGame.find_one(NBAGame.goalserve_id == goalserve_game_id)
-            if game_doc:
-                game_doc.status = boxscore["status"]
-                if boxscore.get("home_score") is not None:
-                    game_doc.home_score = boxscore["home_score"]
-                if boxscore.get("away_score") is not None:
-                    game_doc.away_score = boxscore["away_score"]
-                await game_doc.save()
-        except Exception as exc:
-            logger.warning("Failed to update NBAGame for %s: %s", goalserve_game_id, exc)
-
         count = 0
-        for p in boxscore["players"]:
+        for g in games_data:
+            game_id = g["goalserve_game_id"]
             try:
-                # Resolve player by NBA player ID (stored in goalserve_id field)
-                player = await Player.find_one(Player.goalserve_id == p["nba_player_id"])
-                if not player:
-                    continue
-
-                existing = await PlayerGameStats.find_one(
-                    PlayerGameStats.goalserve_game_id == goalserve_game_id,
-                    PlayerGameStats.goalserve_player_id == p["nba_player_id"],
-                )
-
-                stat_fields = {
-                    "goalserve_player_id": p["nba_player_id"],
-                    "goalserve_game_id": goalserve_game_id,
-                    "player_id": player.id,
-                    "nba_date": p["nba_date"],
-                    "minutes_played": p["minutes_played"],
-                    "did_not_play": p["did_not_play"],
-                    "points": p["points"],
-                    "rebounds": p["rebounds"],
-                    "assists": p["assists"],
-                    "steals": p["steals"],
-                    "blocks": p["blocks"],
-                    "turnovers": p["turnovers"],
-                    "field_goals_made": p["field_goals_made"],
-                    "field_goals_attempted": p["field_goals_attempted"],
-                    "threepoint_made": p["threepoint_made"],
-                    "threepoint_attempted": p["threepoint_attempted"],
-                    "freethrow_made": p["freethrow_made"],
-                    "freethrow_attempted": p["freethrow_attempted"],
+                existing_game = await NBAGame.find_one(NBAGame.goalserve_id == game_id)
+                game_doc = {
+                    "goalserve_id": game_id,
+                    "nba_date": g["nba_date"],
+                    "home_team_id": g["home_team_id"],
+                    "away_team_id": g["away_team_id"],
+                    "home_team_name": g["home_team_name"],
+                    "away_team_name": g["away_team_name"],
+                    "status": g["status"],
+                    "tip_off_time": g["tip_off_utc"],
+                    "home_score": g.get("home_score"),
+                    "away_score": g.get("away_score"),
                 }
-
-                if existing:
-                    for k, v in stat_fields.items():
-                        setattr(existing, k, v)
-                    existing.score_computed = False  # will be recomputed
-                    await existing.save()
+                if existing_game:
+                    for k, v in game_doc.items():
+                        if k != "goalserve_id" and v is not None:
+                            setattr(existing_game, k, v)
+                    await existing_game.save()
                 else:
-                    await PlayerGameStats(**stat_fields).insert()
-
-                count += 1
+                    await NBAGame(**game_doc).insert()
             except Exception as exc:
-                logger.warning(
-                    "Failed to upsert stats player=%s game=%s: %s",
-                    p.get("nba_player_id"), goalserve_game_id, exc,
-                )
+                logger.warning("Failed to upsert game %s: %s", game_id, exc)
 
-        logger.info("Synced %d player-stat rows for game %s (NBA CDN)", count, goalserve_game_id)
+            for p in g["players"]:
+                try:
+                    player = await self._resolve_goalserve_player(p)
+                    if not player:
+                        continue
+
+                    existing_stat = await PlayerGameStats.find_one(
+                        PlayerGameStats.goalserve_game_id == game_id,
+                        PlayerGameStats.goalserve_player_id == p["goalserve_player_id"],
+                    )
+                    stat_fields = {
+                        "goalserve_player_id": p["goalserve_player_id"],
+                        "goalserve_game_id": game_id,
+                        "player_id": player.id,
+                        "nba_date": g["nba_date"],
+                        "minutes_played": p["minutes_played"],
+                        "did_not_play": p["did_not_play"],
+                        "points": p["points"],
+                        "rebounds": p["rebounds"],
+                        "assists": p["assists"],
+                        "steals": p["steals"],
+                        "blocks": p["blocks"],
+                        "turnovers": p["turnovers"],
+                        "field_goals_made": p["field_goals_made"],
+                        "field_goals_attempted": p["field_goals_attempted"],
+                        "threepoint_made": p["threepoint_made"],
+                        "threepoint_attempted": p["threepoint_attempted"],
+                        "freethrow_made": p["freethrow_made"],
+                        "freethrow_attempted": p["freethrow_attempted"],
+                    }
+
+                    if existing_stat:
+                        for k, v in stat_fields.items():
+                            setattr(existing_stat, k, v)
+                        existing_stat.score_computed = False  # will be recomputed
+                        await existing_stat.save()
+                    else:
+                        await PlayerGameStats(**stat_fields).insert()
+
+                    count += 1
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to upsert stats player=%s game=%s: %s",
+                        p.get("goalserve_player_id"), game_id, exc,
+                    )
+
+        logger.info("Synced %d player-stat rows from Goalserve for %s", count, nba_date)
         return count
+
+    async def _resolve_goalserve_player(self, p: dict) -> Player | None:
+        """Match a Goalserve box-score player entry to our Player collection
+        by full name — the only identity signal we have without a roster
+        feed. On match, backfill goalserve_id/team_goalserve_id (still
+        holding NBA-CDN-era values) to Goalserve's own IDs. No match creates
+        a new minimal Player record from the box-score data alone."""
+        full_name = p["full_name"].strip()
+        if not full_name:
+            return None
+
+        player = await Player.find_one(Player.full_name == full_name)
+        if player:
+            if player.goalserve_id != p["goalserve_player_id"] or player.team_goalserve_id != p["team_goalserve_id"]:
+                player.goalserve_id = p["goalserve_player_id"]
+                player.team_goalserve_id = p["team_goalserve_id"]
+                await player.save()
+            return player
+
+        name_parts = full_name.split(" ", 1)
+        try:
+            return await Player(
+                goalserve_id=p["goalserve_player_id"],
+                first_name=name_parts[0],
+                last_name=name_parts[1] if len(name_parts) > 1 else "",
+                full_name=full_name,
+                position=p["position"] or None,
+                team_goalserve_id=p["team_goalserve_id"],
+            ).insert()
+        except Exception as exc:
+            # goalserve_id is unique — a race with another sync could collide
+            logger.warning("Could not create new Player for %s: %s", full_name, exc)
+            return await Player.find_one(Player.goalserve_id == p["goalserve_player_id"])
 
     # ------------------------------------------------------------------
     # Scoring: compute fantasy scores for a game (called after final)

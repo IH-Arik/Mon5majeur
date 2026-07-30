@@ -3,6 +3,7 @@ from datetime import date
 from beanie import PydanticObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
+from app.exceptions.errors import NotFoundException
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
 from app.modules.players.dependencies import get_player_service
 from app.modules.players.model import Player
@@ -53,7 +54,7 @@ async def get_player(
 
 @router.post(
     "/sync",
-    summary="Sync players roster from Goalserve (admin)",
+    summary="Sync players roster from NBA CDN, best-effort (admin)",
     dependencies=[Depends(get_current_superuser)],
 )
 async def sync_players(
@@ -81,7 +82,7 @@ async def sync_schedule(
 
 @router.post(
     "/sync/boxscore/{game_id}",
-    summary="Sync box-score stats for a game (admin)",
+    summary="Sync box-score stats for a game's date (admin)",
     dependencies=[Depends(get_current_superuser)],
 )
 async def sync_boxscore(
@@ -89,8 +90,15 @@ async def sync_boxscore(
     background_tasks: BackgroundTasks,
     service: PlayerService = Depends(get_player_service),
 ) -> dict:
-    background_tasks.add_task(service.sync_game_stats, game_id)
-    return {"detail": f"Boxscore sync started for game={game_id}"}
+    from app.modules.players.model import NBAGame
+
+    game = await NBAGame.find_one(NBAGame.goalserve_id == game_id)
+    if not game:
+        raise NotFoundException(f"Game {game_id} not found")
+    # Goalserve's scores feed is date-scoped, not single-game — this syncs
+    # every game on that date, this one included.
+    background_tasks.add_task(service.sync_scores_for_date, game.nba_date)
+    return {"detail": f"Boxscore sync started for {game.nba_date} (includes game={game_id})"}
 
 
 @router.post(

@@ -190,8 +190,9 @@ async def sync_player_roster_job() -> None:
 
 async def sync_today_schedule_job() -> None:
     """
-    Fetch tonight's NBA game schedule from NBA CDN scoreboard.
-    Passing None uses todaysScoreboard_00.json which always reflects the current NBA date.
+    Fetch tonight's NBA game schedule from Goalserve (pre-game — games that
+    haven't tipped off yet only show up in the schedule feed, not the scores
+    feed sync_live_games_job uses later).
     """
     from app.modules.players.service import PlayerService
     from app.modules.players.repository import PlayerRepository
@@ -199,8 +200,8 @@ async def sync_today_schedule_job() -> None:
     logger.info("CRON sync_today_schedule_job: fetching today's NBA schedule")
     try:
         svc = PlayerService(PlayerRepository())
-        count = await svc.sync_schedule(None)  # None → todaysScoreboard_00.json
-        logger.info("CRON: synced %d games from NBA CDN scoreboard", count)
+        count = await svc.sync_schedule(None)  # None → today (UTC)
+        logger.info("CRON: synced %d games from Goalserve schedule", count)
     except Exception as exc:
         logger.error("CRON sync_today_schedule_job failed: %s", exc, exc_info=True)
 
@@ -211,8 +212,9 @@ async def sync_today_schedule_job() -> None:
 
 async def sync_live_games_job() -> None:
     """
-    Poll Goalserve for all live or just-finished games today.
-    For each finished game: sync box-score → compute fantasy scores.
+    Poll Goalserve for today's live/finished games (one call gets scores +
+    full box score for every game on the date — see goalserve_client.py).
+    For each finished game: compute fantasy scores.
     This feeds PlayerGameStats so that daily_close_job at 09:00 finds data ready.
     """
     from app.modules.players.model import NBAGame
@@ -225,10 +227,11 @@ async def sync_live_games_job() -> None:
     try:
         svc = PlayerService(PlayerRepository())
 
-        # Re-sync schedule to update game statuses (live / final)
-        await svc.sync_schedule(today)
+        # Scores + box score for every one of today's games that has
+        # started — also updates each NBAGame's status/score in the process.
+        synced = await svc.sync_scores_for_date(today)
+        logger.info("CRON: synced %d player-stat rows for %s", synced, today)
 
-        # Fetch all games for today
         games = await NBAGame.find(NBAGame.nba_date == today).to_list()
         if not games:
             logger.info("CRON sync_live_games_job: no games today, skipping")
@@ -242,24 +245,16 @@ async def sync_live_games_job() -> None:
             logger.info("CRON: marked %d matches live", flipped)
 
         for game in games:
-            if game.status not in ("live", "final"):
+            if game.status != "final":
                 continue
 
-            # Sync box-score stats from Goalserve
-            synced = await svc.sync_game_stats(game.goalserve_id)
-            logger.info(
-                "CRON: synced %d stat rows for game %s (status=%s)",
-                synced, game.goalserve_id, game.status,
-            )
-
             # Compute fantasy scores for this game's stats (idempotent)
-            if game.status == "final":
-                scored = await svc.finalize_game_scores(game.goalserve_id)
-                if scored:
-                    logger.info(
-                        "CRON: computed %d fantasy scores for finished game %s",
-                        scored, game.goalserve_id,
-                    )
+            scored = await svc.finalize_game_scores(game.goalserve_id)
+            if scored:
+                logger.info(
+                    "CRON: computed %d fantasy scores for finished game %s",
+                    scored, game.goalserve_id,
+                )
 
     except Exception as exc:
         logger.error("CRON sync_live_games_job failed: %s", exc, exc_info=True)
