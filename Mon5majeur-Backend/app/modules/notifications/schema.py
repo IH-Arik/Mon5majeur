@@ -1,11 +1,12 @@
-import uuid
 from typing import Literal
+
+from beanie import PydanticObjectId
 
 from app.shared.base_schema import BaseResponseSchema, BaseSchema
 
 
 class NotificationCreate(BaseSchema):
-    recipient_id: uuid.UUID
+    recipient_id: PydanticObjectId
     title: str
     body: str
     notification_type: Literal["info", "success", "warning", "error"] = "info"
@@ -13,7 +14,7 @@ class NotificationCreate(BaseSchema):
 
 
 class NotificationResponse(BaseResponseSchema):
-    recipient_id: uuid.UUID
+    recipient_id: PydanticObjectId
     title: str
     body: str
     is_read: bool

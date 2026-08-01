@@ -411,6 +411,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           positionCategory: null,
           excludedPlayerIds: selectedIds,
           remainingBudget: totalBudget - usedBudget,
+          maxPrice: 8.0,
           onPlayerSelected: (p) => setState(() {
             sixthManPlayer = p;
             isConfirmed = false; // editing after confirm → back to orange

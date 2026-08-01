@@ -121,9 +121,18 @@ class ApiUrl {
   // Global League endpoints
   static const globalLeaguePlayersSelection =
       "/api/global-leagues/players-selection/";
+  static const globalLeagueStatus = "/api/v1/leagues/global/status";
+  static const globalLeagueJoin = "/api/v1/leagues/global/join";
+  static const globalLeagueBonusStatus = "/api/global-leagues/bonus-status/";
 
   // Live Score endpoints (premium, spec §4.5)
   static const livePremiumStatus = "/api/v1/live/premium-status";
   static String liveMatch(String matchId) => "/api/v1/live/match/$matchId";
   static const liveGlobal = "/api/v1/live/global";
+
+  // Notifications
+  static const notifications = "/api/v1/notifications";
+  static String markNotificationRead(String id) =>
+      "/api/v1/notifications/$id/read";
+  static const markAllNotificationsRead = "/api/v1/notifications/read-all";
 }

@@ -1,5 +1,4 @@
-import uuid
-
+from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, status
 
 from app.modules.auth.dependencies import get_current_user
@@ -24,7 +23,7 @@ async def list_my_notifications(
 
 @router.patch("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_notification_read(
-    notification_id: uuid.UUID,
+    notification_id: PydanticObjectId,
     current_user: User = Depends(get_current_user),
     service: NotificationService = Depends(get_notification_service),
 ) -> Notification:

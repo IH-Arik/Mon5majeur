@@ -557,7 +557,7 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     match_day: int = 0
     selected_players: list[dict] = []
     total_points: int = 0
-    max_balance: str = "100M"      # always "100M" for global
+    max_balance: str = "100M"      # "100M", or "105M" with Luxury Tax active
     current_balance: str = "100M"  # remaining after summing player prices
 
     # Home "NBA Global League" card launch spec: real validated/lock state
@@ -569,3 +569,10 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     # score archive. None until the user has at least joined the league.
     weekly_rank: int | None = None
     monthly_rank: int | None = None
+
+    # Strategic bonuses (spec §4.4) — now also available in the Global
+    # League, not just duel leagues. Same semantics as the private/public
+    # PlayersSelectionRequest/GetResponse fields.
+    luxury_tax: bool = False
+    chef_curry: bool = False
+    sixth_man_player: dict | None = None

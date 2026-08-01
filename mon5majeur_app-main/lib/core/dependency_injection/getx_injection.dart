@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import '../../controllers/global_league_controller.dart';
 import '../../controllers/my_leagues_controller.dart';
 import '../../controllers/my_match_today_controller.dart';
+import '../../controllers/notifications_controller.dart';
 import '../../presentation/screens/home/controllers/home_controller.dart';
 import '../../presentation/screens/home/controllers/create_league_controller.dart';
 import '../language/language_controller.dart';
@@ -33,6 +34,7 @@ void initGetx() {
   Get.lazyPut(() => MyLeaguesController(), fenix: true);
   Get.lazyPut(() => MyMatchTodayController(), fenix: true);
   Get.lazyPut(() => GlobalLeagueController(), fenix: true);
+  Get.lazyPut(() => NotificationsController(), fenix: true);
 
   // Get.lazyPut(() => ScannedItemsController(), fenix: true);
 

@@ -68,7 +68,9 @@ class PlayerScore {
       playerId: json['player_id'] ?? 0,
       teamName: json['team_name'] ?? '',
       username: json['username'] ?? '',
-      totalPoints: json['total_points'] ?? 0,
+      // score_full_selection() returns round(x, 2) which is always a float
+      // in Python (e.g. 16.0), even for whole numbers — coerce via num.
+      totalPoints: (json['total_points'] as num?)?.round() ?? 0,
       selection:
           (json['selection'] as List?)
               ?.map((e) => PlayerSelection.fromJson(e))
@@ -96,7 +98,9 @@ class PlayerSelection {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       position: json['position'] ?? '',
-      score: json['score'] ?? 0,
+      // Backend score fields are floats (e.g. 16.0) — parsing straight into
+      // an int throws (double is not a subtype of int); coerce via num.
+      score: (json['score'] as num?)?.round() ?? 0,
     );
   }
 }
@@ -127,8 +131,8 @@ class MatchPair {
       playerAName: json['player_a_name'] ?? '',
       playerBId: json['player_b_id'] ?? 0,
       playerBName: json['player_b_name'] ?? '',
-      scoreA: json['score_a'] ?? 0,
-      scoreB: json['score_b'] ?? 0,
+      scoreA: (json['score_a'] as num?)?.round() ?? 0,
+      scoreB: (json['score_b'] as num?)?.round() ?? 0,
       matchObjectId: json['match_object_id'],
     );
   }

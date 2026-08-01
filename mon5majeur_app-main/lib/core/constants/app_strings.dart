@@ -385,6 +385,9 @@ class AppString {
   static const String matchday14 = 'Matchday 14';
   static const String secondOfEightTeams = '🏆 #2nd of 8 teams';
   static const String regularSeasonWeek3 = '| Regular season | Week 3';
+
+  static const String markAllRead = 'Mark all read';
+  static const String noNotifications = 'No notifications yet';
   static const String myLeaguesTitle = 'My leagues';
   static const String searchHint = 'Search your leagues by name';
   static const String waiting = 'waiting';

@@ -317,6 +317,8 @@ class EnglishTranslation {
     AppString.matchday14: 'Matchday 14',
     AppString.secondOfEightTeams: '🏆 #2nd of 8 teams',
     AppString.regularSeasonWeek3: '| Regular season | Week 3',
+    AppString.markAllRead: 'Mark all read',
+    AppString.noNotifications: 'No notifications yet',
     AppString.myLeaguesTitle: 'My leagues',
     AppString.searchHint: 'Search your leagues by name',
     AppString.waiting: 'waiting',

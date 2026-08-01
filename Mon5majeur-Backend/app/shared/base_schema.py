@@ -1,6 +1,6 @@
-import uuid
 from datetime import datetime
 
+from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict
 
 
@@ -9,6 +9,6 @@ class BaseSchema(BaseModel):
 
 
 class BaseResponseSchema(BaseSchema):
-    id: uuid.UUID
+    id: PydanticObjectId
     created_at: datetime
     updated_at: datetime

@@ -114,8 +114,10 @@ class PlayoffGame {
   factory PlayoffGame.fromJson(Map<String, dynamic> json) {
     return PlayoffGame(
       gameNumber: json['game_number'] ?? 0,
-      scoreA: json['score_a'] ?? 0,
-      scoreB: json['score_b'] ?? 0,
+      // Backend score fields are floats (e.g. 16.0) — parsing straight into
+      // an int throws (double is not a subtype of int); coerce via num.
+      scoreA: (json['score_a'] as num?)?.round() ?? 0,
+      scoreB: (json['score_b'] as num?)?.round() ?? 0,
       winnerTeam: json['winner_team'] ?? '',
     );
   }

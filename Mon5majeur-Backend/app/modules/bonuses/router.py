@@ -61,10 +61,18 @@ async def _get_inventory(user: User) -> UserBonusInventory:
     return inv
 
 
+def _aware(dt: datetime | None) -> datetime | None:
+    """MongoDB round-trips datetimes as naive UTC — compares against an
+    aware `now` below would otherwise raise TypeError."""
+    if dt is not None and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def _to_response(inv: UserBonusInventory) -> InventoryResponse:
     now = datetime.now(timezone.utc)
-    ls_active = inv.live_scoring_until is not None and inv.live_scoring_until > now
-    sp_active = inv.stop_pub_until is not None and inv.stop_pub_until > now
+    ls_active = inv.live_scoring_until is not None and _aware(inv.live_scoring_until) > now
+    sp_active = inv.stop_pub_until is not None and _aware(inv.stop_pub_until) > now
     return InventoryResponse(
         sixth_man_charges=inv.sixth_man_charges,
         chef_curry_charges=inv.chef_curry_charges,

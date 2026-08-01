@@ -9,7 +9,9 @@ import '../../../../data/models/game_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../controllers/global_league_controller.dart';
+import '../../../../data/models/bonus_inventory_model.dart';
 import '../screens/select_player_screen.dart';
+import 'build_your_team_tab.dart' show BonusType;
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
 
@@ -41,6 +43,16 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
   late final GlobalLeagueController _controller;
 
+  // Bonus state — only one bonus can be active at a time (null = none).
+  BonusType? activeBonus;
+  bool get sixthManActivated => activeBonus == BonusType.sixthMan;
+  bool get chefsCurryActivated => activeBonus == BonusType.chefsCurry;
+  bool get luxuryTaxActivated => activeBonus == BonusType.luxuryTax;
+  bool showBonusOptions = false;
+  int sixthManAvailable = 0;
+  int chefsCurryAvailable = 0;
+  int luxuryTaxAvailable = 0;
+
   // API Integration
   List<Player> availablePlayers = [];
   bool isLoadingPlayers = true;
@@ -62,9 +74,9 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     Assets.icons.gercy5,
   ];
 
+  // 6th Man is outside the budget — spec says it is NOT counted against the cap.
   double get usedBudget =>
-      selectedPlayers.fold(0.0, (sum, p) => sum + (p?.price ?? 0.0)) +
-      (sixthManPlayer?.price ?? 0.0);
+      selectedPlayers.fold(0.0, (sum, p) => sum + (p?.price ?? 0.0));
 
   int get remainingPlayers => selectedPlayers.where((p) => p == null).length;
   bool get isTeamComplete => selectedPlayers.every((p) => p != null);
@@ -76,6 +88,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     _fetchPlayers();
     _fetchTodaysGames();
     _loadExistingSelection();
+    _fetchBonusInventory();
   }
 
   @override
@@ -84,7 +97,64 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     super.dispose();
   }
 
+  Future<void> _fetchBonusInventory() async {
+    // Prefer the combined free-quota + purchased-charge count for the
+    // Global League (same accounting model as private/public leagues —
+    // the free quota is otherwise invisible: a user with free uses left but
+    // 0 purchased charges would see "0" and the button would refuse to work).
+    try {
+      final response = await _apiClient.get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.globalLeagueBonusStatus}',
+      );
+      if (response.statusCode == 200 && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            sixthManAvailable = (data['sixth_man'] as num?)?.toInt() ?? 0;
+            chefsCurryAvailable = (data['chef_curry'] as num?)?.toInt() ?? 0;
+            luxuryTaxAvailable = (data['luxury_tax'] as num?)?.toInt() ?? 0;
+          });
+        }
+        return;
+      }
+    } catch (_) {
+      // fall through to the purchased-only inventory below
+    }
+
+    try {
+      final response = await _apiClient.get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.bonusInventory}',
+      );
+      if (response.statusCode == 200 && response.body != null) {
+        final inv = BonusInventory.fromJson(
+          response.body as Map<String, dynamic>,
+        );
+        if (mounted) {
+          setState(() {
+            sixthManAvailable = inv.sixthManCharges;
+            chefsCurryAvailable = inv.chefCurryCharges;
+            luxuryTaxAvailable = inv.luxuryTaxCharges;
+          });
+        }
+      }
+    } catch (_) {
+      // non-fatal: keep default 0
+    }
+  }
+
   void _loadExistingSelection() {
+    final selection = _controller.globalLeagueSelection.value;
+    if (selection != null) {
+      if (selection.luxuryTax) {
+        activeBonus = BonusType.luxuryTax;
+      } else if (selection.chefCurry) {
+        activeBonus = BonusType.chefsCurry;
+      } else if (selection.sixthManPlayer != null) {
+        activeBonus = BonusType.sixthMan;
+        sixthManPlayer = selection.sixthManPlayer;
+      }
+    }
+
     if (_controller.selectedPlayers.isNotEmpty) {
       setState(() {
         for (int i = 0; i < _controller.selectedPlayers.length && i < 5; i++) {
@@ -320,6 +390,96 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     );
   }
 
+  void _selectSixthMan() {
+    if (isLoadingPlayers && availablePlayers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Loading players, please wait...')),
+      );
+      return;
+    }
+
+    final selectedIds = selectedPlayers
+        .where((p) => p != null && p.id != null)
+        .map((p) => p!.id!)
+        .toSet();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => SelectPlayerScreen(
+          playersNotifier: _playersNotifier,
+          getHasMorePages: () => hasMorePages,
+          getIsLoadingMore: () => _isLoadingMore,
+          positionCategory: null,
+          excludedPlayerIds: selectedIds,
+          remainingBudget: totalBudget - usedBudget,
+          maxPrice: 8.0,
+          onPlayerSelected: (p) => setState(() {
+            sixthManPlayer = p;
+            isConfirmed = false; // editing after confirm → back to orange
+          }),
+          onLoadMore: _loadMorePlayers,
+        ),
+      ),
+    );
+  }
+
+  // Remaining charges available for a given bonus type.
+  int _availableFor(BonusType type) {
+    switch (type) {
+      case BonusType.sixthMan:
+        return sixthManAvailable;
+      case BonusType.chefsCurry:
+        return chefsCurryAvailable;
+      case BonusType.luxuryTax:
+        return luxuryTaxAvailable;
+    }
+  }
+
+  // Adjust the local charge count for a bonus type by [delta] (must be inside setState).
+  void _adjustCharge(BonusType type, int delta) {
+    switch (type) {
+      case BonusType.sixthMan:
+        sixthManAvailable += delta;
+        break;
+      case BonusType.chefsCurry:
+        chefsCurryAvailable += delta;
+        break;
+      case BonusType.luxuryTax:
+        luxuryTaxAvailable += delta;
+        break;
+    }
+  }
+
+  // Activate or change the active bonus. Only one bonus is active at a time;
+  // switching refunds the previously active bonus's charge and consumes the new one.
+  void _selectBonus(BonusType type) {
+    // Tapping the already-active bonus: just close the menu (re-pick 6th man player).
+    if (activeBonus == type) {
+      setState(() => showBonusOptions = false);
+      if (type == BonusType.sixthMan) _selectSixthMan();
+      return;
+    }
+
+    // Need at least one available charge to activate a new bonus.
+    if (_availableFor(type) <= 0) {
+      setState(() => showBonusOptions = false);
+      return;
+    }
+
+    final previous = activeBonus;
+    setState(() {
+      if (previous != null) _adjustCharge(previous, 1); // refund old
+      activeBonus = type;
+      _adjustCharge(type, -1); // consume new
+      showBonusOptions = false;
+      // Switching away from 6th man clears the on-court substitute slot.
+      if (previous == BonusType.sixthMan) sixthManPlayer = null;
+    });
+
+    if (type == BonusType.sixthMan) _selectSixthMan();
+  }
+
   void _selectJersey() async {
     final result = await Navigator.push<int>(
       context,
@@ -347,7 +507,12 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
     final playersToSave = selectedPlayers.whereType<Player>().toList();
 
-    final success = await _controller.submitPlayerSelection(playersToSave);
+    final success = await _controller.submitPlayerSelection(
+      playersToSave,
+      luxuryTax: luxuryTaxActivated,
+      chefCurry: chefsCurryActivated,
+      sixthManPlayer: sixthManActivated ? sixthManPlayer : null,
+    );
 
     if (success) {
       setState(() => isConfirmed = true);
@@ -392,6 +557,8 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           _buildBudgetCard(),
           SizedBox(height: 12.h),
           _buildCourtField(),
+          SizedBox(height: 12.h),
+          _buildActivatedBonuses(),
           SizedBox(height: 12.h),
           Obx(
             () => TeamStatusBanner(
@@ -533,6 +700,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                   left: 20.w,
                   child: _buildChangeJerseyButton(),
                 ),
+                Positioned(top: 30.h, right: 20.w, child: _buildBonusButton()),
                 Positioned(
                   top: 150.h,
                   left: 40.w,
@@ -559,11 +727,356 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                   right: 60.w,
                   child: _buildPlayerSlot(4, 'PG/SG'),
                 ),
+                if (sixthManActivated)
+                  Positioned(
+                    bottom: 20.h,
+                    right: 40.w,
+                    child: _buildSixthManSlot(),
+                  ),
               ],
             ),
           ),
         ),
+        // Bonus options menu - on top layer
+        if (showBonusOptions)
+          Positioned(top: 80.h, right: 36.w, child: _buildBonusOptionsMenu()),
       ],
+    );
+  }
+
+  // Persistent "… Bonus Activated" label for the currently active bonus.
+  Widget _buildActivatedBonuses() {
+    if (activeBonus == null) return const SizedBox.shrink();
+
+    final AssetGenImage icon;
+    final String label;
+    final Color color;
+    switch (activeBonus!) {
+      case BonusType.sixthMan:
+        icon = Assets.icons.sixman;
+        label = AppString.sixthManBonusActivated;
+        color = const Color(0xFF2941F1);
+        break;
+      case BonusType.chefsCurry:
+        icon = Assets.icons.chefcurry;
+        label = AppString.chefsCurryBonusActivated;
+        color = const Color(0xFFFECD56);
+        break;
+      case BonusType.luxuryTax:
+        icon = Assets.icons.luxarytax;
+        label = AppString.luxuryTaxBonusActivated;
+        color = const Color(0xFF3CDF1C);
+        break;
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          icon.image(width: 24.w, height: 24.h),
+          SizedBox(width: 8.w),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBonusOptionsMenu() {
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFF2C2C2C), width: 1.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBonusOptionItem(
+            icon: Assets.icons.sixman,
+            label: AppString.sixthMan,
+            count: sixthManAvailable,
+            isActivated: sixthManActivated,
+            onTap: () => _selectBonus(BonusType.sixthMan),
+          ),
+          SizedBox(height: 12.h),
+          _buildBonusOptionItem(
+            icon: Assets.icons.chefcurry,
+            label: AppString.chefsCurry,
+            count: chefsCurryAvailable,
+            isActivated: chefsCurryActivated,
+            onTap: () => _selectBonus(BonusType.chefsCurry),
+          ),
+          SizedBox(height: 12.h),
+          _buildBonusOptionItem(
+            icon: Assets.icons.luxarytax,
+            label: AppString.luxuryTax,
+            count: luxuryTaxAvailable,
+            isActivated: luxuryTaxActivated,
+            onTap: () => _selectBonus(BonusType.luxuryTax),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBonusOptionItem({
+    required AssetGenImage icon,
+    required String label,
+    required int count,
+    required bool isActivated,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 37.w,
+            height: 37.h,
+            decoration: BoxDecoration(
+              color: isActivated
+                  ? const Color(0xFF777777)
+                  : const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(19.r),
+              border: Border.all(color: const Color(0xFF2C2C2C), width: 1.r),
+            ),
+            child: Center(child: icon.image(width: 16.w, height: 16.h)),
+          ),
+          SizedBox(width: 4.w),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFF777777),
+              borderRadius: BorderRadius.circular(4.r),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10.sp,
+                fontFamily: 'Lato',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(width: 4.w),
+          Container(
+            width: 25.w,
+            height: 24.h,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A),
+              borderRadius: BorderRadius.circular(6.r),
+              border: Border.all(color: const Color(0xFF2C2C2C)),
+            ),
+            child: Center(
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: const Color(0xFFE8632C),
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Icon of the currently active bonus, for the top-right corner button.
+  AssetGenImage? get _activeBonusIcon {
+    switch (activeBonus) {
+      case BonusType.sixthMan:
+        return Assets.icons.sixman;
+      case BonusType.chefsCurry:
+        return Assets.icons.chefcurry;
+      case BonusType.luxuryTax:
+        return Assets.icons.luxarytax;
+      case null:
+        return null;
+    }
+  }
+
+  Widget _buildBonusButton() {
+    final activeIcon = _activeBonusIcon;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          showBonusOptions = !showBonusOptions;
+        });
+      },
+      child: Container(
+        width: 42.w,
+        height: 42.h,
+        decoration: ShapeDecoration(
+          color: showBonusOptions
+              ? const Color(0xFF777777)
+              : const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            side: BorderSide(width: 1.r, color: const Color(0xFF2C2C2C)),
+            borderRadius: BorderRadius.circular(6.r),
+          ),
+        ),
+        child: activeIcon != null
+            ? Center(child: activeIcon.image(width: 24.w, height: 24.h))
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    AppString.plus,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                  Text(
+                    AppString.bonuses,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8.sp,
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSixthManSlot() {
+    final player = sixthManPlayer;
+
+    return GestureDetector(
+      onTap: _selectSixthMan,
+      child: Column(
+        children: [
+          SizedBox(
+            width: 114.w,
+            height: 96.h,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  child: Container(
+                    width: 114.w,
+                    height: 91.h,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: jerseys[selectedJerseyIndex].provider(),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 39.w,
+                  top: 85.h,
+                  child: Container(
+                    width: 36.w,
+                    height: 11.h,
+                    decoration: ShapeDecoration(
+                      color: const Color(0xFF777777),
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(width: 0.50.r, color: Colors.white),
+                        borderRadius: BorderRadius.circular(3.r),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 44.w,
+                  top: 86.h,
+                  child: SizedBox(
+                    width: 28.w,
+                    height: 9.h,
+                    child: Text(
+                      AppString.sixthMan,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.sp,
+                        fontFamily: 'Lato',
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+                if (player == null)
+                  Positioned(
+                    left: 48.w,
+                    top: 57.h,
+                    child: SizedBox(
+                      width: 17.w,
+                      height: 21.h,
+                      child: Text(
+                        AppString.plus,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: const Color(0xFFAAAAAA),
+                          fontSize: 10.sp,
+                          fontFamily: 'Lato',
+                          fontWeight: FontWeight.w300,
+                          height: 1.10,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (player != null) ...[
+            SizedBox(height: 8.h),
+            Text(
+              player.name,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFFFECD56),
+                fontSize: 12.sp,
+                fontFamily: 'Roboto',
+                fontWeight: FontWeight.w600,
+                height: 1.83,
+              ),
+            ),
+            SizedBox(height: 4.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 6.w),
+              decoration: ShapeDecoration(
+                color: const Color(0xFF1A1A1A),
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(width: 1.r, color: const Color(0xFF2C2C2C)),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+              ),
+              child: Text(
+                '${player.price.toInt()} M',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontFamily: 'Roboto',
+                  fontWeight: FontWeight.w800,
+                  height: 1.83,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

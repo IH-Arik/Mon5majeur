@@ -27,7 +27,7 @@ class MyMatchesTodayScreen extends StatelessWidget {
           children: [
             // Header using CustomHeading
             CustomHeading(
-              title: AppString.myMatchesToday.tr,
+              title: AppString.nightsResults.tr,
               iconAsset: Assets.icons.vs,
               routePath: RoutePath.home.addBasePath,
             ),

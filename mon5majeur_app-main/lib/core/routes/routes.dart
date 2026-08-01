@@ -122,6 +122,11 @@ class AppRouter {
         builder: (context, state) => const MyMatchesTodayScreen(),
       ),
       GoRoute(
+        name: RoutePath.notificationsScreen,
+        path: RoutePath.notificationsScreen.addBasePath,
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
         name: RoutePath.createLeagueScreen,
         path: RoutePath.createLeagueScreen.addBasePath,
         builder: (context, state) => const CreateLeagueScreen(),

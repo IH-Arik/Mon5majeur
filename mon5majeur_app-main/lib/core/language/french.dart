@@ -316,6 +316,8 @@ class FrenchTranslation {
     AppString.matchday14: 'Journée 14',
     AppString.secondOfEightTeams: '🏆 #2ème sur 8 équipes',
     AppString.regularSeasonWeek3: '| Saison régulière | Semaine 3',
+    AppString.markAllRead: 'Tout marquer comme lu',
+    AppString.noNotifications: 'Aucune notification',
     AppString.myLeaguesTitle: 'Mes ligues',
     AppString.searchHint: 'Chercher par nom',
     AppString.waiting: 'en attente',

@@ -248,20 +248,11 @@ async def save_player_selection(
         FlutterPlayerSelection.match_day == match_day,
     )
 
-    # Only the Global League's own endpoint calls this without bonus support
-    # (private/public leagues only) — this module is duel-leagues-only, so
-    # bonus quota is always checked/consumed here.
-    await _sync_bonus(current_user, league.id, "luxury_tax", existing.luxury_tax if existing else False, luxury_tax)
-    await _sync_bonus(current_user, league.id, "chef_curry", existing.chef_curry if existing else False, chef_curry)
-    await _sync_bonus(
-        current_user, league.id, "sixth_man",
-        existing.sixth_man_player is not None if existing else False,
-        sixth_man_player is not None,
-    )
-
     # Budget check (spec §4.1/§4.4/§4.6.3): Luxury Tax adds +5M, and — for a
     # playoff game — the seeding budget bonus from this user's frozen
     # regular-season rank (+4M/+2M/+1M/+0M for seed 1-4) adds on top.
+    # Runs BEFORE bonus quota is consumed below — otherwise a request that
+    # fails on budget would still burn the player's bonus charge for nothing.
     seed_bonus = 0.0
     if match and match.is_playoff:
         from app.modules.leagues.playoff_engine import SEED_BUDGET_BONUS
@@ -276,6 +267,17 @@ async def save_player_selection(
         raise ForbiddenException(
             f"Total price {used}M exceeds budget {effective_budget}M"
         )
+
+    # Only the Global League's own endpoint calls this without bonus support
+    # (private/public leagues only) — this module is duel-leagues-only, so
+    # bonus quota is always checked/consumed here.
+    await _sync_bonus(current_user, league.id, "luxury_tax", existing.luxury_tax if existing else False, luxury_tax)
+    await _sync_bonus(current_user, league.id, "chef_curry", existing.chef_curry if existing else False, chef_curry)
+    await _sync_bonus(
+        current_user, league.id, "sixth_man",
+        existing.sixth_man_player is not None if existing else False,
+        sixth_man_player is not None,
+    )
 
     if existing:
         existing.selected_players = selected_players

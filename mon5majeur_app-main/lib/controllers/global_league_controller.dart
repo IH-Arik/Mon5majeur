@@ -19,6 +19,10 @@ class GlobalLeagueSelection {
   final int? lockInSeconds;
   final int? weeklyRank;
   final int? monthlyRank;
+  // Strategic bonuses (spec §4.4) — now also available in the Global League.
+  final bool luxuryTax;
+  final bool chefCurry;
+  final Player? sixthManPlayer;
 
   GlobalLeagueSelection({
     required this.matchDay,
@@ -30,6 +34,9 @@ class GlobalLeagueSelection {
     this.lockInSeconds,
     this.weeklyRank,
     this.monthlyRank,
+    this.luxuryTax = false,
+    this.chefCurry = false,
+    this.sixthManPlayer,
   });
 
   factory GlobalLeagueSelection.fromJson(Map<String, dynamic> json) {
@@ -47,6 +54,11 @@ class GlobalLeagueSelection {
       lockInSeconds: json['lock_in_seconds'],
       weeklyRank: json['weekly_rank'],
       monthlyRank: json['monthly_rank'],
+      luxuryTax: json['luxury_tax'] ?? false,
+      chefCurry: json['chef_curry'] ?? false,
+      sixthManPlayer: json['sixth_man_player'] != null
+          ? Player.fromJson(json['sixth_man_player'])
+          : null,
     );
   }
 
@@ -61,6 +73,9 @@ class GlobalLeagueSelection {
       'lock_in_seconds': lockInSeconds,
       'weekly_rank': weeklyRank,
       'monthly_rank': monthlyRank,
+      'luxury_tax': luxuryTax,
+      'chef_curry': chefCurry,
+      'sixth_man_player': sixthManPlayer?.toJson(),
     };
   }
 
@@ -88,6 +103,12 @@ class GlobalLeagueController extends GetxController {
   var maxBalance = '100M'.obs;
   var currentMatchDay = 0.obs;
 
+  // Whether the user has ever joined the Global League (Home card shows a
+  // "Join now" CTA until this is true, then switches to the stats card).
+  var hasJoined = false.obs;
+  var isJoining = false.obs;
+  var isCheckingJoinStatus = false.obs;
+
   // Error handling
   var errorMessage = ''.obs;
   var hasError = false.obs;
@@ -95,7 +116,64 @@ class GlobalLeagueController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchGlobalLeagueSelection();
+    checkJoinStatus();
+  }
+
+  /// Check whether the current user has already joined the Global League.
+  /// Only fetches the selection/stats once joined — an unjoined user has no
+  /// selection to load yet.
+  Future<void> checkJoinStatus() async {
+    if (isCheckingJoinStatus.value) return;
+    isCheckingJoinStatus.value = true;
+
+    try {
+      final apiClient = ApiClient();
+      final response = await apiClient.get(
+        url: ApiUrl.baseUrl + ApiUrl.globalLeagueStatus,
+        isBasic: false,
+        showResult: true,
+      );
+
+      if (response.statusCode == 200 && response.body != null) {
+        hasJoined.value = response.body['joined'] ?? false;
+        if (hasJoined.value) {
+          await fetchGlobalLeagueSelection();
+        }
+      }
+    } catch (e) {
+      logger.e('Error checking Global League join status: $e');
+    } finally {
+      isCheckingJoinStatus.value = false;
+    }
+  }
+
+  /// Join the Global League (Home card "Join now" CTA).
+  Future<bool> joinGlobalLeague() async {
+    if (isJoining.value) return false;
+    isJoining.value = true;
+
+    try {
+      final apiClient = ApiClient();
+      final response = await apiClient.post(
+        url: ApiUrl.baseUrl + ApiUrl.globalLeagueJoin,
+        isBasic: false,
+        body: {},
+        showResult: true,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        hasJoined.value = true;
+        await fetchGlobalLeagueSelection();
+        return true;
+      }
+      logger.e('Failed to join Global League: ${response.statusCode}');
+      return false;
+    } catch (e) {
+      logger.e('Error joining Global League: $e');
+      return false;
+    } finally {
+      isJoining.value = false;
+    }
   }
 
   /// Fetch current global league player selection
@@ -153,7 +231,12 @@ class GlobalLeagueController extends GetxController {
   }
 
   /// Submit/Update player selection to global league
-  Future<bool> submitPlayerSelection(List<Player> players) async {
+  Future<bool> submitPlayerSelection(
+    List<Player> players, {
+    bool luxuryTax = false,
+    bool chefCurry = false,
+    Player? sixthManPlayer,
+  }) async {
     if (isSaving.value) return false;
 
     isSaving.value = true;
@@ -170,6 +253,9 @@ class GlobalLeagueController extends GetxController {
         'selected_players': players
             .map((player) => player.toApiJson())
             .toList(),
+        'luxury_tax': luxuryTax,
+        'chef_curry': chefCurry,
+        'sixth_man_player': sixthManPlayer?.toApiJson(),
       };
 
       final response = await apiClient.post(

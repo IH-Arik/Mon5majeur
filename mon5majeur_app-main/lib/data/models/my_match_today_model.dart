@@ -105,8 +105,12 @@ class MatchPair {
       playerAName: json['player_a_name'],
       playerBId: json['player_b_id'],
       playerBName: json['player_b_name'],
-      scoreA: json['score_a'] ?? 0,
-      scoreB: json['score_b'] ?? 0,
+      // Backend sends these as floats (e.g. 16.0) even for whole scores —
+      // parsing directly into an int field throws (double is not a subtype
+      // of int), silently swallowed by the caller's try/catch, which left
+      // the whole match list stuck empty. Parse via num, then round.
+      scoreA: (json['score_a'] as num?)?.round() ?? 0,
+      scoreB: (json['score_b'] as num?)?.round() ?? 0,
       matchObjectId: json['match_object_id'],
     );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/feature_flags.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
@@ -151,7 +152,7 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                 ),
               ],
             ),
-            if (_selectedTab == 0) ...[
+            if (kAdsEnabled && _selectedTab == 0) ...[
               SizedBox(height: 12.h),
               Align(
                 alignment: Alignment.centerRight,

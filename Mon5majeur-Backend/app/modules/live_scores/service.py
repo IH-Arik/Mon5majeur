@@ -20,7 +20,10 @@ from app.modules.users.model import User
 def _is_premium(user: User) -> bool:
     if user.premium_until is None:
         return False
-    return user.premium_until > datetime.now(timezone.utc)
+    premium_until = user.premium_until
+    if premium_until.tzinfo is None:  # MongoDB round-trips datetimes as naive UTC
+        premium_until = premium_until.replace(tzinfo=timezone.utc)
+    return premium_until > datetime.now(timezone.utc)
 
 
 class LiveScoreService:
@@ -126,7 +129,10 @@ class LiveScoreService:
     async def grant_premium(self, user: User, days: int) -> User:
         """Admin: extend premium_until by N days."""
         now = datetime.now(timezone.utc)
-        base = max(user.premium_until or now, now)
+        existing = user.premium_until
+        if existing is not None and existing.tzinfo is None:  # naive after Mongo round-trip
+            existing = existing.replace(tzinfo=timezone.utc)
+        base = max(existing or now, now)
         user.premium_until = base + timedelta(days=days)
         await user.save()
         return user

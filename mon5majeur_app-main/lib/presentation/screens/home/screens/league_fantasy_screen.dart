@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:mon5majeur_app/core/constants/app_strings.dart';
+import 'package:mon5majeur_app/core/constants/feature_flags.dart';
 import 'package:mon5majeur_app/core/custom_assets/assets.gen.dart';
 import '../tabs/build_your_team_tab.dart';
 import '../tabs/leaderboard_tab.dart';
@@ -151,7 +152,7 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
               SizedBox(width: 30.w),
             ],
           ),
-          if (widget.showBudgetBonus && _selectedTab == 0) ...[
+          if (kAdsEnabled && widget.showBudgetBonus && _selectedTab == 0) ...[
             SizedBox(height: 12.h),
             Align(
               alignment: Alignment.centerRight,

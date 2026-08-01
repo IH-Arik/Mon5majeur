@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../controllers/global_league_controller.dart';
+import '../../../controllers/notifications_controller.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
@@ -198,28 +199,57 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Row(
                         children: [
                           /// Pulsing Notification Icon
-                          AnimatedBuilder(
-                            animation: _pulseAnimation,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: _pulseAnimation.value,
-                                child: Container(
-                                  padding: EdgeInsets.all(8.r),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      // BoxShadow(
-                                      //   color: Colors.yellow.withOpacity(0.4),
-                                      //   blurRadius: 10.r,
-                                      //   spreadRadius: 2.r,
-                                      // ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.notifications,
-                                    color: Colors.yellow,
-                                    size: 24.r,
-                                  ),
+                          Builder(
+                            builder: (context) {
+                              final notifController =
+                                  Get.find<NotificationsController>();
+                              return GestureDetector(
+                                onTap: () => context.go(
+                                  RoutePath.notificationsScreen.addBasePath,
+                                ),
+                                child: AnimatedBuilder(
+                                  animation: _pulseAnimation,
+                                  builder: (context, child) {
+                                    return Transform.scale(
+                                      scale: _pulseAnimation.value,
+                                      child: Container(
+                                        padding: EdgeInsets.all(8.r),
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            Icon(
+                                              Icons.notifications,
+                                              color: Colors.yellow,
+                                              size: 24.r,
+                                            ),
+                                            Obx(
+                                              () => notifController
+                                                      .hasUnread
+                                                  ? Positioned(
+                                                      right: -1,
+                                                      top: -1,
+                                                      child: Container(
+                                                        width: 9.w,
+                                                        height: 9.w,
+                                                        decoration: const BoxDecoration(
+                                                          shape:
+                                                              BoxShape.circle,
+                                                          color: Color(
+                                                            0xFFFF3B30,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : const SizedBox.shrink(),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               );
                             },
@@ -431,6 +461,74 @@ class _GlobalLeagueCard extends StatelessWidget {
             ],
           ),
           child: Obx(() {
+            /// Title (shown in both joined/not-joined states)
+            final title = Text(
+              AppString.nbaGlobalLeague.tr,
+              style: TextStyle(
+                color: const Color(0xFFFF6B35),
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            );
+
+            if (!controller.hasJoined.value) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  title,
+                  SizedBox(height: 12.h),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _statLine(AppString.competeAgainstEveryone.tr),
+                            SizedBox(height: 4.h),
+                            _statLine(AppString.weeklyMonthlyPrizes.tr),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      ElevatedButton(
+                        onPressed: controller.isJoining.value
+                            ? null
+                            : () => controller.joinGlobalLeague(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF6B35),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24.r),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                        child: controller.isJoining.value
+                            ? SizedBox(
+                                width: 16.r,
+                                height: 16.r,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                AppString.joinNow.tr,
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+
             final selection = controller.globalLeagueSelection.value;
             // Night score comes from the loaded selection; "—" until available.
             final nightScore = selection == null
@@ -443,15 +541,7 @@ class _GlobalLeagueCard extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// Title
-                Text(
-                  AppString.nbaGlobalLeague.tr,
-                  style: TextStyle(
-                    color: const Color(0xFFFF6B35),
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                title,
                 SizedBox(height: 12.h),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

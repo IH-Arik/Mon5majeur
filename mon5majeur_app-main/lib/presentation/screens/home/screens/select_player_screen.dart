@@ -14,6 +14,10 @@ class SelectPlayerScreen extends StatefulWidget {
   final Future<void> Function() onLoadMore;
   final String? positionCategory;
   final Set<String> excludedPlayerIds;
+  // 6th Man picks must cost ≤ 8M (spec §4.4) — the backend rejects a pricier
+  // pick at submit time, so filtering the list here means Confirm can never
+  // silently fail on a 6th Man that was never a valid choice to begin with.
+  final double? maxPrice;
 
   const SelectPlayerScreen({
     super.key,
@@ -25,6 +29,7 @@ class SelectPlayerScreen extends StatefulWidget {
     required this.onLoadMore,
     this.positionCategory,
     this.excludedPlayerIds = const {},
+    this.maxPrice,
   });
 
   @override
@@ -82,6 +87,11 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
     return players.where((player) {
       // Exclude already selected players
       if (player.id != null && widget.excludedPlayerIds.contains(player.id!)) {
+        return false;
+      }
+
+      // 6th Man price cap (spec §4.4) — backend rejects anything pricier.
+      if (widget.maxPrice != null && player.price > widget.maxPrice!) {
         return false;
       }
 
@@ -172,21 +182,33 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
     return Container(
       color: const Color(0xFF000000),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            AppString.bank,
-            style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppString.bank,
+                style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+              ),
+              Text(
+                '\$${widget.remainingBudget.toInt()} M',
+                style: TextStyle(
+                  color: const Color(0xFF4CAF50),
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-          Text(
-            '\$${widget.remainingBudget.toInt()} M',
-            style: TextStyle(
-              color: const Color(0xFF4CAF50),
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
+          if (widget.maxPrice != null) ...[
+            SizedBox(height: 4.h),
+            Text(
+              '6th Man pick must cost ≤ ${widget.maxPrice!.toInt()}M',
+              style: TextStyle(color: Colors.white38, fontSize: 11.sp),
             ),
-          ),
+          ],
         ],
       ),
     );
