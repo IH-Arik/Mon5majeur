@@ -19,10 +19,6 @@ class GlobalLeagueSelection {
   final int? lockInSeconds;
   final int? weeklyRank;
   final int? monthlyRank;
-  // Strategic bonuses (spec §4.4) — now also available in the Global League.
-  final bool luxuryTax;
-  final bool chefCurry;
-  final Player? sixthManPlayer;
 
   GlobalLeagueSelection({
     required this.matchDay,
@@ -34,9 +30,6 @@ class GlobalLeagueSelection {
     this.lockInSeconds,
     this.weeklyRank,
     this.monthlyRank,
-    this.luxuryTax = false,
-    this.chefCurry = false,
-    this.sixthManPlayer,
   });
 
   factory GlobalLeagueSelection.fromJson(Map<String, dynamic> json) {
@@ -54,11 +47,6 @@ class GlobalLeagueSelection {
       lockInSeconds: json['lock_in_seconds'],
       weeklyRank: json['weekly_rank'],
       monthlyRank: json['monthly_rank'],
-      luxuryTax: json['luxury_tax'] ?? false,
-      chefCurry: json['chef_curry'] ?? false,
-      sixthManPlayer: json['sixth_man_player'] != null
-          ? Player.fromJson(json['sixth_man_player'])
-          : null,
     );
   }
 
@@ -73,9 +61,6 @@ class GlobalLeagueSelection {
       'lock_in_seconds': lockInSeconds,
       'weekly_rank': weeklyRank,
       'monthly_rank': monthlyRank,
-      'luxury_tax': luxuryTax,
-      'chef_curry': chefCurry,
-      'sixth_man_player': sixthManPlayer?.toJson(),
     };
   }
 
@@ -231,12 +216,7 @@ class GlobalLeagueController extends GetxController {
   }
 
   /// Submit/Update player selection to global league
-  Future<bool> submitPlayerSelection(
-    List<Player> players, {
-    bool luxuryTax = false,
-    bool chefCurry = false,
-    Player? sixthManPlayer,
-  }) async {
+  Future<bool> submitPlayerSelection(List<Player> players) async {
     if (isSaving.value) return false;
 
     isSaving.value = true;
@@ -248,14 +228,13 @@ class GlobalLeagueController extends GetxController {
 
       logger.i('Submitting ${players.length} players to Global League...');
 
-      // Convert players to API format
+      // Convert players to API format — the Global League runs on the
+      // no-bonus duel engine, so no bonus flags are sent here (see
+      // build_your_team_tab.dart for the private/public bonus flow).
       final body = {
         'selected_players': players
             .map((player) => player.toApiJson())
             .toList(),
-        'luxury_tax': luxuryTax,
-        'chef_curry': chefCurry,
-        'sixth_man_player': sixthManPlayer?.toApiJson(),
       };
 
       final response = await apiClient.post(

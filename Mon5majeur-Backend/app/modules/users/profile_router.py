@@ -34,12 +34,12 @@ class ProfileStatsResponse(BaseModel):
     total_matches: int = 0     # League Play
     # Regular season
     regular_season_wins: int = 0
-    league_victories: int = 0  # rank == 1 in completed leagues
-    # Trophies (rank-based)
-    trophy_gold: int = 0       # 1st place finishes
-    trophy_silver: int = 0     # 2nd place finishes
-    trophy_bronze: int = 0     # 3rd place finishes
-    trophy_other: int = 0      # 4th place (playoff qualifier)
+    league_victories: int = 0  # == trophy_gold, kept for backward compat
+    # Trophies (QA 08/08/2026 item 6 — event-based, not rank-tier-based):
+    trophy_gold: int = 0       # Wings — duel league (private/public) victory
+    trophy_silver: int = 0     # Ball — Global League weekly #1 finish
+    trophy_diamond: int = 0    # Global League monthly #1 finish
+    trophy_orange_l: int = 0   # Last place in a completed duel league
     # Performance
     avg_points_scored: float = 0.0
     avg_points_conceded: float = 0.0
@@ -152,28 +152,31 @@ async def create_user_profile(
 async def get_profile_stats(
     current_user: User = Depends(get_current_user),
 ) -> ProfileStatsResponse:
-    from app.modules.leagues.model import League, LeagueMembership, LeagueMatch
+    from app.modules.leagues.constants import LEAGUE_STATUS_COMPLETED, LEAGUE_TYPE_GLOBAL
+    from app.modules.leagues.model import League, LeagueMatch, LeagueMembership
+    from app.modules.leagues.reward_model import GlobalLeagueReward
+
+    user_id = current_user.id
+    since_year = current_user.created_at.year if current_user.created_at else datetime.now(timezone.utc).year
 
     memberships = await LeagueMembership.find(
-        LeagueMembership.user_id == current_user.id
+        LeagueMembership.user_id == user_id
     ).to_list()
 
     if not memberships:
-        since_year = current_user.created_at.year if current_user.created_at else datetime.now(timezone.utc).year
         return ProfileStatsResponse(
             team_name=current_user.team_name or "",
             team_logo=current_user.team_logo or "",
             since_year=since_year,
         )
 
-    # ── Aggregate from memberships ─────────────────────────────────────────
+    # ── Aggregate W/L/points from ALL memberships (duel leagues only —
+    # Global League memberships never accrue wins/losses/points here) ──────
     total_wins = sum(m.wins for m in memberships)
     total_losses = sum(m.losses for m in memberships)
     total_pf = sum(m.points_for for m in memberships)
     total_pa = sum(m.points_against for m in memberships)
 
-    # Total completed matches from LeagueMatch
-    user_id = current_user.id
     home_matches = await LeagueMatch.find(
         {"home_user_id": user_id, "status": "completed"}
     ).count()
@@ -187,13 +190,47 @@ async def get_profile_stats(
     avg_scored = round(total_pf / total_matches, 1) if total_matches else 0.0
     avg_conceded = round(total_pa / total_matches, 1) if total_matches else 0.0
 
-    # ── Trophies (rank-based) ───────────────────────────────────────────────
-    trophy_gold   = sum(1 for m in memberships if m.rank == 1)
-    trophy_silver = sum(1 for m in memberships if m.rank == 2)
-    trophy_bronze = sum(1 for m in memberships if m.rank == 3)
-    trophy_other  = sum(1 for m in memberships if m.rank == 4)
+    # ── Trophies (spec/QA 08/08/2026 item 6 — real events, not rank tiers) ─
+    #
+    # Gold (Wings) = duel league victory: rank 1 in a COMPLETED private/
+    # public league. Orange L = dead last in a COMPLETED duel league (rank
+    # equals that league's actual member count, not a hardcoded "4").
+    # A currently-leading-but-unfinished league counts for neither.
+    duel_league_ids = [
+        m.league_id for m in memberships
+    ]
+    leagues = await League.find({"_id": {"$in": duel_league_ids}}).to_list()
+    league_map = {l.id: l for l in leagues}
 
-    since_year = current_user.created_at.year if current_user.created_at else datetime.now(timezone.utc).year
+    trophy_gold = 0
+    trophy_orange_l = 0
+    for m in memberships:
+        league = league_map.get(m.league_id)
+        if not league or league.type == LEAGUE_TYPE_GLOBAL:
+            continue
+        if league.status != LEAGUE_STATUS_COMPLETED or m.rank is None:
+            continue
+        if m.rank == 1:
+            trophy_gold += 1
+        member_count = await LeagueMembership.find(
+            LeagueMembership.league_id == league.id
+        ).count()
+        if member_count > 1 and m.rank == member_count:
+            trophy_orange_l += 1
+
+    # Silver (Ball) = Global League weekly #1. Diamond = Global League
+    # monthly #1. Both are recorded once per period by the weekly/monthly
+    # rewards cron (global_score_service.py) — never a static value.
+    trophy_silver = await GlobalLeagueReward.find(
+        GlobalLeagueReward.user_id == user_id,
+        GlobalLeagueReward.period_type == "weekly",
+        GlobalLeagueReward.rank == 1,
+    ).count()
+    trophy_diamond = await GlobalLeagueReward.find(
+        GlobalLeagueReward.user_id == user_id,
+        GlobalLeagueReward.period_type == "monthly",
+        GlobalLeagueReward.rank == 1,
+    ).count()
 
     return ProfileStatsResponse(
         team_name=current_user.team_name or "",
@@ -207,8 +244,8 @@ async def get_profile_stats(
         league_victories=trophy_gold,
         trophy_gold=trophy_gold,
         trophy_silver=trophy_silver,
-        trophy_bronze=trophy_bronze,
-        trophy_other=trophy_other,
+        trophy_diamond=trophy_diamond,
+        trophy_orange_l=trophy_orange_l,
         avg_points_scored=avg_scored,
         avg_points_conceded=avg_conceded,
     )

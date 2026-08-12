@@ -7,6 +7,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
+import '../../../../data/models/private_league_model.dart';
 import '../controllers/create_league_controller.dart';
 
 class EditLeagueScreen extends StatefulWidget {
@@ -33,28 +34,23 @@ class _EditLeagueScreenState extends State<EditLeagueScreen> {
   bool _showLogoSelector = false;
 
   final List<AssetGenImage> _logoOptions = [
-    Assets.icons.logo1,
-    Assets.icons.logo2,
-    Assets.icons.logo3,
-    Assets.icons.logo4,
-    Assets.icons.logo5,
-    Assets.icons.logo6,
+    Assets.icons.leagueLogoFlamingBall,
+    Assets.icons.leagueLogoCap,
+    Assets.icons.leagueLogoYeti,
+    Assets.icons.leagueLogoLion,
+    Assets.icons.leagueLogoBall,
+    Assets.icons.leagueLogoShark,
+    Assets.icons.leagueLogoSnake,
   ];
 
   final Map<String, AssetGenImage> _logoMap = {
-    'atlanta_hawks': Assets.icons.logo1,
-    'boston_celtics': Assets.icons.logo2,
-    'chicago_bulls': Assets.icons.logo3,
-    'lakers': Assets.icons.logo4,
-    'golden_state_warriors': Assets.icons.logo5,
-    'paris_fc': Assets.icons.logo6,
-    'lion': Assets.icons.lion,
-    'logo1': Assets.icons.logo1,
-    'logo2': Assets.icons.logo2,
-    'logo3': Assets.icons.logo3,
-    'logo4': Assets.icons.logo4,
-    'logo5': Assets.icons.logo5,
-    'logo6': Assets.icons.logo6,
+    LeagueLogoChoices.flamingBall: Assets.icons.leagueLogoFlamingBall,
+    LeagueLogoChoices.cap: Assets.icons.leagueLogoCap,
+    LeagueLogoChoices.yeti: Assets.icons.leagueLogoYeti,
+    LeagueLogoChoices.lion: Assets.icons.leagueLogoLion,
+    LeagueLogoChoices.ball: Assets.icons.leagueLogoBall,
+    LeagueLogoChoices.shark: Assets.icons.leagueLogoShark,
+    LeagueLogoChoices.snake: Assets.icons.leagueLogoSnake,
   };
 
   @override
@@ -96,14 +92,16 @@ class _EditLeagueScreenState extends State<EditLeagueScreen> {
   }
 
   String _getLogoName(AssetGenImage logo) {
-    if (logo == Assets.icons.logo1) return 'atlanta_hawks';
-    if (logo == Assets.icons.logo2) return 'boston_celtics';
-    if (logo == Assets.icons.logo3) return 'chicago_bulls';
-    if (logo == Assets.icons.logo4) return 'lakers';
-    if (logo == Assets.icons.logo5) return 'golden_state_warriors';
-    if (logo == Assets.icons.logo6) return 'paris_fc';
-    if (logo == Assets.icons.lion) return 'lion';
-    return 'atlanta_hawks';
+    if (logo == Assets.icons.leagueLogoFlamingBall) {
+      return LeagueLogoChoices.flamingBall;
+    }
+    if (logo == Assets.icons.leagueLogoCap) return LeagueLogoChoices.cap;
+    if (logo == Assets.icons.leagueLogoYeti) return LeagueLogoChoices.yeti;
+    if (logo == Assets.icons.leagueLogoLion) return LeagueLogoChoices.lion;
+    if (logo == Assets.icons.leagueLogoBall) return LeagueLogoChoices.ball;
+    if (logo == Assets.icons.leagueLogoShark) return LeagueLogoChoices.shark;
+    if (logo == Assets.icons.leagueLogoSnake) return LeagueLogoChoices.snake;
+    return LeagueLogoChoices.flamingBall;
   }
 
   String get _waitingRoomRoute {

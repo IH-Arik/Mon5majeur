@@ -82,4 +82,16 @@ async def recompute_player_price(player: Player, today: date) -> Player:
             PlayerGameStats.did_not_play == False,  # noqa: E712
         ).count()
 
+    # Last 2 played-game scores (spec Part 1 §5.0) — same played-games
+    # source as the form badge (form_indicator.py), so the two features can
+    # never visually disagree. `last_5` is already sorted most-recent-first.
+    newest_first = [
+        int(round(g.fantasy_score)) if g.fantasy_score is not None else None
+        for g in last_5[:2]
+    ]
+    chronological = list(reversed(newest_first))  # [older, newer]
+    while len(chronological) < 2:
+        chronological.insert(0, None)
+    player.recent_two_scores = chronological
+
     return player

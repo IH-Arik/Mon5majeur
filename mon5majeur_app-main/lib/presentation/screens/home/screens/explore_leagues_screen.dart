@@ -55,20 +55,22 @@ class _ExploreLeaguesScreenState extends State<ExploreLeaguesScreen> {
   // Helper to get logo asset
   AssetGenImage _getLogoAsset(String logoName) {
     switch (logoName.toLowerCase()) {
-      case 'atlanta_hawks':
-        return Assets.icons.logo1;
-      case 'boston_celtics':
-        return Assets.icons.logo2;
-      case 'chicago_bulls':
-        return Assets.icons.logo3;
-      case 'lakers':
-        return Assets.icons.logo4;
-      case 'golden_state_warriors':
-        return Assets.icons.logo5;
-      case 'paris_fc':
-        return Assets.icons.logo6;
+      case 'league_flaming_ball':
+        return Assets.icons.leagueLogoFlamingBall;
+      case 'league_cap':
+        return Assets.icons.leagueLogoCap;
+      case 'league_yeti':
+        return Assets.icons.leagueLogoYeti;
+      case 'league_lion':
+        return Assets.icons.leagueLogoLion;
+      case 'league_ball':
+        return Assets.icons.leagueLogoBall;
+      case 'league_shark':
+        return Assets.icons.leagueLogoShark;
+      case 'league_snake':
+        return Assets.icons.leagueLogoSnake;
       default:
-        return Assets.icons.lion;
+        return Assets.icons.leagueLogoFlamingBall;
     }
   }
 

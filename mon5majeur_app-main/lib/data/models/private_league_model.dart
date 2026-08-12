@@ -160,30 +160,24 @@ class WebSocketPayload {
 }
 
 // League Logo Choices
+/// Dedicated league-logo pool (QA 08/08/2026 item 8) — distinct from the
+/// player jersey mascots and from the personal team-logo picker
+/// (TeamLogoChoices in profile_model.dart), which is a separate feature.
 class LeagueLogoChoices {
-  static const String atlantaHawks = 'atlanta_hawks';
-  static const String bostonCeltics = 'boston_celtics';
-  static const String chicagoBulls = 'chicago_bulls';
-  static const String lakers = 'lakers';
-  static const String goldenStateWarriors = 'golden_state_warriors';
-  static const String parisFc = 'paris_fc';
+  static const String flamingBall = 'league_flaming_ball';
+  static const String cap = 'league_cap';
+  static const String yeti = 'league_yeti';
+  static const String lion = 'league_lion';
+  static const String ball = 'league_ball';
+  static const String shark = 'league_shark';
+  static const String snake = 'league_snake';
+
+  static const List<String> all = [
+    flamingBall, cap, yeti, lion, ball, shark, snake,
+  ];
 
   static String getLeagueLogoByIndex(int index) {
-    switch (index) {
-      case 0:
-        return atlantaHawks;
-      case 1:
-        return bostonCeltics;
-      case 2:
-        return chicagoBulls;
-      case 3:
-        return lakers;
-      case 4:
-        return goldenStateWarriors;
-      case 5:
-        return parisFc;
-      default:
-        return atlantaHawks;
-    }
+    if (index < 0 || index >= all.length) return flamingBall;
+    return all[index];
   }
 }

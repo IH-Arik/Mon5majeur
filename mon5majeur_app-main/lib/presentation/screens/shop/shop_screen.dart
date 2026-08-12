@@ -101,23 +101,25 @@ class ShopScreen extends StatelessWidget {
                         );
                       }),
 
-                      /// Token balance pill
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 12.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2a2a2a),
-                          borderRadius: BorderRadius.circular(20.r),
-                        ),
-                        child: Row(
-                          children: [
-                            Assets.icons.tokenIcon
-                                .image(width: 20.r, height: 20.r),
-                            SizedBox(width: 6.w),
-                            GestureDetector(
-                              onTap: () =>
-                                  context.go(RoutePath.buyToken.addBasePath),
-                              child: Obx(() {
+                      /// Token balance pill — the whole pill (not just the
+                      /// number) is the tap target to reach the top-up
+                      /// screen, plus a "+" cue so it reads as tappable.
+                      GestureDetector(
+                        onTap: () =>
+                            context.go(RoutePath.buyToken.addBasePath),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2a2a2a),
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          child: Row(
+                            children: [
+                              Assets.icons.tokenIcon
+                                  .image(width: 20.r, height: 20.r),
+                              SizedBox(width: 6.w),
+                              Obx(() {
                                 final c = Get.find<ShopController>();
                                 return Text(
                                   c.isLoadingBalance.value
@@ -130,8 +132,14 @@ class ShopScreen extends StatelessWidget {
                                   ),
                                 );
                               }),
-                            ),
-                          ],
+                              SizedBox(width: 4.w),
+                              Icon(
+                                Icons.add_circle,
+                                color: const Color(0xFFFF6B35),
+                                size: 16.r,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -216,8 +224,8 @@ class ShopScreen extends StatelessWidget {
                       title: AppString.liveScoring.tr,
                       subtitle: AppString.realTimeUpdate.tr,
                       description: AppString.liveScoringDesc.tr,
-                      tokenAmount: '450',
-                      tokenSuffix: AppString.perYear.tr,
+                      tokenAmount: '200',
+                      tokenSuffix: AppString.perMonth.tr,
                       buttonText: inv.liveScoringActive
                           ? 'Active ✓'
                           : AppString.unlock.tr,

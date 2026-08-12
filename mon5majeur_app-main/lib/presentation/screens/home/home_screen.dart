@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../../../controllers/global_league_controller.dart';
 import '../../../controllers/notifications_controller.dart';
@@ -10,6 +11,8 @@ import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
 import '../../widgets/navigation.dart';
+import '../tutorial/tutorial_controller.dart';
+import '../tutorial/tutorial_skip_button.dart';
 import 'controllers/home_controller.dart';
 import 'widgets/home_drawer.dart';
 
@@ -29,9 +32,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _pulseAnimation;
   late Animation<Offset> _slideAnimation;
 
+  late final TutorialController _tutorial;
+  Worker? _spotlightWorker;
+  BuildContext? _showcaseContext;
+
   @override
   void initState() {
     super.initState();
+
+    _tutorial = Get.find<TutorialController>();
+    _spotlightWorker = ever<bool>(_tutorial.showHomeSpotlight, (show) {
+      final ctx = _showcaseContext;
+      if (show && mounted && ctx != null) {
+        ShowCaseWidget.of(ctx).startShowCase([_tutorial.homeJoinKey]);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _tutorial.checkHomeReadiness(),
+    );
 
     // Logo bounce animation
     _logoController = AnimationController(
@@ -76,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _spotlightWorker?.dispose();
     _logoController.dispose();
     _pulseController.dispose();
     _slideController.dispose();
@@ -90,7 +109,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: Colors.black,
       endDrawer: const HomeDrawer(),
-      body: Stack(
+      body: ShowCaseWidget(
+        enableAutoScroll: true,
+        globalFloatingActionWidget: buildTutorialSkipAction,
+        builder: (scContext) {
+          _showcaseContext = scContext;
+          return Stack(
         children: [
           /// Background Image with parallax effect
           Positioned(
@@ -362,6 +386,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ],
+      );
+        },
       ),
 
       /// 🔹 Bottom Navigation
@@ -430,6 +456,19 @@ class _GlobalLeagueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<GlobalLeagueController>();
+    final tutorial = Get.find<TutorialController>();
+
+    Future<void> handleJoinTap() async {
+      final success = await controller.joinGlobalLeague();
+      if (success) {
+        if (tutorial.active.value && tutorial.step.value == 0) {
+          await tutorial.advanceTo(1);
+        }
+        if (context.mounted) {
+          context.go(RoutePath.globalLeagueScreen.addBasePath);
+        }
+      }
+    }
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -491,37 +530,45 @@ class _GlobalLeagueCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: 12.w),
-                      ElevatedButton(
-                        onPressed: controller.isJoining.value
-                            ? null
-                            : () => controller.joinGlobalLeague(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B35),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24.r),
+                      Showcase(
+                        key: tutorial.homeJoinKey,
+                        description: AppString.tutorialStep0.tr,
+                        disposeOnTap: true,
+                        disableBarrierInteraction: true,
+                        onTargetClick: handleJoinTap,
+                        targetBorderRadius: BorderRadius.circular(24.r),
+                        child: ElevatedButton(
+                          onPressed: controller.isJoining.value
+                              ? null
+                              : handleJoinTap,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF6B35),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24.r),
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 10.h,
+                            ),
                           ),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20.w,
-                            vertical: 10.h,
-                          ),
+                          child: controller.isJoining.value
+                              ? SizedBox(
+                                  width: 16.r,
+                                  height: 16.r,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  AppString.joinNow.tr,
+                                  style: TextStyle(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                         ),
-                        child: controller.isJoining.value
-                            ? SizedBox(
-                                width: 16.r,
-                                height: 16.r,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                AppString.joinNow.tr,
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
                       ),
                     ],
                   ),
@@ -1130,7 +1177,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
                     ),
                     SizedBox(height: 12.h),
                     Text(
-                      'No leagues joined yet',
+                      AppString.noLeaguesJoinedYet.tr,
                       style: TextStyle(color: Colors.grey, fontSize: 14.sp),
                     ),
                   ],

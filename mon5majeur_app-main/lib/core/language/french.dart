@@ -318,6 +318,9 @@ class FrenchTranslation {
     AppString.regularSeasonWeek3: '| Saison régulière | Semaine 3',
     AppString.markAllRead: 'Tout marquer comme lu',
     AppString.noNotifications: 'Aucune notification',
+    AppString.noMatchesToday: 'Aucun match ce soir 🏀',
+    AppString.selectLogo: 'Choisir un logo',
+    AppString.noLeaguesJoinedYet: 'Pas encore de ligue... viens défier tes amis 👊',
     AppString.myLeaguesTitle: 'Mes ligues',
     AppString.searchHint: 'Chercher par nom',
     AppString.waiting: 'en attente',
@@ -333,6 +336,7 @@ class FrenchTranslation {
     AppString.newPasswordHint: 'Nouveau mot de passe...',
     AppString.confirmPasswordHint: 'Confirmer le mot de passe...',
     AppString.sinceYear: 'Depuis 2025',
+    AppString.sincePrefix: 'Depuis',
     AppString.statisticsOverview: 'Statistiques',
     AppString.statWLNB: 'V / D / NB',
     AppString.statWLNBValue: '12V-4D-2NB',
@@ -342,6 +346,9 @@ class FrenchTranslation {
     AppString.statRegularSeasonValue: '8 Victoires',
     AppString.statLeagueWins: 'Victoires Ligue',
     AppString.statLeagueWinsValue: '2 Victoires',
+    AppString.matches: 'Matchs',
+    AppString.wins: 'Victoires',
+    AppString.victories: 'Victoires',
     AppString.trophies: 'Trophées',
     AppString.performanceHighlights: 'Points Forts',
     AppString.avgPointScoredValue: '92.3',
@@ -426,11 +433,12 @@ class FrenchTranslation {
     AppString.luxaryTax: 'Luxury Tax',
     AppString.budgetBoost: 'Boost Budget',
     AppString.luxaryTaxDesc: '+5M de budget supplémentaire',
-    AppString.liveScoring: 'Live - Scoring + Sans Pub',
-    AppString.realTimeUpdate: 'Temps réel & sans pubs',
+    AppString.liveScoring: 'Live Scoring',
+    AppString.realTimeUpdate: 'Suivez vos joueurs en temps réel',
     AppString.liveScoringDesc: 'Suivez vos joueurs en temps réel',
     AppString.pro: 'PRO',
     AppString.perYear: '/ An',
+    AppString.perMonth: '/ Mois',
     AppString.jersey: 'Maillot',
     AppString.buyCustomJerseys: 'Acheter des maillots',
     AppString.comingSoon: 'Bientôt DISPO',
@@ -446,6 +454,26 @@ class FrenchTranslation {
     AppString.staleDataNotice: 'Les scores peuvent avoir quelques minutes de retard',
     AppString.sixthManDropped: 'Non comptabilisé (6ème Homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
+
+    // Onboarding tutorial (spec Part 3) — copy taken from the approved
+    // Figma mockup screenshots. Steps 2 and 5 use the mockups' fuller
+    // wording rather than the spec doc's shorter placeholder line for
+    // those two steps; all others match the doc exactly.
+    AppString.tutorialStep0: 'Bienvenue ! Rejoins la Ligue Globale. Tout le monde y joue.',
+    AppString.tutorialStep1: 'Choisis tes 5 joueurs dans la limite de 100M.',
+    AppString.tutorialStep2:
+        'Le prix suit ses perfs. À toi de voir si ses 2 derniers scores le valent.',
+    AppString.tutorialStep3: "Valide avant le premier tip-off. Après, c'est verrouillé.",
+    AppString.tutorialStep4:
+        'Tout compte cette nuit : points, passes, rebonds… Ton score t\'attend demain matin.',
+    AppString.tutorialStep5:
+        'Ça, c\'était en solo. En ligue privée avec tes potes : championnat, playoffs, bonus pour tout renverser.',
+    AppString.tutorialSkip: 'Passer',
+    AppString.tutorialNext: 'Suivant',
+    AppString.tutorialCreateMyLeague: 'Créer ma ligue',
+    AppString.tutorialLater: 'Plus tard',
+    AppString.replayTutorial: 'Rejouer le tutoriel',
+    AppString.lastScores: 'Derniers scores',
   };
 
   // --- Handling Dynamic Strings (Methods) ---

@@ -98,21 +98,6 @@ class $AssetsIconsGen {
   /// File path: assets/icons/fr.png
   AssetGenImage get fr => const AssetGenImage('assets/icons/fr.png');
 
-  /// File path: assets/icons/gercy1.png
-  AssetGenImage get gercy1 => const AssetGenImage('assets/icons/gercy1.png');
-
-  /// File path: assets/icons/gercy2.png
-  AssetGenImage get gercy2 => const AssetGenImage('assets/icons/gercy2.png');
-
-  /// File path: assets/icons/gercy3.png
-  AssetGenImage get gercy3 => const AssetGenImage('assets/icons/gercy3.png');
-
-  /// File path: assets/icons/gercy4.png
-  AssetGenImage get gercy4 => const AssetGenImage('assets/icons/gercy4.png');
-
-  /// File path: assets/icons/gercy5.png
-  AssetGenImage get gercy5 => const AssetGenImage('assets/icons/gercy5.png');
-
   /// File path: assets/icons/google.png
   AssetGenImage get google => const AssetGenImage('assets/icons/google.png');
 
@@ -131,11 +116,66 @@ class $AssetsIconsGen {
   AssetGenImage get hourglass =>
       const AssetGenImage('assets/icons/hourglass.png');
 
+  /// File path: assets/icons/icons.png
+  AssetGenImage get icons => const AssetGenImage('assets/icons/icons.png');
+
   /// File path: assets/icons/jersey.png
   AssetGenImage get jersey => const AssetGenImage('assets/icons/jersey.png');
 
+  /// File path: assets/icons/jersey_devil.png
+  AssetGenImage get jerseyDevil =>
+      const AssetGenImage('assets/icons/jersey_devil.png');
+
+  /// File path: assets/icons/jersey_flower.png
+  AssetGenImage get jerseyFlower =>
+      const AssetGenImage('assets/icons/jersey_flower.png');
+
+  /// File path: assets/icons/jersey_shark.png
+  AssetGenImage get jerseyShark =>
+      const AssetGenImage('assets/icons/jersey_shark.png');
+
+  /// File path: assets/icons/jersey_snake.png
+  AssetGenImage get jerseySnake =>
+      const AssetGenImage('assets/icons/jersey_snake.png');
+
+  /// File path: assets/icons/jersey_ufo.png
+  AssetGenImage get jerseyUfo =>
+      const AssetGenImage('assets/icons/jersey_ufo.png');
+
+  /// File path: assets/icons/jersey_zebra.png
+  AssetGenImage get jerseyZebra =>
+      const AssetGenImage('assets/icons/jersey_zebra.png');
+
   /// File path: assets/icons/league.png
   AssetGenImage get league => const AssetGenImage('assets/icons/league.png');
+
+  /// File path: assets/icons/league_logo_ball.png
+  AssetGenImage get leagueLogoBall =>
+      const AssetGenImage('assets/icons/league_logo_ball.png');
+
+  /// File path: assets/icons/league_logo_cap.png
+  AssetGenImage get leagueLogoCap =>
+      const AssetGenImage('assets/icons/league_logo_cap.png');
+
+  /// File path: assets/icons/league_logo_flaming_ball.png
+  AssetGenImage get leagueLogoFlamingBall =>
+      const AssetGenImage('assets/icons/league_logo_flaming_ball.png');
+
+  /// File path: assets/icons/league_logo_lion.png
+  AssetGenImage get leagueLogoLion =>
+      const AssetGenImage('assets/icons/league_logo_lion.png');
+
+  /// File path: assets/icons/league_logo_shark.png
+  AssetGenImage get leagueLogoShark =>
+      const AssetGenImage('assets/icons/league_logo_shark.png');
+
+  /// File path: assets/icons/league_logo_snake.png
+  AssetGenImage get leagueLogoSnake =>
+      const AssetGenImage('assets/icons/league_logo_snake.png');
+
+  /// File path: assets/icons/league_logo_yeti.png
+  AssetGenImage get leagueLogoYeti =>
+      const AssetGenImage('assets/icons/league_logo_yeti.png');
 
   /// File path: assets/icons/lion.png
   AssetGenImage get lion => const AssetGenImage('assets/icons/lion.png');
@@ -285,85 +325,94 @@ class $AssetsIconsGen {
 
   /// List of all assets
   List<AssetGenImage> get values => [
-        backButton,
-        activeDot,
-        allstar,
-        apple,
-        ball,
-        basketBall,
-        basketBallActive,
-        basketBallInactive,
-        basketBallPlayerActive,
-        basketBallPlayerInactive,
-        basketballtrophee,
-        calender,
-        cap,
-        chefcurry,
-        dataprotection,
-        dress,
-        earth,
-        email,
-        entry,
-        eye,
-        eyeOff,
-        fireball,
-        fly,
-        fr,
-        gercy1,
-        gercy2,
-        gercy3,
-        gercy4,
-        gercy5,
-        google,
-        hall,
-        homeActive,
-        homeInactive,
-        hourglass,
-        jersey,
-        league,
-        lion,
-        livematch,
-        livescoring,
-        lock,
-        logo1,
-        logo2,
-        logo3,
-        logo4,
-        logo5,
-        logo6,
-        luxarytax,
-        mail,
-        moneybag,
-        morecoin,
-        mvp,
-        nameLogo,
-        notification,
-        password,
-        person,
-        play,
-        profileActive,
-        profileInactive,
-        profileVector,
-        rookle,
-        runningball,
-        shoppingCardActive,
-        shoppingCardInactive,
-        sixman,
-        star,
-        teamgroup,
-        timer,
-        tokenIcon,
-        trophie1,
-        trophie2,
-        trophie3,
-        trophie4,
-        uk,
-        update,
-        user,
-        vs,
-        waiting,
-        win
-      ];
+    backButton,
+    activeDot,
+    allstar,
+    apple,
+    ball,
+    basketBall,
+    basketBallActive,
+    basketBallInactive,
+    basketBallPlayerActive,
+    basketBallPlayerInactive,
+    basketballtrophee,
+    calender,
+    cap,
+    chefcurry,
+    dataprotection,
+    dress,
+    earth,
+    email,
+    entry,
+    eye,
+    eyeOff,
+    fireball,
+    fly,
+    fr,
+    google,
+    hall,
+    homeActive,
+    homeInactive,
+    hourglass,
+    icons,
+    jersey,
+    jerseyDevil,
+    jerseyFlower,
+    jerseyShark,
+    jerseySnake,
+    jerseyUfo,
+    jerseyZebra,
+    league,
+    leagueLogoBall,
+    leagueLogoCap,
+    leagueLogoFlamingBall,
+    leagueLogoLion,
+    leagueLogoShark,
+    leagueLogoSnake,
+    leagueLogoYeti,
+    lion,
+    livematch,
+    livescoring,
+    lock,
+    logo1,
+    logo2,
+    logo3,
+    logo4,
+    logo5,
+    logo6,
+    luxarytax,
+    mail,
+    moneybag,
+    morecoin,
+    mvp,
+    nameLogo,
+    notification,
+    password,
+    person,
+    play,
+    profileActive,
+    profileInactive,
+    profileVector,
+    rookle,
+    runningball,
+    shoppingCardActive,
+    shoppingCardInactive,
+    sixman,
+    star,
+    teamgroup,
+    timer,
+    tokenIcon,
+    trophie1,
+    trophie2,
+    trophie3,
+    trophie4,
+    uk,
+    update,
+    user,
+    vs,
+    waiting,
+    win,
+  ];
 }
 
 class $AssetsImagesGen {
@@ -385,8 +434,12 @@ class $AssetsImagesGen {
       const AssetGenImage('assets/images/playground.png');
 
   /// List of all assets
-  List<AssetGenImage> get values =>
-      [mainLogo, fullplayground, homebg, playground];
+  List<AssetGenImage> get values => [
+    mainLogo,
+    fullplayground,
+    homebg,
+    playground,
+  ];
 }
 
 class Assets {
@@ -463,15 +516,8 @@ class AssetGenImage {
     );
   }
 
-  ImageProvider provider({
-    AssetBundle? bundle,
-    String? package,
-  }) {
-    return AssetImage(
-      _assetName,
-      bundle: bundle,
-      package: package,
-    );
+  ImageProvider provider({AssetBundle? bundle, String? package}) {
+    return AssetImage(_assetName, bundle: bundle, package: package);
   }
 
   String get path => _assetName;

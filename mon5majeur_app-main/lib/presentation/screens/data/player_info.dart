@@ -25,11 +25,12 @@ class PlayerInfoScreen extends StatelessWidget {
   // Function to get random jersey image
   AssetGenImage _getRandomJersey() {
     final jerseys = [
-      Assets.icons.gercy1,
-      Assets.icons.gercy2,
-      Assets.icons.gercy3,
-      Assets.icons.gercy4,
-      Assets.icons.gercy5,
+      Assets.icons.jerseyDevil,
+      Assets.icons.jerseyFlower,
+      Assets.icons.jerseyUfo,
+      Assets.icons.jerseyShark,
+      Assets.icons.jerseySnake,
+      Assets.icons.jerseyZebra,
     ];
     return jerseys[Random().nextInt(jerseys.length)];
   }

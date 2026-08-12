@@ -52,7 +52,7 @@ BONUS_COSTS = {
     "chef_curry": 130,
     "sixth_man": 170,
     "luxury_tax": 150,
-    "live_scoring": 450,   # per-year subscription
+    "live_scoring": 200,   # per-month subscription (QA 08/08/2026 item 3)
     "stop_pub": 450,       # per-year subscription
 }
 

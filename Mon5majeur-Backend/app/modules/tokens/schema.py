@@ -34,3 +34,10 @@ class AdminGrantRequest(BaseSchema):
     user_id: str
     tokens: int = Field(..., gt=0)
     note: str | None = None
+
+
+class MockPurchaseRequest(BaseSchema):
+    """TEMPORARY (see router.py) — real-money token packs, no store account
+    wired up yet. `pack` selects a fixed server-side token amount; the
+    client never dictates how many tokens it gets."""
+    pack: str

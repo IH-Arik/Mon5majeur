@@ -15,4 +15,8 @@ class AppConstants {
 
   // Notifications
   static const String notificationPromptHandled = 'notification_prompt_handled';
+
+  // Onboarding tutorial (spec Part 3)
+  static const String tutorialStep = 'tutorial_step';
+  static const String tutorialDone = 'tutorial_done';
 }

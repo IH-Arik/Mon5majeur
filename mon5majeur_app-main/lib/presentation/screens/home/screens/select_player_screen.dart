@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../data/models/player.dart';
+import '../../tutorial/tutorial_controller.dart';
+import '../../tutorial/tutorial_skip_button.dart';
+import '../widgets/player_form_badge.dart';
 
 class SelectPlayerScreen extends StatefulWidget {
   final ValueNotifier<List<Player>> playersNotifier; // 🔑 reactive list
@@ -40,6 +45,10 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
   String searchQuery = '';
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
+
+  final TutorialController _tutorial = Get.find<TutorialController>();
+  BuildContext? _showcaseContext;
+  bool _rowShowcaseStarted = false;
 
   @override
   void initState() {
@@ -112,37 +121,64 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
     }).toList();
   }
 
+  /// Starts the step-2 (first player row) spotlight the first time a
+  /// non-empty filtered list renders while the tutorial is at step 2.
+  /// Guarded by [_rowShowcaseStarted] so pagination/search rebuilds don't
+  /// retrigger it.
+  void _maybeStartRowShowcase(List<Player> filteredPlayers) {
+    if (_rowShowcaseStarted || filteredPlayers.isEmpty) return;
+    if (!(_tutorial.active.value && _tutorial.step.value == 2)) return;
+    _rowShowcaseStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _showcaseContext;
+      if (ctx == null || !mounted) return;
+      ShowCaseWidget.of(ctx).startShowCase([_tutorial.playerRowKey]);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildBudgetInfo(),
-            _buildSearchBar(),
-            // 🔑 ValueListenableBuilder rebuilds automatically when notifier changes
-            ValueListenableBuilder<List<Player>>(
-              valueListenable: widget.playersNotifier,
-              builder: (context, players, _) {
-                final filteredPlayers = _applyFilters(players);
-                return Expanded(
-                  child: Column(
-                    children: [
-                      _buildTableHeader(
-                        filteredPlayers.length,
-                        players.length,
-                      ),
-                      SizedBox(height: 12.h),
-                      _buildPlayerList(filteredPlayers),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+      body: ShowCaseWidget(
+        enableAutoScroll: true,
+        globalFloatingActionWidget: buildTutorialSkipAction,
+        builder: (scContext) {
+          _showcaseContext = scContext;
+          return Stack(
+            children: [
+              SafeArea(
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    _buildBudgetInfo(),
+                    _buildSearchBar(),
+                    // 🔑 ValueListenableBuilder rebuilds automatically when notifier changes
+                    ValueListenableBuilder<List<Player>>(
+                      valueListenable: widget.playersNotifier,
+                      builder: (context, players, _) {
+                        final filteredPlayers = _applyFilters(players);
+                        _maybeStartRowShowcase(filteredPlayers);
+                        return Expanded(
+                          child: Column(
+                            children: [
+                              _buildTableHeader(
+                                filteredPlayers.length,
+                                players.length,
+                              ),
+                              SizedBox(height: 12.h),
+                              _buildPlayerList(filteredPlayers),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -256,8 +292,12 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
               ),
             ),
             Text(
-              '$filteredCount shown · $totalLoaded loaded',
-              style: TextStyle(color: Colors.white38, fontSize: 11.sp),
+              AppString.lastScores.tr,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             Text(
               AppString.price,
@@ -306,20 +346,31 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
               ),
             );
           }
-          return _buildPlayerCard(filteredPlayers[index]);
+          return _buildPlayerCard(filteredPlayers[index], isFirst: index == 0);
         },
       ),
     );
   }
 
-  Widget _buildPlayerCard(Player player) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: GestureDetector(
-        onTap: () {
-          widget.onPlayerSelected(player);
-          Navigator.pop(context);
-        },
+  Widget _buildPlayerCard(Player player, {bool isFirst = false}) {
+    void handleTap() {
+      if (isFirst && _tutorial.active.value && _tutorial.step.value == 2) {
+        _tutorial.advanceTo(3);
+      }
+      widget.onPlayerSelected(player);
+      Navigator.pop(context);
+    }
+
+    // Cross-cutting rule (spec Part 1 §6.0): an OUT player is dimmed
+    // uniformly across the WHOLE row — jersey, trigram, name, form badge,
+    // scores, venue icon, opponent and price all included, none left at
+    // full colour.
+    final isOut = player.status == 'OUT';
+
+    final card = GestureDetector(
+      onTap: handleTap,
+      child: Opacity(
+        opacity: isOut ? 0.4 : 1.0,
         child: Container(
           padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
@@ -328,29 +379,64 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           ),
           child: Row(
             children: [
-              _buildPlayerAvatar(),
+              _buildPlayerAvatar(player),
               SizedBox(width: 12.w),
               Expanded(child: _buildPlayerInfo(player)),
+              _buildLastScores(player),
+              SizedBox(width: 12.w),
               _buildPlayerPrice(player),
             ],
           ),
         ),
       ),
     );
+
+    final spotlightThisRow =
+        isFirst && _tutorial.active.value && _tutorial.step.value == 2;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: !spotlightThisRow
+          ? card
+          : Showcase(
+              key: _tutorial.playerRowKey,
+              description: AppString.tutorialStep2.tr,
+              disposeOnTap: true,
+              disableBarrierInteraction: true,
+              onTargetClick: handleTap,
+              targetBorderRadius: BorderRadius.circular(12.r),
+              child: card,
+            ),
+    );
   }
 
-  Widget _buildPlayerAvatar() {
-    return Container(
-      width: 50.w,
-      height: 50.h,
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2D3E),
-        borderRadius: BorderRadius.circular(10.r),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10.r),
-        child: Assets.icons.dress.image(fit: BoxFit.cover),
-      ),
+  Widget _buildPlayerAvatar(Player player) {
+    return Column(
+      children: [
+        Container(
+          width: 50.w,
+          height: 50.h,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A2D3E),
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10.r),
+            child: Assets.icons.dress.image(fit: BoxFit.cover),
+          ),
+        ),
+        if (player.trigram != null) ...[
+          SizedBox(height: 2.h),
+          Text(
+            player.trigram!,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -358,13 +444,24 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          player.name,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                player.name,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (player.form == 'HOT' || player.form == 'COLD') ...[
+              SizedBox(width: 6.w),
+              buildFormBadge(player.form, size: 15),
+            ],
+          ],
         ),
         SizedBox(height: 6.h),
         Row(
@@ -384,18 +481,54 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                 ),
               ),
             ),
-            SizedBox(width: 8.w),
-            Flexible(
-              child: Text(
-                player.team,
-                style: TextStyle(color: Colors.white54, fontSize: 13.sp),
-                overflow: TextOverflow.ellipsis,
+            if (player.opponentTrigram != null) ...[
+              SizedBox(width: 8.w),
+              Icon(
+                player.isHome == false ? Icons.flight : Icons.home,
+                color: player.isHome == false
+                    ? const Color(0xFFE05353)
+                    : const Color(0xFF4CAF50),
+                size: 13.r,
               ),
-            ),
+              SizedBox(width: 3.w),
+              Flexible(
+                child: Text(
+                  player.opponentTrigram!,
+                  style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ],
         ),
       ],
     );
+  }
+
+  /// Two chips showing the player's last 2 PLAYED games' Fantasy Points,
+  /// chronological left-to-right (spec Part 1 §5.0). "—" for a missing
+  /// game — never 0 or X, an absence isn't a bad performance.
+  Widget _buildLastScores(Player player) {
+    final scores = player.lastTwoScores;
+    final older = scores.isNotEmpty ? scores[0] : null;
+    final newer = scores.length > 1 ? scores[1] : null;
+
+    Widget chip(int? value) {
+      return Container(
+        margin: EdgeInsets.only(left: 4.w),
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2D3E),
+          borderRadius: BorderRadius.circular(6.r),
+        ),
+        child: Text(
+          value?.toString() ?? '—',
+          style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+        ),
+      );
+    }
+
+    return Row(mainAxisSize: MainAxisSize.min, children: [chip(older), chip(newer)]);
   }
 
   Widget _buildPlayerPrice(Player player) {

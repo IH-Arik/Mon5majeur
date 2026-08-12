@@ -7,6 +7,13 @@ class Player {
   final String? status;
   final double price;
 
+  // Part 1 — Player Selection Row Redesign
+  final String? trigram;               // own team, e.g. "LAL"
+  final String? opponentTrigram;       // the OTHER team tonight — never own team
+  final bool? isHome;                  // true=hosts, false=travels, null=no game data
+  final String? form;                  // "HOT" | "COLD" | null (neutral — render nothing)
+  final List<int?> lastTwoScores;      // chronological [older, newer]
+
   Player({
     this.id,
     required this.name,
@@ -15,6 +22,11 @@ class Player {
     this.teamId,
     this.status,
     required this.price,
+    this.trigram,
+    this.opponentTrigram,
+    this.isHome,
+    this.form,
+    this.lastTwoScores = const [null, null],
   });
 
   // JSON serialization methods (optional, useful for API calls)
@@ -26,6 +38,11 @@ class Player {
       parsedPrice = double.tryParse(priceStr) ?? 0.0;
     }
 
+    final rawLastTwo = json['last_two_scores'];
+    final lastTwo = rawLastTwo is List
+        ? rawLastTwo.map((e) => e == null ? null : (e as num).toInt()).toList()
+        : const <int?>[null, null];
+
     return Player(
       id: json['id']?.toString(),
       name: json['name'] ?? '',
@@ -34,6 +51,11 @@ class Player {
       teamId: json['team_id']?.toString(),
       status: json['status'],
       price: parsedPrice,
+      trigram: json['trigram'],
+      opponentTrigram: json['opponent_trigram'],
+      isHome: json['is_home'],
+      form: json['form'],
+      lastTwoScores: lastTwo.length == 2 ? lastTwo : const [null, null],
     );
   }
 

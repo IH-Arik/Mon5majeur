@@ -7,6 +7,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import 'shop_controller.dart';
 
 class BuyTokenScreen extends StatelessWidget {
   const BuyTokenScreen({super.key});
@@ -84,6 +85,8 @@ class BuyTokenScreen extends StatelessWidget {
 
                     /// Rookie Pack
                     _buildTokenPack(
+                      context: context,
+                      pack: 'rookie',
                       iconAsset: Assets.icons.rookle,
                       iconColor: const Color(0xFF7F38E8),
                       title: AppString.rookiePack.tr,
@@ -99,6 +102,8 @@ class BuyTokenScreen extends StatelessWidget {
 
                     /// All Star Pack
                     _buildTokenPack(
+                      context: context,
+                      pack: 'all_star',
                       iconAsset: Assets.icons.allstar,
                       iconColor: const Color(0xFF5A43E6),
                       title: AppString.allStarPack.tr,
@@ -114,6 +119,8 @@ class BuyTokenScreen extends StatelessWidget {
 
                     /// MVP Pack
                     _buildTokenPack(
+                      context: context,
+                      pack: 'mvp',
                       iconAsset: Assets.icons.mvp,
                       iconColor: const Color(0xFFDD784E),
                       title: AppString.mvpPack.tr,
@@ -129,6 +136,8 @@ class BuyTokenScreen extends StatelessWidget {
 
                     /// Hall of Fame Pack
                     _buildTokenPack(
+                      context: context,
+                      pack: 'hall_of_fame',
                       iconAsset: Assets.icons.hall,
                       iconColor: const Color(0xFF4BCF96),
                       title: AppString.hallOfFamePack.tr,
@@ -152,6 +161,8 @@ class BuyTokenScreen extends StatelessWidget {
   }
 
   Widget _buildTokenPack({
+    required BuildContext context,
+    required String pack,
     required AssetGenImage iconAsset,
     required Color iconColor,
     required String title,
@@ -216,29 +227,104 @@ class BuyTokenScreen extends StatelessWidget {
           SizedBox(height: 22.h),
 
           /// Price Button
-          Container(
-            width: double.infinity,
-            height: 43.h,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: const Alignment(0.50, 0.00),
-                end: const Alignment(0.50, 1.00),
-                colors: gradientColors,
-              ),
-              borderRadius: BorderRadius.circular(6.r),
-            ),
-            child: Center(
-              child: Text(
-                price,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w600,
-                  height: 1.10,
+          Obx(() {
+            final c = Get.find<ShopController>();
+            final loading = c.isPurchasingTokens.value;
+            return GestureDetector(
+              onTap: loading
+                  ? null
+                  : () => _confirmPurchase(context, c, pack, title, tokens),
+              child: Container(
+                width: double.infinity,
+                height: 43.h,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: const Alignment(0.50, 0.00),
+                    end: const Alignment(0.50, 1.00),
+                    colors: gradientColors,
+                  ),
+                  borderRadius: BorderRadius.circular(6.r),
+                ),
+                child: Center(
+                  child: loading
+                      ? SizedBox(
+                          width: 20.r,
+                          height: 20.r,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          price,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.w600,
+                            height: 1.10,
+                          ),
+                        ),
                 ),
               ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // TEMPORARY: mock purchase confirmation — no real payment is taken yet.
+  // Swap for the real store checkout once App Store/Play Console products
+  // exist (see ShopController.purchaseTokenPack / tokens/router.py).
+  void _confirmPurchase(
+    BuildContext context,
+    ShopController c,
+    String pack,
+    String title,
+    String tokens,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1a1a1a),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(title, style: TextStyle(color: Colors.white, fontSize: 16.sp)),
+        content: Text(
+          'Get $tokens for this pack?',
+          style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel',
+                style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B35),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
             ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final ok = await c.purchaseTokenPack(pack);
+              if (ok) {
+                Get.snackbar(
+                  'Tokens added!',
+                  '$tokens added to your wallet',
+                  backgroundColor: const Color(0xFF1a3d1a),
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
+            },
+            child: Text('Buy',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.bold)),
           ),
         ],
       ),

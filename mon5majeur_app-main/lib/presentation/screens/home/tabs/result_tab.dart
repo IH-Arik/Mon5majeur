@@ -569,7 +569,7 @@ class _ResultTabState extends State<ResultTab> {
                   teamAPlayers.length,
                   player.name,
                   '${player.score}',
-                  Assets.icons.gercy1,
+                  Assets.icons.jerseyDevil,
                   isTopTeam: true,
                 );
               }).toList(),
@@ -639,7 +639,7 @@ class _ResultTabState extends State<ResultTab> {
                   teamBPlayers.length,
                   player.name,
                   '${player.score}',
-                  Assets.icons.gercy2,
+                  Assets.icons.jerseyFlower,
                   isTopTeam: false,
                 );
               }).toList(),

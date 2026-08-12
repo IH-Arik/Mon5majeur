@@ -8,12 +8,14 @@ import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
 import '../../widgets/navigation.dart';
+import 'profile_controller.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(ProfileController());
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -74,20 +76,23 @@ class ProfileScreen extends StatelessWidget {
               SizedBox(height: 4.h),
 
               /// Team Name
-              Text(
-                AppString.teamName.tr,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              Obx(() {
+                final name = controller.stats.value.teamName;
+                return Text(
+                  name.isNotEmpty ? name : AppString.teamName.tr,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              }),
 
               /// Since Year
-              Text(
-                AppString.sinceYear.tr,
-                style: TextStyle(color: Colors.grey, fontSize: 14.sp),
-              ),
+              Obx(() => Text(
+                    '${AppString.sincePrefix.tr} ${controller.stats.value.sinceYear}',
+                    style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+                  )),
 
               SizedBox(height: 30.h),
 
@@ -108,45 +113,54 @@ class ProfileScreen extends StatelessWidget {
                     SizedBox(height: 16.h),
 
                     /// Statistics Grid (2x2)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: AppString.statWLNB.tr,
-                            value: AppString.statWLNBValue.tr,
-                            valueColor: const Color(0xFFFF6B35),
+                    Obx(() {
+                      final s = controller.stats.value;
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _StatCard(
+                                  title: AppString.statWLNB.tr,
+                                  value: '${s.wins}W-${s.losses}L-${s.noMatch}NB',
+                                  valueColor: const Color(0xFFFF6B35),
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: _StatCard(
+                                  title: AppString.statLeaguePlay.tr,
+                                  value: '${s.totalMatches} ${AppString.matches.tr}',
+                                  valueColor: const Color(0xFFFF6B35),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: _StatCard(
-                            title: AppString.statLeaguePlay.tr,
-                            value: AppString.statLeaguePlayValue.tr,
-                            valueColor: const Color(0xFFFF6B35),
+                          SizedBox(height: 12.h),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _StatCard(
+                                  title: AppString.statRegularSeason.tr,
+                                  value:
+                                      '${s.regularSeasonWins} ${AppString.wins.tr}',
+                                  valueColor: const Color(0xFFFF6B35),
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: _StatCard(
+                                  title: AppString.statLeagueWins.tr,
+                                  value:
+                                      '${s.leagueVictories} ${AppString.victories.tr}',
+                                  valueColor: const Color(0xFFFF6B35),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            title: AppString.statRegularSeason.tr,
-                            value: AppString.statRegularSeasonValue.tr,
-                            valueColor: const Color(0xFFFF6B35),
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: _StatCard(
-                            title: AppString.statLeagueWins.tr,
-                            value: AppString.statLeagueWinsValue.tr,
-                            valueColor: const Color(0xFFFF6B35),
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -169,28 +183,34 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 16.h),
 
-                    /// Trophy Cards
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _TrophyCard(
-                          iconAsset: Assets.icons.trophie1,
-                          count: '2x',
-                        ),
-                        _TrophyCard(
-                          iconAsset: Assets.icons.trophie2,
-                          count: '5x',
-                        ),
-                        _TrophyCard(
-                          iconAsset: Assets.icons.trophie3,
-                          count: '4x',
-                        ),
-                        _TrophyCard(
-                          iconAsset: Assets.icons.trophie4,
-                          count: '0x',
-                        ),
-                      ],
-                    ),
+                    /// Trophy Cards — Gold(Wings)=duel league win,
+                    /// Silver(Ball)=Global League weekly #1,
+                    /// Diamond=Global League monthly #1,
+                    /// Orange L=last place in a completed duel league.
+                    Obx(() {
+                      final s = controller.stats.value;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _TrophyCard(
+                            iconAsset: Assets.icons.trophie1,
+                            count: '${s.trophyGold}x',
+                          ),
+                          _TrophyCard(
+                            iconAsset: Assets.icons.trophie2,
+                            count: '${s.trophySilver}x',
+                          ),
+                          _TrophyCard(
+                            iconAsset: Assets.icons.trophie3,
+                            count: '${s.trophyDiamond}x',
+                          ),
+                          _TrophyCard(
+                            iconAsset: Assets.icons.trophie4,
+                            count: '${s.trophyOrangeL}x',
+                          ),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -232,14 +252,15 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 12.h),
-                          Text(
-                            AppString.avgPointScoredValue.tr,
-                            style: TextStyle(
-                              color: Color(0xFF3CDF1C),
-                              fontSize: 40.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          Obx(() => Text(
+                                controller.stats.value.avgPointsScored
+                                    .toStringAsFixed(1),
+                                style: TextStyle(
+                                  color: const Color(0xFF3CDF1C),
+                                  fontSize: 40.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              )),
                         ],
                       ),
                     ),
@@ -265,14 +286,15 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: 12.h),
-                          Text(
-                            AppString.avgPointConcededValue.tr,
-                            style: TextStyle(
-                              color: Color(0xFFD32F2F),
-                              fontSize: 40.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          Obx(() => Text(
+                                controller.stats.value.avgPointsConceded
+                                    .toStringAsFixed(1),
+                                style: TextStyle(
+                                  color: const Color(0xFFD32F2F),
+                                  fontSize: 40.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              )),
                         ],
                       ),
                     ),

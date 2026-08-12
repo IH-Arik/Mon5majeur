@@ -131,9 +131,9 @@ async def purchase_bonus(
         field = f"{payload.bonus}_charges"
         setattr(inv, field, getattr(inv, field) + 1)
     elif payload.bonus == "live_scoring":
-        current_expiry = inv.live_scoring_until
+        current_expiry = _aware(inv.live_scoring_until)
         base = current_expiry if current_expiry and current_expiry > now else now
-        inv.live_scoring_until = base + timedelta(days=365)
+        inv.live_scoring_until = base + timedelta(days=30)
         # This is what live_scores/service.py._is_premium actually checks —
         # without syncing it here, a purchase would update the inventory but
         # never actually unlock the live-score endpoint (403 forever).

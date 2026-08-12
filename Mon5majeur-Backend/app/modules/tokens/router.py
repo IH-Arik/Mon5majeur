@@ -9,6 +9,7 @@ from app.modules.tokens.model import BONUS_COSTS, DAILY_VIDEO_REWARD, TokenWalle
 from app.modules.tokens.schema import (
     AdminGrantRequest,
     IAPWebhookPayload,
+    MockPurchaseRequest,
     TransactionResponse,
     WalletResponse,
 )
@@ -20,6 +21,17 @@ router = APIRouter(prefix="/tokens", tags=["Tokens"])
 # Token rewards for game events
 MATCH_WIN_REWARD = 10
 LEAGUE_WIN_REWARD = 50
+
+# TEMPORARY (see mock_purchase below) — mirrors the 4 packs shown in
+# buy_token.dart (rookieTokens/allStarTokens/mvpTokens/hallOfFameTokens in
+# app_strings.dart). Swap this whole endpoint out once real App Store /
+# Play Store products exist — real purchases go through /iap/webhook instead.
+_MOCK_PACK_TOKENS = {
+    "rookie": 200,
+    "all_star": 550,
+    "mvp": 1200,
+    "hall_of_fame": 2500,
+}
 
 
 def get_token_service() -> TokenService:
@@ -69,6 +81,29 @@ async def iap_webhook(
         payload.tokens_to_credit,
         payload.transaction_id,
         payload.platform,
+    )
+    return WalletResponse(user_id=wallet.user_id, balance=wallet.balance)
+
+
+@router.post(
+    "/mock-purchase/",
+    response_model=WalletResponse,
+    summary="TEMPORARY: instantly grant a token pack, no real payment (replace with IAP before launch)",
+)
+async def mock_purchase(
+    payload: MockPurchaseRequest,
+    user: User = Depends(get_current_user),
+    service: TokenService = Depends(get_token_service),
+) -> WalletResponse:
+    tokens = _MOCK_PACK_TOKENS.get(payload.pack)
+    if tokens is None:
+        raise BadRequestException(f"Unknown token pack: {payload.pack}")
+
+    wallet = await service.credit(
+        user.id,
+        tokens,
+        tx_type="purchase",
+        note=f"Mock purchase — {payload.pack} pack (no real payment taken)",
     )
     return WalletResponse(user_id=wallet.user_id, balance=wallet.balance)
 

@@ -26,12 +26,13 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
   bool _showLogoSelector = false;
 
   final List<AssetGenImage> _logoOptions = [
-    Assets.icons.logo1,
-    Assets.icons.logo2,
-    Assets.icons.logo3,
-    Assets.icons.logo4,
-    Assets.icons.logo5,
-    Assets.icons.logo6,
+    Assets.icons.leagueLogoFlamingBall,
+    Assets.icons.leagueLogoCap,
+    Assets.icons.leagueLogoYeti,
+    Assets.icons.leagueLogoLion,
+    Assets.icons.leagueLogoBall,
+    Assets.icons.leagueLogoShark,
+    Assets.icons.leagueLogoSnake,
   ];
 
   @override
@@ -50,12 +51,13 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
     if (controller.selectedLogo.value.isEmpty) return null;
 
     final logoMap = {
-      LeagueLogoChoices.atlantaHawks: Assets.icons.logo1,
-      LeagueLogoChoices.bostonCeltics: Assets.icons.logo2,
-      LeagueLogoChoices.chicagoBulls: Assets.icons.logo3,
-      LeagueLogoChoices.lakers: Assets.icons.logo4,
-      LeagueLogoChoices.goldenStateWarriors: Assets.icons.logo5,
-      LeagueLogoChoices.parisFc: Assets.icons.logo6,
+      LeagueLogoChoices.flamingBall: Assets.icons.leagueLogoFlamingBall,
+      LeagueLogoChoices.cap: Assets.icons.leagueLogoCap,
+      LeagueLogoChoices.yeti: Assets.icons.leagueLogoYeti,
+      LeagueLogoChoices.lion: Assets.icons.leagueLogoLion,
+      LeagueLogoChoices.ball: Assets.icons.leagueLogoBall,
+      LeagueLogoChoices.shark: Assets.icons.leagueLogoShark,
+      LeagueLogoChoices.snake: Assets.icons.leagueLogoSnake,
     };
 
     return logoMap[controller.selectedLogo.value];
@@ -128,7 +130,7 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
                           height: 35.h,
                           fit: BoxFit.contain,
                         ) ??
-                        Assets.icons.logo1.image(
+                        Assets.icons.leagueLogoFlamingBall.image(
                           width: 35.w,
                           height: 35.h,
                           fit: BoxFit.contain,

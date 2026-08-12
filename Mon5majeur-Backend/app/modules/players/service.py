@@ -6,6 +6,7 @@ from beanie import PydanticObjectId
 
 from app.core.logging import get_logger
 from app.exceptions.errors import NotFoundException
+from app.modules.players.form_indicator import compute_and_store_form_indicators
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
 from app.modules.players.nba_cdn import fetch_player_index
 from app.modules.players.pricing import recompute_player_price
@@ -351,6 +352,17 @@ class PlayerService:
                 logger.warning("Price recompute failed player=%s: %s", player.id, exc)
 
         logger.info("Recomputed prices for %d players", count)
+
+        # Form indicator (spec Part 1 §4.0) — same cron pass, no separate
+        # job. Must run after prices/avgs above so it reads today's fresh
+        # PlayerGameStats state, though it recomputes its own averages
+        # independently (plain means, not the weighted pricing average).
+        try:
+            form_updated = await compute_and_store_form_indicators(today)
+            logger.info("Updated form indicator for %d players", form_updated)
+        except Exception as exc:
+            logger.warning("Form indicator recompute failed: %s", exc, exc_info=True)
+
         return count
 
     # ------------------------------------------------------------------

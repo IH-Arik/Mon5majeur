@@ -422,7 +422,8 @@ class GameCompatResponse(BaseSchema):
 
 
 class PlayerCompatItem(BaseSchema):
-    """Matches Flutter Player.fromJson() — {id, name, position, team, team_id, status, price, avg}."""
+    """Matches Flutter Player.fromJson() — {id, name, position, team, team_id, status, price, avg}
+    plus the Part 1 row-redesign fields (trigram, opponent, form, last 2 scores)."""
     id: str = ""
     name: str = ""
     position: str = ""
@@ -431,6 +432,13 @@ class PlayerCompatItem(BaseSchema):
     status: str = "OK"
     price: str = "0.0M"
     avg: int = 0                    # avg fantasy score rounded to int (DataScreen column)
+
+    # Part 1 — Player Selection Row Redesign
+    trigram: str | None = None              # own team, e.g. "LAL"
+    opponent_trigram: str | None = None     # the OTHER team in tonight's game — never own team
+    is_home: bool | None = None             # True=hosts, False=travels, None=no game data
+    form: str | None = None                 # "HOT" | "COLD" | None (neutral — render nothing)
+    last_two_scores: list[int | None] = [None, None]  # chronological [older, newer]
 
 
 # ── Today's Fantasy Scores (Flutter: MyMatchScreen > Todays Fantasy Players Score) ──
@@ -557,7 +565,7 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     match_day: int = 0
     selected_players: list[dict] = []
     total_points: int = 0
-    max_balance: str = "100M"      # "100M", or "105M" with Luxury Tax active
+    max_balance: str = "100M"      # always "100M" for global
     current_balance: str = "100M"  # remaining after summing player prices
 
     # Home "NBA Global League" card launch spec: real validated/lock state
@@ -569,10 +577,3 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     # score archive. None until the user has at least joined the league.
     weekly_rank: int | None = None
     monthly_rank: int | None = None
-
-    # Strategic bonuses (spec §4.4) — now also available in the Global
-    # League, not just duel leagues. Same semantics as the private/public
-    # PlayersSelectionRequest/GetResponse fields.
-    luxury_tax: bool = False
-    chef_curry: bool = False
-    sixth_man_player: dict | None = None

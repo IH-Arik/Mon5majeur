@@ -4,7 +4,6 @@ Mounted at /api (no /v1 prefix).
 
   GET  /api/global-leagues/players-selection/  → fetch user's current selection
   POST /api/global-leagues/players-selection/  → save/update user's selection
-  GET  /api/global-leagues/bonus-status/       → combined free+purchased bonus counts
 """
 from datetime import datetime, timezone
 
@@ -20,15 +19,14 @@ from app.modules.leagues.constants import (
 )
 from app.modules.leagues.model import League
 from app.modules.leagues.schema import GlobalLeagueSelectionResponse, PlayersSelectionRequest
-from app.modules.leagues.selection_service import _sync_bonus, score_full_selection
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
-from app.modules.players.model import NBAGame
+from app.modules.players.model import NBAGame, PlayerGameStats
 from app.modules.users.model import User
 
 router = APIRouter(prefix="/global-leagues", tags=["Global League (Flutter compat)"])
 
-_BASE_BUDGET = float(GLOBAL_LEAGUE_BUDGET)
+_MAX_BALANCE = 100.0
 
 
 def _parse_price(raw) -> float:
@@ -67,16 +65,29 @@ async def _get_global_league() -> League:
     return league
 
 
-async def _today_total_points(doc: FlutterPlayerSelection | None) -> int:
-    """Today's fantasy score, bonus-aware (spec §4.4): 6th Man = top 5 of 6,
-    Chef Curry = +3 — same calculation as duel scoring, so the Home card's
-    "Night Score" and the team-builder's live total always agree with what
-    the bonus actually earns. Best-effort: players with no stat yet (game
-    not started/no data) score 0."""
-    if doc is None or not doc.selected_players:
+async def _today_total_points(selected_players: list[dict]) -> int:
+    """Sum today's fantasy score for each selected player from PlayerGameStats.
+    Best-effort: players with no stat yet (game not started/no data) score 0."""
+    if not selected_players:
         return 0
+
     today = await _nba_today()
-    return round(await score_full_selection(doc, today))
+    total = 0.0
+    for p in selected_players:
+        raw_id = p.get("id")
+        if not raw_id:
+            continue
+        try:
+            player_id = PydanticObjectId(str(raw_id))
+        except Exception:
+            continue
+        stat = await PlayerGameStats.find_one(
+            PlayerGameStats.player_id == player_id,
+            PlayerGameStats.nba_date == today,
+        )
+        if stat and stat.fantasy_score:
+            total += stat.fantasy_score
+    return round(total)
 
 
 async def _lock_info(user_id: PydanticObjectId, league: League) -> tuple[bool, int | None]:
@@ -129,20 +140,14 @@ async def _is_locked_today() -> bool:
 
 async def _build_response(
     league: League,
-    doc: FlutterPlayerSelection | None,
+    selected_players: list[dict],
     user_id: PydanticObjectId,
 ) -> GlobalLeagueSelectionResponse:
     from app.modules.leagues.global_score_service import get_weekly_monthly_rank
 
-    selected_players = doc.selected_players if doc else []
-    luxury_tax = doc.luxury_tax if doc else False
-    chef_curry = doc.chef_curry if doc else False
-    sixth_man_player = doc.sixth_man_player if doc else None
-
-    max_balance = _BASE_BUDGET + (5.0 if luxury_tax else 0.0)
     used = sum(_parse_price(p.get("price", 0)) for p in selected_players)
-    remaining = max(0.0, max_balance - used)
-    total_points = await _today_total_points(doc)
+    remaining = max(0.0, _MAX_BALANCE - used)
+    total_points = await _today_total_points(selected_players)
     submitted, lock_in_seconds = await _lock_info(user_id, league)
     today = await _nba_today()
     weekly_rank, monthly_rank = await get_weekly_monthly_rank(league, user_id, today)
@@ -151,15 +156,12 @@ async def _build_response(
         match_day=league.current_match_day,
         selected_players=selected_players,
         total_points=total_points,
-        max_balance=f"{max_balance:.0f}M",
+        max_balance=f"{int(_MAX_BALANCE)}M",
         current_balance=f"{remaining:.0f}M",
         lineup_submitted=submitted,
         lock_in_seconds=lock_in_seconds,
         weekly_rank=weekly_rank,
         monthly_rank=monthly_rank,
-        luxury_tax=luxury_tax,
-        chef_curry=chef_curry,
-        sixth_man_player=sixth_man_player,
     )
 
 
@@ -181,18 +183,10 @@ async def get_global_selection(
         "match_day": league.current_match_day,
     })
 
-    return await _build_response(league, doc, current_user.id)
+    if not doc:
+        return await _build_response(league, [], current_user.id)
 
-
-@router.get(
-    "/bonus-status/",
-    summary="Combined free-quota + purchased-charge availability per bonus (Flutter: BuildYourTeamTabGlobal)",
-)
-async def get_global_bonus_status(current_user: User = Depends(get_current_user)) -> dict:
-    from app.modules.leagues.selection_service import get_bonus_availability
-
-    league = await _get_global_league()
-    return await get_bonus_availability(league.auto_id, current_user)
+    return await _build_response(league, doc.selected_players, current_user.id)
 
 
 @router.post(
@@ -211,12 +205,12 @@ async def post_global_selection(
             "Night is locked — the first game has already tipped off"
         )
 
-    if payload.sixth_man_player is not None:
-        sixth_man_price = _parse_price(payload.sixth_man_player.get("price", "0"))
-        if sixth_man_price > 8:
-            raise ForbiddenException(
-                f"6th Man player costs {sixth_man_price}M — must be ≤ 8M"
-            )
+    # Global League runs on the no-bonus duel engine (spec/QA 08/08/2026,
+    # item 4) — reject server-side even if a stale/modified client still
+    # sends bonus flags, since the "+ Bonuses" button was only ever a
+    # client-side mistake, not a real feature here.
+    if payload.luxury_tax or payload.chef_curry or payload.sixth_man_player is not None:
+        raise ForbiddenException("Bonuses are not available in the Global League")
 
     doc = await FlutterPlayerSelection.find_one({
         "user_id": current_user.id,
@@ -224,34 +218,8 @@ async def post_global_selection(
         "match_day": league.current_match_day,
     })
 
-    # Budget check runs BEFORE bonus quota is consumed below — otherwise a
-    # request that fails on budget would still burn the bonus charge.
-    max_balance = _BASE_BUDGET + (5.0 if payload.luxury_tax else 0.0)
-    used = sum(_parse_price(p.get("price", 0)) for p in payload.selected_players)
-    if used > max_balance:
-        raise ForbiddenException(f"Total price {used}M exceeds budget {max_balance}M")
-
-    # Consume/refund bonus quota (free-by-league-size + purchased charges) —
-    # same accounting as duel leagues (selection_service.save_player_selection).
-    await _sync_bonus(
-        current_user, league.id, "luxury_tax",
-        doc.luxury_tax if doc else False, payload.luxury_tax,
-    )
-    await _sync_bonus(
-        current_user, league.id, "chef_curry",
-        doc.chef_curry if doc else False, payload.chef_curry,
-    )
-    await _sync_bonus(
-        current_user, league.id, "sixth_man",
-        doc.sixth_man_player is not None if doc else False,
-        payload.sixth_man_player is not None,
-    )
-
     if doc:
         doc.selected_players = payload.selected_players
-        doc.luxury_tax = payload.luxury_tax
-        doc.chef_curry = payload.chef_curry
-        doc.sixth_man_player = payload.sixth_man_player
         await doc.save()
     else:
         doc = FlutterPlayerSelection(
@@ -261,10 +229,7 @@ async def post_global_selection(
             match_day=league.current_match_day,
             selected_players=payload.selected_players,
             submitted_at=datetime.now(timezone.utc),
-            luxury_tax=payload.luxury_tax,
-            chef_curry=payload.chef_curry,
-            sixth_man_player=payload.sixth_man_player,
         )
         await doc.insert()
 
-    return await _build_response(league, doc, current_user.id)
+    return await _build_response(league, doc.selected_players, current_user.id)

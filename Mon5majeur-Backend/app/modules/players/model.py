@@ -38,6 +38,16 @@ class Player(BaseDocument):
     avg_fantasy_score: float = 0.0          # rolling average (for display)
     games_played: int = 0
 
+    # Form indicator (spec Part 1 §4.0) — relative ranking within tonight's
+    # eligible pool, recomputed once daily in the same cron pass as pricing
+    # (see form_indicator.py). "HOT" | "COLD" | None (= neutral, no badge).
+    form: str | None = None
+
+    # Last 2 played-game Fantasy Scores (spec Part 1 §5.0), chronological
+    # [older, newer]. None in a slot = no played game there (never 0/X).
+    # Same played-games source as `form`, computed alongside pricing.
+    recent_two_scores: list[int | None] = [None, None]
+
     class Settings:
         name = "players"
         indexes = [

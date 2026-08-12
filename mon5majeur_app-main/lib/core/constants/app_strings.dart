@@ -406,6 +406,7 @@ class AppString {
   static const String newPasswordHint = 'New Password...';
   static const String confirmPasswordHint = 'Confirm Password...';
   static const String sinceYear = 'Since 2025';
+  static const String sincePrefix = 'sincePrefix';
   static const String statisticsOverview = 'Statistics Overview';
   static const String statWLNB = 'W / L / NB';
   static const String statWLNBValue = '12W-4L-2NB';
@@ -415,6 +416,9 @@ class AppString {
   static const String statRegularSeasonValue = '8 Wins';
   static const String statLeagueWins = 'League Wins';
   static const String statLeagueWinsValue = '2 Victories';
+  static const String matches = 'matches';
+  static const String wins = 'wins';
+  static const String victories = 'victories';
   static const String trophies = 'Trophies';
   static const String performanceHighlights = 'Performance Highlights';
   static const String avgPointScoredValue = '92.3';
@@ -524,6 +528,7 @@ class AppString {
       'Follow your players\' live points in real-time during games';
   static const String pro = 'PRO';
   static const String perYear = '/ Year';
+  static const String perMonth = '/ Month';
   static const String jersey = 'Jersey';
   static const String buyCustomJerseys = 'Buy Custom Jerseys';
   static const String comingSoon = 'Coming SOON';
@@ -538,6 +543,7 @@ class AppString {
   static const String joinedTeams = 'Joined Teams';
   static const String morePlayers = 'more players';
   static const String noMatchesToday = 'noMatchesToday';
+  static const String noLeaguesJoinedYet = 'noLeaguesJoinedYet';
 
   // Live Score (spec §4.5)
   static const String liveScoreTitle = 'Live Score';
@@ -549,4 +555,20 @@ class AppString {
   static const String staleDataNotice = 'Scores may be a few minutes behind';
   static const String sixthManDropped = 'Not counted (6th Man)';
   static const String noLineupSubmitted = 'No lineup submitted';
+
+  // Onboarding tutorial (spec Part 3)
+  static const String tutorialStep0 = 'tutorialStep0';
+  static const String tutorialStep1 = 'tutorialStep1';
+  static const String tutorialStep2 = 'tutorialStep2';
+  static const String tutorialStep3 = 'tutorialStep3';
+  static const String tutorialStep4 = 'tutorialStep4';
+  static const String tutorialStep5 = 'tutorialStep5';
+  static const String tutorialSkip = 'tutorialSkip';
+  static const String tutorialNext = 'tutorialNext';
+  static const String tutorialCreateMyLeague = 'tutorialCreateMyLeague';
+  static const String tutorialLater = 'tutorialLater';
+  static const String replayTutorial = 'replayTutorial';
+
+  // Part 1 — Player Selection Row Redesign
+  static const String lastScores = 'lastScores';
 }

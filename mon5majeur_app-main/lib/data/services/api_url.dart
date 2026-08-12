@@ -1,7 +1,7 @@
 // Update api_url.dart
 class ApiUrl {
   static const baseUrl =
-      "https://energize-dyslexic-frisbee.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8001
+      "https://monorail-lagoon-pettiness.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8000
 
   static const imageBaseUrl = baseUrl;
 
@@ -26,6 +26,7 @@ class ApiUrl {
   static const userProfiles = "/api/UserProfiles/";
   static String updateProfile(int profileId) => "/api/UserProfiles/$profileId/";
   static const tokenBalance = "/api/UserProfiles/token-balance/";
+  static const profileStats = "/api/UserProfiles/stats/";
 
   // Push notifications
   static const registerFcmToken = "/api/v1/users/me/fcm-token";
@@ -60,6 +61,9 @@ class ApiUrl {
   static const bonusPurchase = "/api/bonuses/purchase/";
   static const earnDailyVideo = "/api/tokens/earn/daily-video/";
   static const tokenWallet = "/api/tokens/wallet";
+  // TEMPORARY: instantly grants tokens, no real payment — swap for real IAP
+  // once App Store / Play Console products exist (see tokens/router.py).
+  static const mockTokenPurchase = "/api/tokens/mock-purchase/";
 
   static const gamesToday = "/api/games-today/";
   static const gamesHistory = "/api/games-history/";
@@ -123,7 +127,6 @@ class ApiUrl {
       "/api/global-leagues/players-selection/";
   static const globalLeagueStatus = "/api/v1/leagues/global/status";
   static const globalLeagueJoin = "/api/v1/leagues/global/join";
-  static const globalLeagueBonusStatus = "/api/global-leagues/bonus-status/";
 
   // Live Score endpoints (premium, spec §4.5)
   static const livePremiumStatus = "/api/v1/live/premium-status";

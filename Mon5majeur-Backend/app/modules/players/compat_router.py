@@ -23,6 +23,7 @@ from app.modules.leagues.schema import (
 )
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
+from app.modules.players.team_trigrams import trigram_for_team_name
 from app.modules.users.model import User
 
 router = APIRouter(tags=["Players & Games (Flutter compat)"])
@@ -85,9 +86,22 @@ def _game_to_compat(game: NBAGame) -> GameCompatResponse:
     )
 
 
-def _player_to_compat(player: Player) -> PlayerCompatItem:
+def _player_to_compat(
+    player: Player, game_by_team: dict[str, NBAGame] | None = None
+) -> PlayerCompatItem:
     status = "OUT" if player.is_out else "OK"
     price_str = f"{player.daily_price:.1f}M"
+
+    # Part 1 §3.0 — venue + opponent for tonight's game. Never the player's
+    # own team (that would mean the field is wired to the wrong source).
+    is_home: bool | None = None
+    opponent_trigram: str | None = None
+    game = (game_by_team or {}).get(player.team_goalserve_id or "")
+    if game:
+        is_home = player.team_goalserve_id == game.home_team_id
+        opponent_name = game.away_team_name if is_home else game.home_team_name
+        opponent_trigram = trigram_for_team_name(opponent_name)
+
     return PlayerCompatItem(
         id=str(player.id),
         name=player.full_name,
@@ -97,6 +111,11 @@ def _player_to_compat(player: Player) -> PlayerCompatItem:
         status=status,
         price=price_str,
         avg=round(player.avg_fantasy_score),
+        trigram=trigram_for_team_name(player.team_name),
+        opponent_trigram=opponent_trigram,
+        is_home=is_home,
+        form=player.form,
+        last_two_scores=player.recent_two_scores or [None, None],
     )
 
 
@@ -137,9 +156,12 @@ async def players_today(
 
     games = await NBAGame.find(NBAGame.nba_date == today).to_list()
     team_ids_playing: set[str] = set()
+    game_by_team: dict[str, NBAGame] = {}
     for g in games:
         team_ids_playing.add(g.home_team_id)
         team_ids_playing.add(g.away_team_id)
+        game_by_team[g.home_team_id] = g
+        game_by_team[g.away_team_id] = g
 
     if not team_ids_playing:
         return PlayersTodayPageResponse(count=0, next=None, results=[])
@@ -162,7 +184,7 @@ async def players_today(
     return PlayersTodayPageResponse(
         count=total,
         next=next_url,
-        results=[_player_to_compat(p) for p in players],
+        results=[_player_to_compat(p, game_by_team) for p in players],
     )
 
 

@@ -74,3 +74,10 @@ env
 **/server.log
 **/server.err
 **/server_err.log
+*firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat

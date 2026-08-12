@@ -75,11 +75,12 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   final ApiClient _apiClient = ApiClient();
 
   final List<AssetGenImage> jerseys = [
-    Assets.icons.gercy1,
-    Assets.icons.gercy2,
-    Assets.icons.gercy3,
-    Assets.icons.gercy4,
-    Assets.icons.gercy5,
+    Assets.icons.jerseyDevil,
+    Assets.icons.jerseyFlower,
+    Assets.icons.jerseyUfo,
+    Assets.icons.jerseyShark,
+    Assets.icons.jerseySnake,
+    Assets.icons.jerseyZebra,
   ];
 
   // 6th Man is outside the budget — spec says it is NOT counted against the 100M cap

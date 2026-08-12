@@ -3,9 +3,11 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../controllers/global_league_controller.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
+import '../../tutorial/tutorial_controller.dart';
 
 class HomeDrawer extends StatelessWidget {
   const HomeDrawer({super.key});
@@ -69,6 +71,28 @@ class HomeDrawer extends StatelessWidget {
               label: AppString.privacyPolicy.tr,
               icon: Icons.privacy_tip_outlined,
               onTap: () => context.go(RoutePath.privacyPolicyScreen.addBasePath),
+            ),
+
+            /// Replay Tutorial — lets any account (new or existing) redo the
+            /// onboarding coach-marks on demand, independent of the passive
+            /// first-launch trigger and its "no games tonight" hold.
+            _buildMenuItem(
+              label: AppString.replayTutorial.tr,
+              icon: Icons.school_outlined,
+              onTap: () {
+                Navigator.of(context).pop();
+                final alreadyJoined =
+                    Get.find<GlobalLeagueController>().hasJoined.value;
+                Get.find<TutorialController>().restart();
+                // Already-joined accounts skip step 0 (its target, the
+                // Home "Join now" button, doesn't render for them) — jump
+                // straight to the lineup screen so step 1 has something to
+                // spotlight instead of landing back on Home with nothing
+                // to show.
+                if (alreadyJoined) {
+                  context.go(RoutePath.globalLeagueScreen.addBasePath);
+                }
+              },
             ),
 
             const Spacer(),

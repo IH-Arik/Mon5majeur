@@ -92,6 +92,42 @@ class ShopController extends GetxController {
     }
   }
 
+  /// TEMPORARY: instantly grants a token pack, no real payment taken —
+  /// replace with real IAP once App Store/Play Console products exist
+  /// (see ApiUrl.mockTokenPurchase / tokens/router.py). Returns true on
+  /// success.
+  final isPurchasingTokens = false.obs;
+
+  Future<bool> purchaseTokenPack(String pack) async {
+    if (isPurchasingTokens.value) return false;
+    isPurchasingTokens.value = true;
+    try {
+      final response = await _api.post(
+        url: ApiUrl.baseUrl + ApiUrl.mockTokenPurchase,
+        body: {'pack': pack},
+      );
+      if (response.statusCode == 200 && response.body != null) {
+        tokenBalance.value =
+            (response.body['balance'] as num?)?.toInt() ?? tokenBalance.value;
+        return true;
+      }
+      final detail = (response.body?['detail'] as String?) ?? 'Purchase failed';
+      Get.snackbar('Error', detail,
+          backgroundColor: const Color(0xFF3a0000),
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } catch (_) {
+      Get.snackbar('Error', 'Network error. Please try again.',
+          backgroundColor: const Color(0xFF3a0000),
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isPurchasingTokens.value = false;
+    }
+  }
+
   /// Watch a rewarded ad → earn 6 tokens (backend enforces 24h limit).
   Future<void> earnDailyVideoTokens() async {
     if (isEarningVideo.value) return;
