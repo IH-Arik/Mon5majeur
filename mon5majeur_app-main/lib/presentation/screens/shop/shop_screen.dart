@@ -237,7 +237,7 @@ class ShopScreen extends StatelessWidget {
                       onUnlock: inv.liveScoringActive
                           ? null
                           : () => _confirmPurchase(context, c, 'live_scoring',
-                              AppString.liveScoring.tr, 450),
+                              AppString.liveScoring.tr, 200),
                     ),
 
                     SizedBox(height: 16.h),
