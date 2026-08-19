@@ -71,17 +71,7 @@ class ProfileSetupController extends GetxController {
       selectedDate.value = DateTime.parse(profile.dateOfBirth);
       termsAccepted.value = profile.acceptTermsConditions;
       notificationsAccepted.value = profile.recivedNotifications;
-
-      // Map team logo to index
-      final logoMap = {
-        'paris_fc': 0,
-        'lakers': 1,
-        'boston_celtics': 2,
-        'chicago_bulls': 3,
-        'atlanta_hawks': 4,
-        'golden_state_warriors': 5,
-      };
-      selectedLogoIndex.value = logoMap[profile.teamLogo] ?? 0;
+      selectedLogoIndex.value = TeamLogoChoices.indexOf(profile.teamLogo);
     }
   }
 
@@ -226,6 +216,7 @@ class ProfileSetupController extends GetxController {
         isBasic: false,
         showResult: true,
       );
+      if (!context.mounted) return;
 
       Response response;
 
@@ -261,6 +252,7 @@ class ProfileSetupController extends GetxController {
           showResult: true,
         );
       }
+      if (!context.mounted) return;
 
       logger.i('Profile Setup Response: ${response.statusCode}');
       logger.i('Profile Setup Body: ${response.body}');
@@ -272,6 +264,7 @@ class ProfileSetupController extends GetxController {
 
         // ✅ Save profile completion flag to local storage
         await SharedPrefsHelper.setBool(AppConstants.isProfileCompleted, true);
+        if (!context.mounted) return;
 
         showSnackbar(
           context,
@@ -321,6 +314,7 @@ class ProfileSetupController extends GetxController {
       }
     } catch (e) {
       logger.e('Profile Setup Error: $e');
+      if (!context.mounted) return;
       showSnackbar(
         context,
         'Error',

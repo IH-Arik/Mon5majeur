@@ -72,6 +72,11 @@ class HomeDrawer extends StatelessWidget {
               icon: Icons.privacy_tip_outlined,
               onTap: () => context.go(RoutePath.privacyPolicyScreen.addBasePath),
             ),
+            _buildMenuItem(
+              label: AppString.termsOfUse.tr,
+              icon: Icons.article_outlined,
+              onTap: () => context.go(RoutePath.termsOfUseScreen.addBasePath),
+            ),
 
             /// Replay Tutorial — lets any account (new or existing) redo the
             /// onboarding coach-marks on demand, independent of the passive
@@ -132,16 +137,20 @@ class HomeDrawer extends StatelessWidget {
             ),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
+              SizedBox(width: 12.w),
               Icon(icon, color: Colors.white, size: 24.r),
             ],
           ),

@@ -45,6 +45,7 @@ class RoutePath {
   static const String aboutUsScreen = 'aboutUsScreen';
   static const String legalNoticesScreen = 'legalNoticesScreen';
   static const String privacyPolicyScreen = 'privacyPolicyScreen';
+  static const String termsOfUseScreen = 'termsOfUseScreen';
   static const String fantasyLeagueScreenPrivate = 'fantasyLeagueScreenPrivate';
   static const String fantasyLeagueScreenForJoin = 'fantasyLeagueScreenForJoin';
   static const String liveScoreScreen = 'liveScoreScreen';

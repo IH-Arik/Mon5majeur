@@ -1,7 +1,7 @@
 // Update api_url.dart
 class ApiUrl {
   static const baseUrl =
-      "https://monorail-lagoon-pettiness.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8000
+      "https://energize-dyslexic-frisbee.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8000
 
   static const imageBaseUrl = baseUrl;
 
@@ -21,6 +21,7 @@ class ApiUrl {
 
   // Social auth
   static const googleAuth = "/api/auth/google/";
+  static const appleAuth = "/api/auth/apple/";
 
   // Profile endpoints
   static const userProfiles = "/api/UserProfiles/";
@@ -35,6 +36,8 @@ class ApiUrl {
   static const aboutUs = "/api/aboutus/";
   static const legalNotices = "/api/legal-notices/";
   static const privacyPolicy = "/api/privacy-policies/";
+  static const termsOfUse = "/api/terms-of-use/";
+  static const leagueRules = "/api/leagues/rules/";
 
   // Private League endpoints
   static const privateLeagues = "/api/private-leagues/";
@@ -125,6 +128,8 @@ class ApiUrl {
   // Global League endpoints
   static const globalLeaguePlayersSelection =
       "/api/global-leagues/players-selection/";
+  static String globalMatchResult(int matchDay) =>
+      "/api/global-leagues/matches/$matchDay/";
   static const globalLeagueStatus = "/api/v1/leagues/global/status";
   static const globalLeagueJoin = "/api/v1/leagues/global/join";
 

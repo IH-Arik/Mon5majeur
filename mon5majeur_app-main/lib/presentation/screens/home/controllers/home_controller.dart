@@ -32,6 +32,16 @@ class HomeController extends GetxController {
     fetchMyLeagues();
   }
 
+  void resetSessionState() {
+    userProfile.value = null;
+    todayMatches.clear();
+    myLeagues.clear();
+    profileExists.value = false;
+    isLoading.value = false;
+    matchesLoading.value = false;
+    leaguesLoading.value = false;
+  }
+
   // Check if user has completed profile setup
   Future<bool> hasCompletedProfile() async {
     final isCompleted = await SharedPrefsHelper.getBool(
@@ -65,6 +75,7 @@ class HomeController extends GetxController {
         if (response.body is List && (response.body as List).isNotEmpty) {
           final profileData = (response.body as List).first;
           userProfile.value = UserProfileModel.fromJson(profileData);
+          profileExists.value = true;
           logger.i('Profile loaded: ${userProfile.value}');
 
           // ✅ Save flag when profile exists on server
@@ -74,6 +85,8 @@ class HomeController extends GetxController {
           );
         } else {
           logger.w('No profile found in response');
+          userProfile.value = null;
+          profileExists.value = false;
           // ✅ Clear flag if no profile exists
           await SharedPrefsHelper.setBool(
             AppConstants.isProfileCompleted,
@@ -82,9 +95,13 @@ class HomeController extends GetxController {
         }
       } else {
         logger.e('Failed to load profile: ${response.statusCode}');
+        userProfile.value = null;
+        profileExists.value = false;
       }
     } catch (e) {
       logger.e('Error fetching profile: $e');
+      userProfile.value = null;
+      profileExists.value = false;
     } finally {
       isLoading.value = false;
     }
@@ -154,9 +171,9 @@ class HomeController extends GetxController {
               .map(
                 (privateLeague) => MyLeagueModel.fromPrivateLeague(
                   privateLeague,
-                  userRank: 1, // Placeholder
+                  userRank: privateLeague.rank,
                   matchday: privateLeague.currentMatchDay,
-                  week: privateLeague.isStarted == true ? 1 : 0,
+                  week: privateLeague.currentWeek,
                   season: 'Regular Season',
                 ),
               )

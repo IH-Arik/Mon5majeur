@@ -44,7 +44,7 @@ class EnglishTranslation {
     AppString.doYouHaveAccount: "Do you have an account?",
     AppString.signInText: " Sign in",
     AppString.dataTitle: 'Data',
-    AppString.searchPlayersHint: 'Search players by name',
+      AppString.searchPlayersHint: 'Search players by name',
     AppString.filtersLabel: 'Filters: ',
     AppString.clearAll: 'Clear All',
     AppString.playerName: 'Player Name',
@@ -112,8 +112,8 @@ class EnglishTranslation {
     AppString.result: 'Result',
     AppString.leaderboard: 'Leaderboard',
     AppString.rules: 'Rules',
-    AppString.selectPlayer: 'Select Player',
-    AppString.bank: 'Bank ',
+      AppString.selectPlayer: 'Select Player',
+      AppString.bank: 'Bank ',
     AppString.player: 'Player',
     AppString.priceWithDollar: '\$ Price',
     AppString.createPrivateLeague: 'Create Private League',
@@ -202,6 +202,7 @@ class EnglishTranslation {
     AppString.jasonTatum: 'Jason Tatum',
     AppString.createPublicLeague: 'Create Public League',
     AppString.publicLeague: 'Public League',
+    AppString.globalLeague: 'Global League',
     AppString.createALeague: 'Create a League',
     AppString.chooseLeagueType: 'Choose the type of league you want to create',
     AppString.playWithFriendsUsingCode: 'Play with friends using a code',
@@ -216,6 +217,7 @@ class EnglishTranslation {
     AppString.aboutUs: 'About Us',
     AppString.legalNotices: 'Legal Notices',
     AppString.privacyPolicy: 'Privacy Policy',
+    AppString.termsOfUse: 'Terms of Use',
     AppString.connectWithYourFriends: "Connect with your friend's",
     AppString.accessYourLeague: 'Access your league',
     AppString.enterCodeToJoinPrivateLeague:
@@ -304,6 +306,8 @@ class EnglishTranslation {
     AppString.tapToEdit: 'Tap to edit',
     AppString.lockInPlaceholder: 'Lock in 2h15',
     AppString.lockInPrefix: 'Lock in ',
+    AppString.lockClosed: 'Locked for tonight',
+    AppString.noGamesScheduled: 'No games scheduled',
     AppString.earnFreeTokens: 'Earn 6 free tokens',
     AppString.celebrationEmoji: '🎉',
     AppString.nbaGlobalLeague: 'NBA Global League',
@@ -330,6 +334,13 @@ class EnglishTranslation {
     AppString.separator: '|',
     AppString.todaysNbaResults: 'Todays Nba Results',
     AppString.todaysFantasyPlayersScore: 'Todays Fantasy players Score',
+    AppString.noGamesToday: 'No games today',
+    AppString.noPlayerScoresYet: 'No player scores yet',
+    AppString.last7DaysNbaResults: 'Last 7 Days - NBA Results',
+    AppString.noRecentGames: 'No recent games',
+    AppString.matchStatusFinal: 'Final',
+    AppString.matchStatusLive: 'Live',
+    AppString.matchStatusNotStarted: 'Not Started',
     AppString.sf: 'SF',
     AppString.lakers: 'Lakers',
     AppString.suns: 'Suns',
@@ -443,6 +454,10 @@ class EnglishTranslation {
     AppString.perMonth: '/ Month',
     AppString.jersey: 'Jersey',
     AppString.buyCustomJerseys: 'Buy custom jerseys',
+    AppString.browseJerseyStyles: 'Browse jersey styles',
+    AppString.jerseySelectionHint:
+        'Preview the available jerseys used in team building.',
+    AppString.viewStyles: 'View styles',
     AppString.comingSoon: 'Coming Soon',
     AppString.tokens: ' Tokens',
     AppString.appTitle: "MON5MAJEUR",
@@ -456,6 +471,7 @@ class EnglishTranslation {
     AppString.staleDataNotice: 'Scores may be a few minutes behind',
     AppString.sixthManDropped: 'Not counted (6th Man)',
     AppString.noLineupSubmitted: 'No lineup submitted',
+    AppString.budgetExceeded: 'Budget exceeded',
 
     // Onboarding tutorial (spec Part 3)
     AppString.tutorialStep0: 'Welcome! Join the Global League. Everyone plays there.',
@@ -480,4 +496,5 @@ class EnglishTranslation {
   static String weekWithNumber(int n) => 'Week $n';
   static String monthWithNumber(int n) => 'Month $n';
   static String totalPoints(int n) => '$n Points';
+  static String budgetExceededBy(int n) => 'Budget exceeded by ${n}M';
 }

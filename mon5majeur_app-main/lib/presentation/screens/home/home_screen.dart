@@ -111,9 +111,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       endDrawer: const HomeDrawer(),
       body: ShowCaseWidget(
         enableAutoScroll: true,
-        globalFloatingActionWidget: buildTutorialSkipAction,
+      globalFloatingActionWidget: buildTutorialSkipAction,
         builder: (scContext) {
           _showcaseContext = scContext;
+          if (_tutorial.showHomeSpotlight.value) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final ctx = _showcaseContext;
+              if (!mounted || ctx == null) return;
+              ShowCaseWidget.of(ctx).startShowCase([_tutorial.homeJoinKey]);
+            });
+          }
           return Stack(
         children: [
           /// Background Image with parallax effect
@@ -681,11 +688,13 @@ class _GlobalLeagueCard extends StatelessWidget {
   }
 }
 
-/// Formats a lock countdown ("Lock in 2h15") from seconds-until-lock.
-/// Falls back to the static placeholder once locked / with no scheduled game.
+/// Formats a lock countdown from seconds-until-lock.
 String formatLockCountdown(int? lockInSeconds) {
-  if (lockInSeconds == null || lockInSeconds <= 0) {
-    return AppString.lockInPlaceholder.tr;
+  if (lockInSeconds == null) {
+    return AppString.noGamesScheduled.tr;
+  }
+  if (lockInSeconds <= 0) {
+    return AppString.lockClosed.tr;
   }
   final duration = Duration(seconds: lockInSeconds);
   final hours = duration.inHours;
@@ -826,12 +835,6 @@ class _AnimatedMatchCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Assets.icons.vs.image(
-                      width: 40.r,
-                      height: 40.r,
-                      color: Colors.grey,
-                    ),
-                    SizedBox(height: 12.h),
                     Text(
                       AppString.noMatchesToday.tr,
                       style: TextStyle(color: Colors.grey, fontSize: 14.sp),
@@ -1170,12 +1173,6 @@ class _AnimatedLeagueCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Assets.icons.basketBall.image(
-                      width: 40.r,
-                      height: 40.r,
-                      color: Colors.grey,
-                    ),
-                    SizedBox(height: 12.h),
                     Text(
                       AppString.noLeaguesJoinedYet.tr,
                       style: TextStyle(color: Colors.grey, fontSize: 14.sp),

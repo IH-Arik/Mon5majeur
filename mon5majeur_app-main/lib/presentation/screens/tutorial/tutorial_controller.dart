@@ -57,6 +57,12 @@ class TutorialController extends GetxController {
       active.value = savedStep >= 0;
     }
     _loaded = true;
+    // Home readiness can resolve before persisted tutorial state finishes
+    // loading. Re-apply once loading completes so first-launch/tutorial
+    // replay doesn't get stranded in an inert preloaded state.
+    if (_hasGamesTonight != null) {
+      _applyHomeReadiness();
+    }
   }
 
   /// True once first-launch persisted state has loaded and the tutorial

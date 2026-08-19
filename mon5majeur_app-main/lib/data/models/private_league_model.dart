@@ -3,6 +3,8 @@ class PrivateLeagueModel {
   final int? id;
   final List<TeamInfo> teams;
   final int currentMatchDay; // Add this field
+  final int currentWeek;
+  final int? rank;
   final String leagueName;
   final String leagueDescription;
   final String leagueLogo;
@@ -23,6 +25,8 @@ class PrivateLeagueModel {
     this.id,
     required this.teams,
     this.currentMatchDay = 0, // Add this with default value
+    this.currentWeek = 0,
+    this.rank,
     required this.leagueName,
     required this.leagueDescription,
     required this.leagueLogo,
@@ -60,6 +64,8 @@ class PrivateLeagueModel {
               .toList() ??
           [],
       currentMatchDay: json['current_match_day'] ?? 0, // Add this line
+      currentWeek: json['current_week'] ?? 0,
+      rank: json['rank'],
       leagueName: json['leauge_name'] ?? '',
       leagueDescription: json['leauge_description'] ?? '',
       leagueLogo: json['leauge_logo'] ?? '',

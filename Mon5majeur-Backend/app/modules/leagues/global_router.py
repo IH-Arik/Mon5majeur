@@ -5,20 +5,25 @@ Mounted at /api (no /v1 prefix).
   GET  /api/global-leagues/players-selection/  → fetch user's current selection
   POST /api/global-leagues/players-selection/  → save/update user's selection
 """
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
 
-from app.exceptions.errors import ForbiddenException
+from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.auth.dependencies import get_current_user
 from app.modules.leagues.constants import (
     GLOBAL_LEAGUE_BUDGET,
     LEAGUE_STATUS_WAITING,
     LEAGUE_TYPE_GLOBAL,
 )
-from app.modules.leagues.model import League
-from app.modules.leagues.schema import GlobalLeagueSelectionResponse, PlayersSelectionRequest
+from app.modules.leagues.model import League, LeagueMembership
+from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
+from app.modules.leagues.schema import (
+    GlobalLeagueSelectionResponse,
+    MatchResultCompatResponse,
+    PlayersSelectionRequest,
+)
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
 from app.modules.players.model import NBAGame, PlayerGameStats
@@ -165,6 +170,115 @@ async def _build_response(
     )
 
 
+async def _global_matchday_date(league: League, match_day: int) -> tuple[date, bool]:
+    """Return the NBA date represented by this Global League match day.
+
+    The Global League does not create LeagueMatch rows, so we infer dates from
+    the archived nightly score collection. The current active match day falls
+    back to today's NBA date even before the archive job has run.
+    """
+    archived = await GlobalLeagueDailyScore.find(
+        GlobalLeagueDailyScore.league_id == league.id,
+    ).sort(+GlobalLeagueDailyScore.nba_date).to_list()
+    archived_dates = list(dict.fromkeys(score.nba_date for score in archived))
+
+    if match_day <= 0:
+        raise NotFoundException("Invalid match day")
+
+    today = await _nba_today()
+    is_live_day = match_day == league.current_match_day
+
+    if match_day <= len(archived_dates):
+        return archived_dates[match_day - 1], is_live_day and archived_dates[match_day - 1] == today
+
+    if is_live_day:
+        return today, True
+
+    raise NotFoundException("Match day is not available yet")
+
+
+async def _global_status_for_date(nba_date: date, is_live_day: bool) -> str:
+    games = await NBAGame.find(NBAGame.nba_date == nba_date).to_list()
+    if not games:
+        return "scheduled"
+
+    statuses = {(g.status or "").lower() for g in games}
+    if any(s in {"in play", "live"} for s in statuses):
+        return "live"
+    if all(s in {"final", "finished", "closed", "completed"} for s in statuses):
+        return "completed"
+    if is_live_day:
+        return "scheduled"
+    return "completed"
+
+
+async def _global_total_for_user(
+    league: League,
+    user_id: PydanticObjectId,
+    match_day: int,
+    nba_date: date,
+    use_archive: bool,
+) -> float:
+    if use_archive:
+        archived = await GlobalLeagueDailyScore.find_one(
+            GlobalLeagueDailyScore.user_id == user_id,
+            GlobalLeagueDailyScore.league_id == league.id,
+            GlobalLeagueDailyScore.nba_date == nba_date,
+        )
+        return round(archived.total_points, 2) if archived else 0.0
+
+    sel = await FlutterPlayerSelection.find_one(
+        FlutterPlayerSelection.user_id == user_id,
+        FlutterPlayerSelection.league_auto_id == (league.auto_id or 0),
+        FlutterPlayerSelection.match_day == match_day,
+    )
+    if not sel:
+        return 0.0
+    return await _today_total_points(sel.selected_players)
+
+
+async def _global_selection_items(
+    user_id: PydanticObjectId,
+    league_auto_id: int,
+    match_day: int,
+    nba_date: date,
+    include_selection: bool,
+) -> list[dict]:
+    if not include_selection:
+        return []
+
+    sel = await FlutterPlayerSelection.find_one(
+        FlutterPlayerSelection.user_id == user_id,
+        FlutterPlayerSelection.league_auto_id == league_auto_id,
+        FlutterPlayerSelection.match_day == match_day,
+    )
+    if not sel:
+        return []
+
+    items: list[dict] = []
+    for p in sel.selected_players:
+        score = 0
+        raw_id = p.get("id", "")
+        try:
+            player_oid = PydanticObjectId(raw_id)
+            stats = await PlayerGameStats.find_one(
+                PlayerGameStats.player_id == player_oid,
+                PlayerGameStats.nba_date == nba_date,
+                PlayerGameStats.score_computed == True,  # noqa: E712
+            )
+            if stats and stats.fantasy_score is not None:
+                score = int(round(stats.fantasy_score))
+        except Exception:
+            pass
+        items.append({
+            "id": raw_id,
+            "name": p.get("name", ""),
+            "position": p.get("position", ""),
+            "score": score,
+        })
+    return items
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get(
@@ -233,3 +347,68 @@ async def post_global_selection(
         await doc.insert()
 
     return await _build_response(league, doc.selected_players, current_user.id)
+
+
+@router.get(
+    "/matches/{match_day}/",
+    response_model=MatchResultCompatResponse,
+    summary="Global League night ranking/result (Flutter: Global Result tab)",
+)
+async def get_global_match_result(
+    match_day: int,
+    current_user: User = Depends(get_current_user),
+) -> MatchResultCompatResponse:
+    league = await _get_global_league()
+    nba_date, is_live_day = await _global_matchday_date(league, match_day)
+    use_archive = nba_date != await _nba_today() or not is_live_day
+    status = await _global_status_for_date(nba_date, is_live_day)
+
+    memberships = await LeagueMembership.find(
+        LeagueMembership.league_id == league.id
+    ).to_list()
+    user_ids = [m.user_id for m in memberships]
+    users = await User.find({"_id": {"$in": user_ids}}).to_list() if user_ids else []
+    user_map = {u.id: u for u in users}
+
+    player_scores: list[dict] = []
+    for membership in memberships:
+        user = user_map.get(membership.user_id)
+        if not user:
+            continue
+        total = await _global_total_for_user(
+            league,
+            membership.user_id,
+            match_day,
+            nba_date,
+            use_archive,
+        )
+        selection_items = await _global_selection_items(
+            membership.user_id,
+            league.auto_id or 0,
+            match_day,
+            nba_date,
+            include_selection=is_live_day,
+        )
+        display_name = user.team_name or (user.email.split("@")[0] if user.email else "Unknown")
+        player_scores.append({
+            "player_id": user.auto_id or 0,
+            "team_name": display_name,
+            "username": user.full_name or display_name,
+            "total_points": int(round(total)),
+            "selection": selection_items,
+        })
+
+    player_scores.sort(key=lambda item: item["total_points"], reverse=True)
+
+    return MatchResultCompatResponse(
+        id=league.auto_id or 0,
+        league_id=league.auto_id or 0,
+        league_name=league.name,
+        match_day=match_day,
+        match_type="global_night",
+        match_date=str(nba_date),
+        status=status,
+        player_scores=player_scores,
+        pairs=[],
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )

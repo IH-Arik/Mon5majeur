@@ -1,4 +1,6 @@
 // lib/data/models/profile_model.dart
+import 'package:mon5majeur_app/core/custom_assets/assets.gen.dart';
+
 class UserProfileModel {
   final int? id;
   final String teamLogo;
@@ -67,23 +69,33 @@ class TeamLogoChoices {
   static const String atlantaHawks = 'atlanta_hawks';
   static const String goldenStateWarriors = 'golden_state_warriors';
 
+  static const List<String> all = [
+    parisFc,
+    lakers,
+    bostonCeltics,
+    chicagoBulls,
+    atlantaHawks,
+    goldenStateWarriors,
+  ];
+
+  static final List<AssetGenImage> assets = [
+    Assets.icons.logo1,
+    Assets.icons.logo2,
+    Assets.icons.logo3,
+    Assets.icons.logo4,
+    Assets.icons.logo5,
+    Assets.icons.logo6,
+  ];
+
   // Map index to team logo value
   static String getTeamLogoByIndex(int index) {
-    switch (index) {
-      case 0:
-        return parisFc;
-      case 1:
-        return lakers;
-      case 2:
-        return bostonCeltics;
-      case 3:
-        return chicagoBulls;
-      case 4:
-        return atlantaHawks;
-      case 5:
-        return goldenStateWarriors;
-      default:
-        return parisFc;
-    }
+    if (index < 0 || index >= all.length) return parisFc;
+    return all[index];
+  }
+
+  static int indexOf(String? value) {
+    if (value == null) return 0;
+    final index = all.indexOf(value);
+    return index >= 0 ? index : 0;
   }
 }

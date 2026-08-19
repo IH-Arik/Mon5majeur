@@ -224,6 +224,7 @@ class AppString {
   static const String searchPlayersByName = 'Search players by name';
   static const String createPublicLeague = 'Create Public League';
   static const String publicLeague = 'Public League';
+  static const String globalLeague = 'Global League';
   static const String leagueDetailsUpdatedSuccessfully =
       'League details updated successfully';
   static const String leagueStartsInWaitingRoom =
@@ -256,6 +257,7 @@ class AppString {
   static const String aboutUs = 'About Us';
   static const String legalNotices = 'Legal Notices';
   static const String privacyPolicy = 'Privacy Policy';
+  static const String termsOfUse = 'Terms of Use';
   static const String connectWithYourFriends = "Connect with your friend's";
   static const String accessYourLeague = 'Access your league';
   static const String enterCodeToJoinPrivateLeague =
@@ -370,6 +372,8 @@ class AppString {
   static const String tapToEdit = 'Tap to edit';
   static const String lockInPlaceholder = 'Lock in 2h15';
   static const String lockInPrefix = 'Lock in ';
+  static const String lockClosed = 'Locked for tonight';
+  static const String noGamesScheduled = 'No games scheduled';
   static const String noResultPlaceholder = '—';
   static const String earnFreeTokens = 'Earn 6 free tokens';
   static const String celebrationEmoji = '🎉';
@@ -397,6 +401,13 @@ class AppString {
   static const String todaysNbaResults = 'Todays Nba Results';
   static const String todaysFantasyPlayersScore =
       'Todays Fantasy players Score';
+  static const String noGamesToday = 'No games today';
+  static const String noPlayerScoresYet = 'No player scores yet';
+  static const String last7DaysNbaResults = 'Last 7 Days - NBA Results';
+  static const String noRecentGames = 'No recent games';
+  static const String matchStatusFinal = 'Final';
+  static const String matchStatusLive = 'Live';
+  static const String matchStatusNotStarted = 'Not Started';
   static const String sf = 'SF';
   static const String lakers = 'Lakers';
   static const String suns = 'Suns';
@@ -531,6 +542,10 @@ class AppString {
   static const String perMonth = '/ Month';
   static const String jersey = 'Jersey';
   static const String buyCustomJerseys = 'Buy Custom Jerseys';
+  static const String browseJerseyStyles = 'Browse jersey styles';
+  static const String jerseySelectionHint =
+      'Preview the available jerseys used in team building.';
+  static const String viewStyles = 'View styles';
   static const String comingSoon = 'Coming SOON';
   static const String tokens = ' Tokens';
   static const String appTitle = "MON5MAJEUR";
@@ -555,6 +570,7 @@ class AppString {
   static const String staleDataNotice = 'Scores may be a few minutes behind';
   static const String sixthManDropped = 'Not counted (6th Man)';
   static const String noLineupSubmitted = 'No lineup submitted';
+  static const String budgetExceeded = 'Budget exceeded';
 
   // Onboarding tutorial (spec Part 3)
   static const String tutorialStep0 = 'tutorialStep0';
@@ -571,4 +587,6 @@ class AppString {
 
   // Part 1 — Player Selection Row Redesign
   static const String lastScores = 'lastScores';
+
+  static String budgetExceededBy(int n) => 'Budget exceeded by ${n}M';
 }

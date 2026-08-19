@@ -20,6 +20,11 @@ class ProfileController extends GetxController {
     fetchStats();
   }
 
+  void resetSessionState() {
+    isLoading.value = false;
+    stats.value = ProfileStatsModel.empty();
+  }
+
   Future<void> fetchStats() async {
     isLoading.value = true;
     try {
@@ -28,8 +33,11 @@ class ProfileController extends GetxController {
       if (response.statusCode == 200 && response.body != null) {
         stats.value =
             ProfileStatsModel.fromJson(response.body as Map<String, dynamic>);
+      } else {
+        stats.value = ProfileStatsModel.empty();
       }
     } catch (e) {
+      stats.value = ProfileStatsModel.empty();
       _logger.e('Error fetching profile stats: $e');
     } finally {
       isLoading.value = false;

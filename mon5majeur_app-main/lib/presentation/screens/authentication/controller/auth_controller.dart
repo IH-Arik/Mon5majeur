@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:logger/logger.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/local_db/local_db.dart';
@@ -13,8 +14,20 @@ import '../../../../core/routes/routes.dart';
 import '../../../../data/services/api_service.dart';
 // import '../../../../data/services/api_url.dart' hide ApiUrl;
 import '../../../../data/services/api_url.dart';
+import '../../../../controllers/global_league_controller.dart';
+import '../../../../controllers/my_leagues_controller.dart';
+import '../../../../controllers/my_match_today_controller.dart';
+import '../../../../controllers/notifications_controller.dart';
 
 import '../../home/controllers/home_controller.dart';
+import '../../home/controllers/create_league_controller.dart';
+import '../../home/controllers/leaderboard_controller.dart';
+import '../../home/controllers/live_score_controller.dart';
+import '../../home/controllers/result_controller.dart';
+import '../../mymatch/my_match_controller.dart';
+import '../../profile/profile_controller.dart';
+import '../../profile setup/controller/profile_setup_controller.dart';
+import '../../shop/shop_controller.dart';
 
 final logger = Logger();
 
@@ -31,14 +44,8 @@ class AuthController extends GetxController {
   Timer? _otpTimer;
 
   // Text controllers
-  final emailController = TextEditingController(text: 'arikittesaf@gmail.com');
-  // final emailController = TextEditingController(
-  //   text: 'abdullah.muhtasim@gmail.com',
-  // );
-  // final emailController = TextEditingController(text: 'fahad1001mir@gmail.com');
-  // final emailController = TextEditingController(text: 'fahad1000mir@gmail.com');
-  // final emailController = TextEditingController(text: 'admin@gmail.com');
-  final passwordController = TextEditingController(text: '12345678');
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
   // Form keys for validation
@@ -54,6 +61,92 @@ class AuthController extends GetxController {
     confirmPasswordController.dispose();
     _otpTimer?.cancel();
     super.onClose();
+  }
+
+  Future<void> _clearStoredAuth() async {
+    await SharedPrefsHelper.remove(AppConstants.token);
+    await SharedPrefsHelper.remove(AppConstants.refreshToken);
+    await SharedPrefsHelper.remove(AppConstants.userId);
+    await SharedPrefsHelper.remove(AppConstants.userEmail);
+    await SharedPrefsHelper.setBool(AppConstants.isProfileCompleted, false);
+  }
+
+  void _resetUserScopedControllers() {
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().resetSessionState();
+      Get.delete<HomeController>(force: true);
+    }
+    if (Get.isRegistered<ProfileController>()) {
+      Get.find<ProfileController>().resetSessionState();
+      Get.delete<ProfileController>(force: true);
+    }
+    if (Get.isRegistered<MyLeaguesController>()) {
+      Get.delete<MyLeaguesController>(force: true);
+    }
+    if (Get.isRegistered<MyMatchTodayController>()) {
+      Get.delete<MyMatchTodayController>(force: true);
+    }
+    if (Get.isRegistered<NotificationsController>()) {
+      Get.delete<NotificationsController>(force: true);
+    }
+    if (Get.isRegistered<GlobalLeagueController>()) {
+      Get.delete<GlobalLeagueController>(force: true);
+    }
+    if (Get.isRegistered<ShopController>()) {
+      Get.delete<ShopController>(force: true);
+    }
+    if (Get.isRegistered<LeaderboardController>()) {
+      Get.delete<LeaderboardController>(force: true);
+    }
+    if (Get.isRegistered<ResultController>()) {
+      Get.delete<ResultController>(force: true);
+    }
+    if (Get.isRegistered<LiveScoreController>()) {
+      Get.delete<LiveScoreController>(force: true);
+    }
+    if (Get.isRegistered<MyMatchController>()) {
+      Get.delete<MyMatchController>(force: true);
+    }
+    if (Get.isRegistered<ProfileSetupController>()) {
+      Get.delete<ProfileSetupController>(force: true);
+    }
+    if (Get.isRegistered<CreateLeagueController>(tag: 'private')) {
+      Get.delete<CreateLeagueController>(tag: 'private', force: true);
+    }
+    if (Get.isRegistered<CreateLeagueController>(tag: 'public')) {
+      Get.delete<CreateLeagueController>(tag: 'public', force: true);
+    }
+  }
+
+  Future<void> _persistAuthSession(Map<String, dynamic> data) async {
+    await SharedPrefsHelper.setString(
+      AppConstants.token,
+      data['access'] ?? data['access_token'] ?? '',
+    );
+    await SharedPrefsHelper.setString(
+      AppConstants.refreshToken,
+      data['refresh'] ?? data['refresh_token'] ?? '',
+    );
+
+    if (data['user'] != null) {
+      await SharedPrefsHelper.setString(
+        AppConstants.userId,
+        data['user']['id'].toString(),
+      );
+      await SharedPrefsHelper.setString(
+        AppConstants.userEmail,
+        data['user']['email'] ?? '',
+      );
+    }
+  }
+
+  Future<bool> _refreshSessionAndCheckProfile() async {
+    final homeController = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>()
+        : Get.put(HomeController());
+    homeController.resetSessionState();
+    await homeController.fetchUserProfile();
+    return await homeController.checkProfileExists();
   }
 
   // Start OTP countdown timer
@@ -397,28 +490,9 @@ class AuthController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = response.body;
-
-        // Save tokens to local storage
-        await SharedPrefsHelper.setString(
-          AppConstants.token,
-          data['access'] ?? '',
-        );
-        await SharedPrefsHelper.setString(
-          AppConstants.refreshToken,
-          data['refresh'] ?? '',
-        );
-
-        // Save user data
-        if (data['user'] != null) {
-          await SharedPrefsHelper.setString(
-            AppConstants.userId,
-            data['user']['id'].toString(),
-          );
-          await SharedPrefsHelper.setString(
-            AppConstants.userEmail,
-            data['user']['email'],
-          );
-        }
+        await _clearStoredAuth();
+        _resetUserScopedControllers();
+        await _persistAuthSession(data);
 
         showSnackbar(context, "Success", "Login successful!");
 
@@ -426,10 +500,7 @@ class AuthController extends GetxController {
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
             try {
-              final homeController = Get.put(HomeController());
-
-              // Check if profile exists
-              final hasProfile = await homeController.checkProfileExists();
+              final hasProfile = await _refreshSessionAndCheckProfile();
 
               if (hasProfile) {
                 logger.i('✅ Profile exists, navigating to home');
@@ -795,33 +866,16 @@ class AuthController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = response.body;
-
-        await SharedPrefsHelper.setString(
-          AppConstants.token,
-          data['access'] ?? '',
-        );
-        await SharedPrefsHelper.setString(
-          AppConstants.refreshToken,
-          data['refresh'] ?? '',
-        );
-        if (data['user'] != null) {
-          await SharedPrefsHelper.setString(
-            AppConstants.userId,
-            data['user']['id'].toString(),
-          );
-          await SharedPrefsHelper.setString(
-            AppConstants.userEmail,
-            data['user']['email'] ?? '',
-          );
-        }
+        await _clearStoredAuth();
+        _resetUserScopedControllers();
+        await _persistAuthSession(data);
 
         showSnackbar(context, "Success", "Google login successful!");
 
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
             try {
-              final homeController = Get.put(HomeController());
-              final hasProfile = await homeController.checkProfileExists();
+              final hasProfile = await _refreshSessionAndCheckProfile();
               if (context.mounted) {
                 context.go(
                   hasProfile
@@ -831,8 +885,9 @@ class AuthController extends GetxController {
               }
             } catch (e) {
               logger.e("Navigation error after Google login: $e");
-              if (context.mounted)
+              if (context.mounted) {
                 context.go(RoutePath.profileSetup.addBasePath);
+              }
             }
           }
         });
@@ -851,6 +906,123 @@ class AuthController extends GetxController {
         context,
         "Error",
         "Google sign-in failed: $e",
+        isError: true,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loginWithApple(BuildContext context) async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+
+    try {
+      final isAvailable = await SignInWithApple.isAvailable();
+      if (!isAvailable) {
+        showSnackbar(
+          context,
+          "Error",
+          "Apple Sign-In is not available on this device.",
+          isError: true,
+        );
+        return;
+      }
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        showSnackbar(
+          context,
+          "Error",
+          "Failed to get Apple identity token",
+          isError: true,
+        );
+        return;
+      }
+
+      final fullNameParts = [
+        credential.givenName?.trim(),
+        credential.familyName?.trim(),
+      ].whereType<String>().where((part) => part.isNotEmpty).toList();
+
+      final body = {
+        "identity_token": identityToken,
+        if (fullNameParts.isNotEmpty) "full_name": fullNameParts.join(' '),
+      };
+
+      logger.i("Apple identity token obtained, sending to backend");
+
+      final apiClient = ApiClient();
+      final response = await apiClient.post(
+        url: ApiUrl.baseUrl + ApiUrl.appleAuth,
+        isBasic: true,
+        body: body,
+        showResult: true,
+      );
+
+      logger.i("Apple auth response: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = response.body;
+        await _clearStoredAuth();
+        _resetUserScopedControllers();
+        await _persistAuthSession(data);
+
+        showSnackbar(context, "Success", "Apple login successful!");
+
+        Future.delayed(const Duration(milliseconds: 100), () async {
+          if (context.mounted) {
+            try {
+              final hasProfile = await _refreshSessionAndCheckProfile();
+              if (context.mounted) {
+                context.go(
+                  hasProfile
+                      ? RoutePath.home.addBasePath
+                      : RoutePath.profileSetup.addBasePath,
+                );
+              }
+            } catch (e) {
+              logger.e("Navigation error after Apple login: $e");
+              if (context.mounted) {
+                context.go(RoutePath.profileSetup.addBasePath);
+              }
+            }
+          }
+        });
+      } else {
+        if (!context.mounted) return;
+        final error =
+            response.body['detail'] ??
+            response.body['message'] ??
+            "Apple login failed";
+        showSnackbar(context, "Error", error.toString(), isError: true);
+      }
+    } on SignInWithAppleAuthorizationException catch (e) {
+      logger.e("Apple sign-in authorization error: $e");
+      if (!context.mounted) return;
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return;
+      }
+      showSnackbar(
+        context,
+        "Error",
+        e.message,
+        isError: true,
+      );
+    } catch (e) {
+      logger.e("Apple sign-in error: $e");
+      if (!context.mounted) return;
+      showSnackbar(
+        context,
+        "Error",
+        "Apple sign-in failed: $e",
         isError: true,
       );
     } finally {

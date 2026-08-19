@@ -190,6 +190,8 @@ class PublicLeagueCompatResponse(BaseSchema):
     join_code: str | None = None
     creator: int | None = None       # admin user's auto_id — Flutter compares against userProfile.id
     current_match_day: int = 0
+    current_week: int = 0
+    rank: int | None = None
     is_ready: bool = False
     is_started: bool = False
     is_active: bool = True

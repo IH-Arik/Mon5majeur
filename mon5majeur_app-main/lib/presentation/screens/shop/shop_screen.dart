@@ -8,11 +8,50 @@ import '../../../core/constants/feature_flags.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../home/tabs/jersey_selection_screen.dart';
 import '../../widgets/navigation.dart';
 import 'shop_controller.dart';
 
+class _ShopOffer {
+  final String slug;
+  final String name;
+  final int cost;
+
+  const _ShopOffer({
+    required this.slug,
+    required this.name,
+    required this.cost,
+  });
+}
+
 class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
+
+  static const _chefCurryOffer = _ShopOffer(
+    slug: 'chef_curry',
+    name: AppString.chefCurry,
+    cost: 130,
+  );
+  static const _sixthManOffer = _ShopOffer(
+    slug: 'sixth_man',
+    name: AppString.sixthMan,
+    cost: 170,
+  );
+  static const _luxuryTaxOffer = _ShopOffer(
+    slug: 'luxury_tax',
+    name: AppString.luxaryTax,
+    cost: 150,
+  );
+  static const _liveScoringOffer = _ShopOffer(
+    slug: 'live_scoring',
+    name: AppString.liveScoring,
+    cost: 200,
+  );
+  static const _stopPubOffer = _ShopOffer(
+    slug: 'stop_pub',
+    name: 'Stop-Pub',
+    cost: 450,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -172,8 +211,7 @@ class ShopScreen extends StatelessWidget {
                       showStarIcon: true,
                       chargesRemaining: inv.chefCurryCharges,
                       onUnlock: () =>
-                          _confirmPurchase(context, c, 'chef_curry',
-                              AppString.chefCurry.tr, 130),
+                          _confirmPurchase(context, c, _chefCurryOffer),
                     ),
 
                     SizedBox(height: 16.h),
@@ -191,8 +229,7 @@ class ShopScreen extends StatelessWidget {
                       buttonColor: const Color(0xFF8B5CF6),
                       chargesRemaining: inv.sixthManCharges,
                       onUnlock: () =>
-                          _confirmPurchase(context, c, 'sixth_man',
-                              AppString.sixthMan.tr, 170),
+                          _confirmPurchase(context, c, _sixthManOffer),
                     ),
 
                     SizedBox(height: 16.h),
@@ -210,8 +247,7 @@ class ShopScreen extends StatelessWidget {
                       buttonColor: const Color(0xFF10B981),
                       chargesRemaining: inv.luxuryTaxCharges,
                       onUnlock: () =>
-                          _confirmPurchase(context, c, 'luxury_tax',
-                              AppString.luxaryTax.tr, 150),
+                          _confirmPurchase(context, c, _luxuryTaxOffer),
                     ),
 
                     SizedBox(height: 16.h),
@@ -224,7 +260,7 @@ class ShopScreen extends StatelessWidget {
                       title: AppString.liveScoring.tr,
                       subtitle: AppString.realTimeUpdate.tr,
                       description: AppString.liveScoringDesc.tr,
-                      tokenAmount: '200',
+                      tokenAmount: '${_liveScoringOffer.cost}',
                       tokenSuffix: AppString.perMonth.tr,
                       buttonText: inv.liveScoringActive
                           ? 'Active ✓'
@@ -236,8 +272,8 @@ class ShopScreen extends StatelessWidget {
                       badgeColor: const Color(0xFFFF6B35),
                       onUnlock: inv.liveScoringActive
                           ? null
-                          : () => _confirmPurchase(context, c, 'live_scoring',
-                              AppString.liveScoring.tr, 200),
+                          : () =>
+                              _confirmPurchase(context, c, _liveScoringOffer),
                     ),
 
                     SizedBox(height: 16.h),
@@ -252,7 +288,7 @@ class ShopScreen extends StatelessWidget {
                         subtitle: 'Remove all ads',
                         description:
                             'Enjoy the app without any advertisements for a full year.',
-                        tokenAmount: '450',
+                        tokenAmount: '${_stopPubOffer.cost}',
                         tokenSuffix: AppString.perYear.tr,
                         buttonText: inv.stopPubActive
                             ? 'Active ✓'
@@ -262,24 +298,25 @@ class ShopScreen extends StatelessWidget {
                             : const Color(0xFFEF4444),
                         onUnlock: inv.stopPubActive
                             ? null
-                            : () => _confirmPurchase(
-                                context, c, 'stop_pub', 'Stop-Pub', 450),
+                            : () =>
+                                _confirmPurchase(context, c, _stopPubOffer),
                       ),
                       SizedBox(height: 16.h),
                     ],
 
-                    /// Jersey — coming soon
+                    /// Jersey styles preview
                     _BonusCard(
                       backgroundColor: const Color(0xFF1a2744),
                       borderColor: const Color(0xFF2d4a7c),
                       iconAsset: Assets.icons.jersey,
                       title: AppString.jersey.tr,
-                      subtitle: AppString.buyCustomJerseys.tr,
-                      description: AppString.comingSoon.tr,
-                      tokenAmount: '',
-                      buttonText: AppString.comingSoon.tr,
+                      subtitle: AppString.browseJerseyStyles.tr,
+                      description: AppString.jerseySelectionHint.tr,
+                      tokenAmount: '6',
+                      buttonText: AppString.viewStyles.tr,
                       buttonColor: const Color(0xFF8B5CF6),
-                      isComingSoon: true,
+                      tokenSuffix: 'styles',
+                      onUnlock: () => _openJerseyCatalog(context),
                     ),
 
                     SizedBox(height: 80.h),
@@ -297,9 +334,7 @@ class ShopScreen extends StatelessWidget {
   void _confirmPurchase(
     BuildContext context,
     ShopController c,
-    String slug,
-    String name,
-    int cost,
+    _ShopOffer offer,
   ) {
     showDialog<void>(
       context: context,
@@ -312,7 +347,7 @@ class ShopScreen extends StatelessWidget {
           style: TextStyle(color: Colors.white, fontSize: 16.sp),
         ),
         content: Text(
-          'Buy $name for $cost tokens?\n\nYour balance: ${c.tokenBalance.value} tokens.',
+          'Buy ${offer.name.tr} for ${offer.cost} tokens?\n\nYour balance: ${c.tokenBalance.value} tokens.',
           style: TextStyle(color: Colors.grey, fontSize: 13.sp),
         ),
         actions: [
@@ -329,11 +364,13 @@ class ShopScreen extends StatelessWidget {
             ),
             onPressed: () async {
               Navigator.of(ctx).pop();
-              final ok = await c.purchaseBonus(slug);
+              final ok = await c.purchaseBonus(offer.slug);
               if (ok) {
                 Get.snackbar(
                   'Purchased!',
-                  '$name added to your inventory',
+                  offer.slug == _liveScoringOffer.slug
+                      ? '${offer.name.tr} activated for 30 days'
+                      : '${offer.name.tr} added to your inventory',
                   backgroundColor: const Color(0xFF1a3d1a),
                   colorText: Colors.white,
                   snackPosition: SnackPosition.BOTTOM,
@@ -348,6 +385,12 @@ class ShopScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _openJerseyCatalog(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const JerseySelectionScreen()),
     );
   }
 }
@@ -367,7 +410,6 @@ class _BonusCard extends StatelessWidget {
   final Color buttonColor;
   final String? badge;
   final Color? badgeColor;
-  final bool isComingSoon;
   final bool showStarIcon;
   final int chargesRemaining;
   final VoidCallback? onUnlock;
@@ -385,7 +427,6 @@ class _BonusCard extends StatelessWidget {
     required this.buttonColor,
     this.badge,
     this.badgeColor,
-    this.isComingSoon = false,
     this.showStarIcon = false,
     this.chargesRemaining = 0,
     this.onUnlock,
@@ -508,7 +549,7 @@ class _BonusCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (!isComingSoon)
+              if (tokenAmount.isNotEmpty)
                 Row(
                   children: [
                     Assets.icons.morecoin.image(width: 24.r, height: 24.r),
@@ -542,8 +583,7 @@ class _BonusCard extends StatelessWidget {
                 final c = Get.find<ShopController>();
                 final loading = c.isPurchasing.value;
                 return ElevatedButton(
-                  onPressed:
-                      isComingSoon || loading ? null : onUnlock,
+                  onPressed: loading ? null : onUnlock,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: buttonColor,
                     disabledBackgroundColor: buttonColor.withValues(alpha: 0.5),

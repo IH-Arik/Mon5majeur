@@ -599,6 +599,7 @@ class LeagueService:
         if not memberships:
             return []
 
+        membership_map = {m.league_id: m for m in memberships}
         league_ids = [m.league_id for m in memberships]
         query = League.find({"_id": {"$in": league_ids}})
         if league_type:
@@ -612,6 +613,9 @@ class LeagueService:
             user_ids = [m.user_id for m in members]
             users = await UserModel.find({"_id": {"$in": user_ids}}).to_list() if user_ids else []
             compat = await self._to_compat_response(league, users)
+            membership = membership_map.get(league.id)
+            compat.current_week = league.current_week
+            compat.rank = membership.rank if membership else None
             compat.lineup_submitted, compat.lock_in_seconds = await _lineup_lock_info(
                 user.id, league.id, today
             )
@@ -720,6 +724,7 @@ class LeagueService:
             join_code=league.invite_code,
             creator=admin_auto_id,
             current_match_day=league.current_match_day,
+            current_week=league.current_week,
             is_ready=status != "waiting",
             is_started=status in ("regular_season", "playoffs"),
             is_active=status not in ("completed", "cancelled"),

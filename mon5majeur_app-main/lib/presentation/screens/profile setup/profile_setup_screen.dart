@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
+import '../../../data/models/profile_model.dart';
 import 'controller/profile_setup_controller.dart';
 
 class ProfileSetupScreen extends StatelessWidget {
@@ -49,7 +50,9 @@ class ProfileSetupScreen extends StatelessWidget {
                     ),
                   ),
                   child: Center(
-                    child: _teamLogos[controller.selectedLogoIndex.value].image(
+                    child: TeamLogoChoices
+                        .assets[controller.selectedLogoIndex.value]
+                        .image(
                       width: 40.w,
                       height: 40.w,
                       fit: BoxFit.contain,
@@ -96,7 +99,7 @@ class ProfileSetupScreen extends StatelessWidget {
                 height: 48.h,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _teamLogos.length,
+                  itemCount: TeamLogoChoices.assets.length,
                   itemBuilder: (context, index) {
                     return Obx(() {
                       final isSelected =
@@ -118,7 +121,7 @@ class ProfileSetupScreen extends StatelessWidget {
                             ),
                           ),
                           child: Center(
-                            child: _teamLogos[index].image(
+                            child: TeamLogoChoices.assets[index].image(
                               width: 24.w,
                               height: 24.w,
                               fit: BoxFit.contain,
@@ -431,14 +434,4 @@ class ProfileSetupScreen extends StatelessWidget {
       ),
     );
   }
-
-  // Team logos list (static)
-  static final List<AssetGenImage> _teamLogos = [
-    Assets.icons.logo1,
-    Assets.icons.logo2,
-    Assets.icons.logo3,
-    Assets.icons.logo4,
-    Assets.icons.logo5,
-    Assets.icons.logo6,
-  ];
 }

@@ -69,9 +69,9 @@ class MyLeaguesController extends GetxController {
               .map(
                 (privateLeague) => MyLeagueModel.fromPrivateLeague(
                   privateLeague,
-                  userRank: _calculateUserRank(privateLeague),
+                  userRank: privateLeague.rank,
                   matchday: privateLeague.currentMatchDay,
-                  week: _getCurrentWeek(privateLeague),
+                  week: privateLeague.currentWeek,
                   season: 'Regular Season',
                   isPrivate: true, // Mark as private league
                 ),
@@ -120,9 +120,9 @@ class MyLeaguesController extends GetxController {
               .map(
                 (publicLeague) => MyLeagueModel.fromPrivateLeague(
                   publicLeague,
-                  userRank: _calculateUserRank(publicLeague),
+                  userRank: publicLeague.rank,
                   matchday: publicLeague.currentMatchDay,
-                  week: _getCurrentWeek(publicLeague),
+                  week: publicLeague.currentWeek,
                   season: 'Regular Season',
                   isPrivate: false, // Mark as public league
                 ),
@@ -160,22 +160,6 @@ class MyLeaguesController extends GetxController {
           )
           .toList();
     }
-  }
-
-  // Calculate user's rank in league (placeholder)
-  int _calculateUserRank(PrivateLeagueModel league) {
-    // TODO: Implement actual ranking logic based on user's team performance
-    // For now, return a placeholder rank
-    return league.teams.isNotEmpty ? 1 : 0;
-  }
-
-  // Get current week (placeholder)
-  int _getCurrentWeek(PrivateLeagueModel league) {
-    // TODO: Get actual week from game/season data
-    if (league.isStarted == true) {
-      return 1; // Placeholder
-    }
-    return 0;
   }
 
   // Refresh leagues

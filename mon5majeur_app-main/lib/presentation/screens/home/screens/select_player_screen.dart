@@ -15,6 +15,7 @@ class SelectPlayerScreen extends StatefulWidget {
   final bool Function() getHasMorePages;
   final bool Function() getIsLoadingMore;
   final double remainingBudget;
+  final AssetGenImage teamJersey;
   final Function(Player) onPlayerSelected;
   final Future<void> Function() onLoadMore;
   final String? positionCategory;
@@ -30,6 +31,7 @@ class SelectPlayerScreen extends StatefulWidget {
     required this.getHasMorePages,
     required this.getIsLoadingMore,
     required this.remainingBudget,
+    required this.teamJersey,
     required this.onPlayerSelected,
     required this.onLoadMore,
     this.positionCategory,
@@ -199,7 +201,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           ),
           Expanded(
             child: Text(
-              AppString.selectPlayer,
+              AppString.selectPlayer.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -225,7 +227,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                AppString.bank,
+                AppString.bank.tr,
                 style: TextStyle(color: Colors.white70, fontSize: 14.sp),
               ),
               Text(
@@ -257,7 +259,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
         onChanged: (value) => setState(() => searchQuery = value),
         style: TextStyle(color: Colors.white, fontSize: 14.sp),
         decoration: InputDecoration(
-          hintText: AppString.searchPlayersByName,
+          hintText: AppString.searchPlayersHint.tr,
           hintStyle: TextStyle(color: Colors.white38, fontSize: 14.sp),
           prefixIcon: Icon(Icons.search, color: Colors.white38, size: 24.r),
           filled: true,
@@ -422,7 +424,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10.r),
-            child: Assets.icons.dress.image(fit: BoxFit.cover),
+              child: widget.teamJersey.image(fit: BoxFit.cover),
           ),
         ),
         if (player.trigram != null) ...[

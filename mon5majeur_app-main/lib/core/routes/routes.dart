@@ -287,6 +287,14 @@ class AppRouter {
         ),
       ),
       GoRoute(
+        name: RoutePath.termsOfUseScreen,
+        path: RoutePath.termsOfUseScreen.addBasePath,
+        builder: (context, state) => StaticContentScreen(
+          screenTitle: AppString.termsOfUse.tr,
+          endpoint: ApiUrl.termsOfUse,
+        ),
+      ),
+      GoRoute(
         name: RoutePath.fantasyLeagueScreenPrivate,
         path: RoutePath.fantasyLeagueScreenPrivate.addBasePath,
         builder: (context, state) => LeagueFantasyScreen(

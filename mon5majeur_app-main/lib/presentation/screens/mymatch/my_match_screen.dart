@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
+
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../data/models/game_model.dart';
@@ -45,46 +46,38 @@ class MyMatchScreen extends StatelessWidget {
             padding: EdgeInsets.all(16.w),
             child: Column(
               children: [
-                /// Today's NBA Results
                 _Section(
                   title: AppString.todaysNbaResults.tr,
                   icon: Assets.icons.basketBall,
                   initiallyExpanded: true,
                   children: ctrl.todaysGames.isEmpty
-                      ? [_emptyState('No games today')]
+                      ? [_emptyState(AppString.noGamesToday.tr)]
                       : ctrl.todaysGames
                             .map((g) => _GameResultCard(game: g))
                             .toList(),
                 ),
-
                 SizedBox(height: 20.h),
-
-                /// Today's Fantasy Player Scores
                 _Section(
                   title: AppString.todaysFantasyPlayersScore.tr,
                   icon: Assets.icons.basketBall,
                   initiallyExpanded: true,
                   children: ctrl.playerScores.isEmpty
-                      ? [_emptyState('No player scores yet')]
+                      ? [_emptyState(AppString.noPlayerScoresYet.tr)]
                       : ctrl.playerScores
                             .map((p) => _PlayerScoreCard(player: p))
                             .toList(),
                 ),
-
                 SizedBox(height: 20.h),
-
-                /// Last 7 Days NBA Results
                 _Section(
-                  title: 'Last 7 Days — NBA Results',
+                  title: AppString.last7DaysNbaResults.tr,
                   icon: Assets.icons.basketBall,
                   initiallyExpanded: true,
                   children: ctrl.gamesHistory.isEmpty
-                      ? [_emptyState('No recent games')]
+                      ? [_emptyState(AppString.noRecentGames.tr)]
                       : ctrl.gamesHistory
                             .map((g) => _GameResultCard(game: g, showDate: true))
                             .toList(),
                 ),
-
                 SizedBox(height: 20.h),
               ],
             ),
@@ -98,12 +91,13 @@ class MyMatchScreen extends StatelessWidget {
   static Widget _emptyState(String msg) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 16.w),
-      child: Text(msg, style: TextStyle(color: Colors.white54, fontSize: 14.sp)),
+      child: Text(
+        msg,
+        style: TextStyle(color: Colors.white54, fontSize: 14.sp),
+      ),
     );
   }
 }
-
-// ─── Collapsible section wrapper ─────────────────────────────────────────────
 
 class _Section extends StatefulWidget {
   final String title;
@@ -135,7 +129,7 @@ class _SectionState extends State<_Section> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1a1a1a),
+        color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(color: const Color(0xFF333333)),
       ),
@@ -178,8 +172,6 @@ class _SectionState extends State<_Section> {
   }
 }
 
-// ─── NBA game result card ─────────────────────────────────────────────────────
-
 class _GameResultCard extends StatelessWidget {
   final Game game;
   final bool showDate;
@@ -197,6 +189,19 @@ class _GameResultCard extends StatelessWidget {
     }
   }
 
+  String _localizedStatus() {
+    switch (game.status) {
+      case 'Final':
+        return AppString.matchStatusFinal.tr;
+      case 'Live':
+        return AppString.matchStatusLive.tr;
+      case 'Not Started':
+        return AppString.matchStatusNotStarted.tr;
+      default:
+        return game.status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasScore = game.homeScore != null && game.awayScore != null;
@@ -206,9 +211,9 @@ class _GameResultCard extends StatelessWidget {
       margin: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 12.h),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: const Color(0xFF0a0a0a),
+        color: const Color(0xFF0A0A0A),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFF2a2a2a)),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,15 +265,14 @@ class _GameResultCard extends StatelessWidget {
                 ),
               ] else ...[
                 Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: _statusColor().withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8.r),
                     border: Border.all(color: _statusColor()),
                   ),
                   child: Text(
-                    game.status,
+                    _localizedStatus(),
                     style: TextStyle(
                       color: _statusColor(),
                       fontSize: 12.sp,
@@ -296,14 +300,13 @@ class _GameResultCard extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerRight,
                 child: Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     color: _statusColor().withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6.r),
                   ),
                   child: Text(
-                    game.status,
+                    _localizedStatus(),
                     style: TextStyle(
                       color: _statusColor(),
                       fontSize: 10.sp,
@@ -322,8 +325,19 @@ class _GameResultCard extends StatelessWidget {
     try {
       final dt = DateTime.parse(iso).toLocal();
       const months = [
-        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        '',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${months[dt.month]} ${dt.day}, ${dt.year}';
     } catch (_) {
@@ -331,8 +345,6 @@ class _GameResultCard extends StatelessWidget {
     }
   }
 }
-
-// ─── Fantasy player score card ────────────────────────────────────────────────
 
 class _PlayerScoreCard extends StatelessWidget {
   final PlayerTodayScore player;
@@ -351,9 +363,9 @@ class _PlayerScoreCard extends StatelessWidget {
       margin: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 12.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: const Color(0xFF0a0a0a),
+        color: const Color(0xFF0A0A0A),
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFF2a2a2a)),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
       child: Row(
         children: [

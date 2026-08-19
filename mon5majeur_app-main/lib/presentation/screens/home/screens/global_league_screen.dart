@@ -63,8 +63,16 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   MyTeamTab(
                     key: _myTeamKey, // ADD THIS
                   ),
-                  ResultTab(
-                    key: _resultKey, // ADD THIS
+                  Obx(
+                    () => ResultTab(
+                      key: ValueKey(
+                        'global-result-${_controller.currentMatchDay.value}-${_resultKey.hashCode}',
+                      ),
+                      matchDay: _controller.currentMatchDay.value > 0
+                          ? _controller.currentMatchDay.value
+                          : null,
+                      isGlobal: true,
+                    ),
                   ),
                   const LeaderboardTab(),
                   const RulesTab(),
@@ -111,7 +119,7 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                       _buildLeagueLogo(),
                       SizedBox(height: 4.h),
                       Text(
-                        'Global League',
+                        AppString.globalLeague.tr,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
@@ -123,7 +131,7 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                       if (matchDay > 0) ...[
                         SizedBox(height: 2.h),
                         Text(
-                          'Matchday $matchDay',
+                          '${AppString.matchday.tr} $matchDay',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white70,
@@ -139,14 +147,18 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
 
                 // Balance display
                 SizedBox(
-                  width: 30.w,
-                  child: Text(
-                    balance,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: const Color(0xFFFF8C42),
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
+                  width: 64.w,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      balance,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: const Color(0xFFFF8C42),
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

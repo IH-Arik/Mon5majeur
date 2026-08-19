@@ -202,6 +202,7 @@ class FrenchTranslation {
     AppString.jasonTatum: 'Jayson Tatum',
     AppString.createPublicLeague: 'Créer une ligue publique',
     AppString.publicLeague: 'Ligue publique',
+    AppString.globalLeague: 'Ligue Globale',
     AppString.createALeague: 'Créer une ligue',
     AppString.chooseLeagueType: 'Choisissez le type de ligue',
     AppString.playWithFriendsUsingCode: 'Jouez avec des amis via un code',
@@ -217,6 +218,7 @@ class FrenchTranslation {
     AppString.aboutUs: 'À propos',
     AppString.legalNotices: 'Mentions légales',
     AppString.privacyPolicy: 'Politique de confidentialité',
+    AppString.termsOfUse: 'CGU',
     AppString.connectWithYourFriends: "Connectez-vous avec vos amis",
     AppString.accessYourLeague: 'Accéder à votre ligue',
     AppString.enterCodeToJoinPrivateLeague: 'Entrez le code pour rejoindre',
@@ -299,10 +301,12 @@ class FrenchTranslation {
     AppString.liveLabel: 'LIVE',
     AppString.finalLabel: 'FINAL',
     AppString.setYourFive: 'Composez vos 5',
-    AppString.fiveValidated: '5 Validés',
+    AppString.fiveValidated: '5 Validé',
     AppString.tapToEdit: 'Toucher pour modifier',
     AppString.lockInPlaceholder: 'Fermeture dans 2h15',
     AppString.lockInPrefix: 'Fermeture dans ',
+    AppString.lockClosed: 'Verrouille pour ce soir',
+    AppString.noGamesScheduled: 'Aucun match prevu',
     AppString.earnFreeTokens: 'Gagnez 6 jetons gratuits',
     AppString.celebrationEmoji: '🎉',
     AppString.nbaGlobalLeague: 'Ligue Globale NBA',
@@ -329,6 +333,13 @@ class FrenchTranslation {
     AppString.separator: '|',
     AppString.todaysNbaResults: 'Résultats NBA du jour',
     AppString.todaysFantasyPlayersScore: 'Scores Fantasy du jour',
+    AppString.noGamesToday: "Aucun match aujourd'hui",
+    AppString.noPlayerScoresYet: "Aucun score de joueur pour l'instant",
+    AppString.last7DaysNbaResults: '7 derniers jours - Résultats NBA',
+    AppString.noRecentGames: 'Aucun match récent',
+    AppString.matchStatusFinal: 'Terminé',
+    AppString.matchStatusLive: 'En direct',
+    AppString.matchStatusNotStarted: 'Pas commencé',
     AppString.sf: 'SF',
     AppString.lakers: 'Lakers',
     AppString.suns: 'Suns',
@@ -441,6 +452,10 @@ class FrenchTranslation {
     AppString.perMonth: '/ Mois',
     AppString.jersey: 'Maillot',
     AppString.buyCustomJerseys: 'Acheter des maillots',
+    AppString.browseJerseyStyles: 'Voir les styles de maillots',
+    AppString.jerseySelectionHint:
+        'Apercu des maillots disponibles dans la composition d equipe.',
+    AppString.viewStyles: 'Voir les styles',
     AppString.comingSoon: 'Bientôt DISPO',
     AppString.tokens: ' Jetons',
     AppString.appTitle: "MON5MAJEUR",
@@ -454,6 +469,7 @@ class FrenchTranslation {
     AppString.staleDataNotice: 'Les scores peuvent avoir quelques minutes de retard',
     AppString.sixthManDropped: 'Non comptabilisé (6ème Homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
+    AppString.budgetExceeded: 'Budget dépassé',
 
     // Onboarding tutorial (spec Part 3) — copy taken from the approved
     // Figma mockup screenshots. Steps 2 and 5 use the mockups' fuller
@@ -482,4 +498,5 @@ class FrenchTranslation {
   static String weekWithNumber(int n) => 'Semaine $n';
   static String monthWithNumber(int n) => 'Mois $n';
   static String totalPoints(int n) => '$n Points';
+  static String budgetExceededBy(int n) => 'Budget dépassé de ${n}M';
 }

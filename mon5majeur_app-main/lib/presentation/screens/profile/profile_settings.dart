@@ -13,6 +13,7 @@ import '../../../core/routes/routes.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/api_url.dart';
 import '../home/controllers/home_controller.dart';
+import 'profile_controller.dart';
 
 final _log = Logger();
 
@@ -47,6 +48,10 @@ class ProfileSettingsScreen extends StatefulWidget {
 
 class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   int? _profileId;
+  String _teamName = '';
+  String _email = '';
+  int _sinceYear = DateTime.now().year;
+  bool _notificationsEnabled = false;
   String selectedTeam = '';
   String selectedLogo = 'assets/icons/logo1.png';
   bool isTeamExpanded = false;
@@ -71,27 +76,46 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentProfile();
+    _hydrateScreen();
   }
 
-  void _loadCurrentProfile() {
+  Future<void> _hydrateScreen() async {
+    await _loadCurrentProfile();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadCurrentProfile() async {
+    _email = await SharedPrefsHelper.getString(AppConstants.userEmail);
     try {
       final homeController = Get.find<HomeController>();
+      if (homeController.userProfile.value == null) {
+        await homeController.fetchUserProfile();
+      }
       final profile = homeController.userProfile.value;
       if (profile != null) {
         _profileId = profile.id;
-        setState(() {
-          selectedTeam = profile.favoriteTeam.isNotEmpty
-              ? profile.favoriteTeam
-              : (teams.isNotEmpty ? teams.first : '');
-          selectedLogo =
-              _logoKeyToPath[profile.teamLogo] ?? 'assets/icons/logo1.png';
-        });
+        _teamName = profile.teamName.isNotEmpty
+            ? profile.teamName
+            : AppString.defaultTeamName;
+        selectedTeam = profile.favoriteTeam.isNotEmpty
+            ? profile.favoriteTeam
+            : (teams.isNotEmpty ? teams.first : '');
+        selectedLogo =
+            _logoKeyToPath[profile.teamLogo] ?? 'assets/icons/logo1.png';
+        _notificationsEnabled = profile.recivedNotifications;
+        if ((profile.createdAt ?? '').isNotEmpty) {
+          _sinceYear =
+              DateTime.tryParse(profile.createdAt!)?.year ?? _sinceYear;
+        }
       } else {
         selectedTeam = teams.isNotEmpty ? teams.first : '';
+        _teamName = selectedTeam;
       }
     } catch (_) {
       selectedTeam = teams.isNotEmpty ? teams.first : '';
+      _teamName = selectedTeam;
     }
   }
 
@@ -109,16 +133,21 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         url: ApiUrl.baseUrl + ApiUrl.updateProfile(_profileId!),
         body: {
           'team_logo': _pathToLogoKey[selectedLogo] ?? 'paris_fc',
-          'team_name': selectedTeam,
+          'team_name': _teamName,
           'favorite_team': selectedTeam,
+          'recived_notifications': _notificationsEnabled,
         },
       );
       if (response.statusCode == 200) {
         _showSnack('Profile saved');
         // Refresh HomeController so other screens reflect the change
         try {
-          Get.find<HomeController>().fetchUserProfile();
+          await Get.find<HomeController>().fetchUserProfile();
         } catch (_) {}
+        await _loadCurrentProfile();
+        if (mounted) {
+          setState(() {});
+        }
       } else {
         final msg = response.body?['detail'] ?? 'Failed to save profile';
         _showSnack(msg.toString(), isError: true);
@@ -137,6 +166,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     await SharedPrefsHelper.remove(AppConstants.userId);
     await SharedPrefsHelper.remove(AppConstants.userEmail);
     await SharedPrefsHelper.setBool(AppConstants.isProfileCompleted, false);
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().resetSessionState();
+    }
+    if (Get.isRegistered<ProfileController>()) {
+      Get.find<ProfileController>().resetSessionState();
+      Get.delete<ProfileController>(force: true);
+    }
   }
 
   Future<void> _logout() async {
@@ -165,6 +201,25 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         backgroundColor: isError ? const Color(0xFFD32F2F) : const Color(0xFF4CAF50),
       ),
     );
+  }
+
+  Future<void> _toggleNotifications() async {
+    setState(() => _notificationsEnabled = !_notificationsEnabled);
+    await _saveProfile();
+  }
+
+  Future<void> _refreshFromBackend() async {
+    try {
+      await Get.find<HomeController>().fetchUserProfile();
+      await _loadCurrentProfile();
+      if (mounted) {
+        setState(() {});
+      }
+      _showSnack('Profile updated');
+    } catch (e) {
+      _showSnack('Refresh failed', isError: true);
+      _log.e('Refresh profile error: $e');
+    }
   }
 
   // ── Dialogs ──────────────────────────────────────────────────────────────────
@@ -508,7 +563,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 SizedBox(height: 12.h),
                 Text(
-                  selectedTeam.isNotEmpty ? selectedTeam : AppString.parisFC.tr,
+                  _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20.sp,
@@ -517,7 +572,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  AppString.since2025.tr,
+                  'Since $_sinceYear',
                   style: TextStyle(
                     color: const Color(0xFFB0B0B0),
                     fontSize: 12.sp,
@@ -528,7 +583,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Email
                 _buildSettingItem(
                   icon: Icons.email_outlined,
-                  title: AppString.email.tr,
+                  title: _email.isNotEmpty ? _email : AppString.emailLabel,
                 ),
 
                 // Password → Change Password screen
@@ -553,7 +608,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Username
                 _buildSettingItem(
                   icon: Icons.person_outline,
-                  title: AppString.username.tr,
+                  title: _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName,
                 ),
 
                 // Favorite Team — saves on selection
@@ -613,16 +668,31 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Other Settings (display only)
                 _buildSettingItem(
                   icon: Icons.notifications_outlined,
-                  title: AppString.notifications.tr,
+                  title:
+                      '${AppString.notifications.tr} ${_notificationsEnabled ? "ON" : "OFF"}',
+                  trailing: Switch(
+                    value: _notificationsEnabled,
+                    onChanged: (_) => _toggleNotifications(),
+                    activeColor: const Color(0xFFE8632C),
+                  ),
+                  onTap: _toggleNotifications,
                 ),
-                _buildSettingItem(icon: Icons.sync, title: AppString.update.tr),
+                _buildSettingItem(
+                  icon: Icons.sync,
+                  title: AppString.update.tr,
+                  onTap: _refreshFromBackend,
+                ),
                 _buildSettingItem(
                   icon: Icons.cookie_outlined,
                   title: AppString.cookiesAds.tr,
+                  onTap: () =>
+                      context.go(RoutePath.termsOfUseScreen.addBasePath),
                 ),
                 _buildSettingItem(
                   icon: Icons.shield_outlined,
                   title: AppString.dataProtection.tr,
+                  onTap: () =>
+                      context.go(RoutePath.privacyPolicyScreen.addBasePath),
                 ),
                 _buildSettingItem(
                   icon: Icons.article_outlined,

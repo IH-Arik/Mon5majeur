@@ -375,6 +375,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           playersNotifier: _playersNotifier, // pass notifier
           getHasMorePages: () => hasMorePages,
           getIsLoadingMore: () => _isLoadingMore,
+          teamJersey: jerseys[selectedJerseyIndex],
           positionCategory: positionCategory,
           excludedPlayerIds: selectedIds,
           remainingBudget: totalBudget - usedBudget,
@@ -409,6 +410,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           playersNotifier: _playersNotifier, // pass notifier
           getHasMorePages: () => hasMorePages,
           getIsLoadingMore: () => _isLoadingMore,
+          teamJersey: jerseys[selectedJerseyIndex],
           positionCategory: null,
           excludedPlayerIds: selectedIds,
           remainingBudget: totalBudget - usedBudget,

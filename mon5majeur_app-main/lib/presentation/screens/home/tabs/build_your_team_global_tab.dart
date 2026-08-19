@@ -50,6 +50,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   late final TutorialController _tutorial;
   BuildContext? _showcaseContext;
   String? _lastStartedShowcaseKey;
+  Worker? _selectionWorker;
 
   // API Integration
   List<Player> availablePlayers = [];
@@ -79,15 +80,20 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
   int get remainingPlayers => selectedPlayers.where((p) => p == null).length;
   bool get isTeamComplete => selectedPlayers.every((p) => p != null);
+  bool get isOverBudget => usedBudget > totalBudget;
 
   @override
   void initState() {
     super.initState();
     _controller = Get.find<GlobalLeagueController>();
     _tutorial = Get.find<TutorialController>();
+    _selectionWorker = ever<GlobalLeagueSelection?>(
+      _controller.globalLeagueSelection,
+      _syncWithSelection,
+    );
     _fetchPlayers();
     _fetchTodaysGames();
-    _loadExistingSelection();
+    _syncWithSelection(_controller.globalLeagueSelection.value);
     // Every _selectPlayer() call (regardless of slot index) chains
     // .then((_) => _maybeStartLineupShowcase()) once its SelectPlayerScreen
     // pops, so a single call here covers this screen's initial mount too —
@@ -127,20 +133,21 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
   @override
   void dispose() {
+    _selectionWorker?.dispose();
     _playersNotifier.dispose();
     super.dispose();
   }
 
-  void _loadExistingSelection() {
-    if (_controller.selectedPlayers.isNotEmpty) {
-      setState(() {
-        for (int i = 0; i < _controller.selectedPlayers.length && i < 5; i++) {
-          selectedPlayers[i] = _controller.selectedPlayers[i];
-        }
-        // A complete saved lineup loads as already-confirmed (green state).
-        isConfirmed = selectedPlayers.every((p) => p != null);
-      });
-    }
+  void _syncWithSelection(GlobalLeagueSelection? selection) {
+    if (!mounted || selection == null) return;
+    setState(() {
+      selectedPlayers = List<Player?>.filled(5, null);
+      for (int i = 0; i < selection.selectedPlayers.length && i < 5; i++) {
+        selectedPlayers[i] = selection.selectedPlayers[i];
+      }
+      // The backend decides whether this matchday is actually validated.
+      isConfirmed = selection.lineupSubmitted;
+    });
   }
 
   Future<void> _fetchPlayers({bool refresh = false}) async {
@@ -358,6 +365,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           playersNotifier: _playersNotifier,
           getHasMorePages: () => hasMorePages,
           getIsLoadingMore: () => _isLoadingMore,
+          teamJersey: jerseys[selectedJerseyIndex],
           remainingBudget: totalBudget - usedBudget,
           onPlayerSelected: (p) => setState(() {
             selectedPlayers[index] = p;
@@ -388,6 +396,18 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       Get.snackbar(
         'Incomplete Team',
         'Please select all 5 players before saving',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    if (isOverBudget) {
+      Get.snackbar(
+        AppString.budgetExceeded.tr,
+        AppString.budgetExceededBy((usedBudget - totalBudget).ceil()),
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
@@ -454,6 +474,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       globalFloatingActionWidget: buildTutorialSkipAction,
       builder: (scContext) {
         _showcaseContext = scContext;
+        _maybeStartLineupShowcase();
         return Stack(
           children: [
             SingleChildScrollView(
@@ -572,6 +593,8 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   }
 
   Widget _buildBudgetCard() {
+    final overBudget = isOverBudget;
+    final budgetDelta = (usedBudget - totalBudget).ceil();
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -592,7 +615,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                 Text(
                   '\$${usedBudget.toInt()} M / ${totalBudget.toInt()} M',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: overBudget ? const Color(0xFFF84A4A) : Colors.white,
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                   ),
@@ -603,14 +626,28 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
               child: LinearProgressIndicator(
-                value: usedBudget / totalBudget,
+                value: (usedBudget / totalBudget).clamp(0.0, 1.0),
                 backgroundColor: const Color(0xFF2A2D3E),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFFFF8C42),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  overBudget ? const Color(0xFFF84A4A) : const Color(0xFFFF8C42),
                 ),
                 minHeight: 8.h,
               ),
             ),
+            if (overBudget) ...[
+              SizedBox(height: 8.h),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  AppString.budgetExceededBy(budgetDelta),
+                  style: TextStyle(
+                    color: const Color(0xFFF84A4A),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -646,7 +683,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                 Positioned(
                   top: 150.h,
                   left: 40.w,
-                  child: _buildPlayerSlot(0, 'SF/PF'),
+                  child: _buildPlayerSlot(0, 'SF'),
                 ),
                 Positioned(
                   top: 120.h,
@@ -657,17 +694,17 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                 Positioned(
                   top: 150.h,
                   right: 40.w,
-                  child: _buildPlayerSlot(2, 'SF/PF'),
+                  child: _buildPlayerSlot(2, 'SF'),
                 ),
                 Positioned(
                   top: 320.h,
                   left: 60.w,
-                  child: _buildPlayerSlot(3, 'PG/SG'),
+                  child: _buildPlayerSlot(3, 'PG'),
                 ),
                 Positioned(
                   top: 320.h,
                   right: 60.w,
-                  child: _buildPlayerSlot(4, 'PG/SG'),
+                  child: _buildPlayerSlot(4, 'PG'),
                 ),
               ],
             ),
@@ -753,11 +790,11 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                   ),
                 ),
                 Positioned(
-                  left: 41.w,
+                  left: 35.w,
                   top: 85.h,
                   child: Container(
-                    width: 28.w,
-                    height: 11.h,
+                    width: 40.w,
+                    height: 14.h,
                     decoration: ShapeDecoration(
                       color: const Color(0xFF1A1A1A),
                       shape: RoundedRectangleBorder(
@@ -771,19 +808,23 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                   ),
                 ),
                 Positioned(
-                  left: 44.w,
-                  top: 86.h,
+                  left: 38.w,
+                  top: 87.h,
                   child: SizedBox(
-                    width: 22.w,
-                    child: Text(
-                      position,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 9.sp,
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w400,
-                        height: 0.89,
+                    width: 34.w,
+                    height: 10.h,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        position,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.sp,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.w500,
+                          height: 1,
+                        ),
                       ),
                     ),
                   ),

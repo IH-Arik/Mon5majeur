@@ -33,6 +33,19 @@ class Settings(BaseSettings):
     # ── CORS ─────────────────────────────────────────────────────────────────
     BACKEND_CORS_ORIGINS: list[str] = []
 
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug_value(cls, value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "on", "development", "dev"}:
+                return True
+            if normalized in {"false", "0", "no", "off", "release", "production", "prod"}:
+                return False
+        return value
+
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:

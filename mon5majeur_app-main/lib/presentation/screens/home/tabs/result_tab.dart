@@ -7,18 +7,21 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
+import '../../../../data/models/match_result_model.dart';
 import '../controllers/result_controller.dart';
 
 class ResultTab extends StatefulWidget {
   final int? leagueId;
   final int? matchDay;
   final bool isPrivate; // ADD THIS
+  final bool isGlobal;
 
   const ResultTab({
     super.key,
     this.leagueId,
     this.matchDay,
     this.isPrivate = false, // ADD THIS
+    this.isGlobal = false,
   });
 
   @override
@@ -31,12 +34,10 @@ class _ResultTabState extends State<ResultTab> {
   @override
   void initState() {
     super.initState();
-    print(
-      '🎯 ResultTab initialized with leagueId: ${widget.leagueId}, matchDay: ${widget.matchDay}, isPrivate: ${widget.isPrivate}',
-    );
     controller = Get.put(ResultController());
-    if (widget.leagueId != null) {
-      print('🎯 Setting leagueId to controller: ${widget.leagueId}');
+    if (widget.isGlobal) {
+      controller.setGlobalLeague(initialMatchDay: widget.matchDay);
+    } else if (widget.leagueId != null) {
       controller.setLeagueId(
         widget.leagueId!,
         initialMatchDay: widget.matchDay,
@@ -45,7 +46,6 @@ class _ResultTabState extends State<ResultTab> {
             : LeagueType.public, // ADD THIS
       );
     } else {
-      print('⚠️ WARNING: leagueId is NULL!');
     }
   }
 
@@ -75,6 +75,9 @@ class _ResultTabState extends State<ResultTab> {
       }
 
       final matchData = controller.matchResult.value!;
+      if (widget.isGlobal || matchData.matchType == 'global_night') {
+        return _buildGlobalResults(matchData);
+      }
 
       return SingleChildScrollView(
         padding: EdgeInsets.all(16.w),
@@ -98,6 +101,144 @@ class _ResultTabState extends State<ResultTab> {
         ),
       );
     });
+  }
+
+  Widget _buildGlobalResults(MatchResultModel matchData) {
+    final rankings = [...matchData.playerScores]
+      ..sort((a, b) => b.totalPoints.compareTo(a.totalPoints));
+
+    if (rankings.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.leaderboard_outlined, color: Colors.white54, size: 48.r),
+            SizedBox(height: 16.h),
+            Text(
+              'No global results yet',
+              style: TextStyle(color: Colors.white54, fontSize: 16.sp),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        children: [
+          SizedBox(height: 16.h),
+          _buildMatchdaySelector(),
+          SizedBox(height: 16.h),
+          _buildMatchInfo(matchData),
+          SizedBox(height: 16.h),
+          ...rankings.asMap().entries.map((entry) {
+            final rank = entry.key + 1;
+            final score = entry.value;
+            final isMe = score.playerId == controller.currentUserId;
+            return Padding(
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16.w),
+                decoration: ShapeDecoration(
+                  gradient: LinearGradient(
+                    colors: isMe
+                        ? const [Color(0xFF2E2118), Color(0xFF1A1713)]
+                        : const [Color(0xFF20222B), Color(0xFF14151C)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: 1.w,
+                      color: isMe
+                          ? const Color(0xFFE8632C)
+                          : const Color(0xFF2C2C2C),
+                    ),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34.w,
+                      height: 34.w,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: rank <= 3
+                            ? const Color(0xFFE8632C)
+                            : const Color(0xFF2C2C2C),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$rank',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            score.teamName.isNotEmpty
+                                ? score.teamName
+                                : score.username,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            isMe ? '${AppString.you.tr} • ${score.username}' : score.username,
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11.sp,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${score.totalPoints}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'PTS',
+                          style: TextStyle(
+                            color: const Color(0xFFFF8C42),
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          SizedBox(height: 16.h),
+        ],
+      ),
+    );
   }
 
   Widget _buildMatchdaySelector() {
@@ -148,7 +289,7 @@ class _ResultTabState extends State<ResultTab> {
     );
   }
 
-  Widget _buildMatchInfo(matchResult) {
+  Widget _buildMatchInfo(MatchResultModel matchResult) {
     return Column(
       children: [
         Text(
@@ -459,7 +600,10 @@ class _ResultTabState extends State<ResultTab> {
     );
   }
 
-  Widget _buildMatchDetailsField(playerAScore, playerBScore) {
+  Widget _buildMatchDetailsField(
+    PlayerScore? playerAScore,
+    PlayerScore? playerBScore,
+  ) {
     final teamAPlayers = playerAScore?.selection ?? [];
     final teamBPlayers = playerBScore?.selection ?? [];
 
@@ -572,7 +716,7 @@ class _ResultTabState extends State<ResultTab> {
                   Assets.icons.jerseyDevil,
                   isTopTeam: true,
                 );
-              }).toList(),
+              }),
 
               // Team A not ready message
               if (teamAPlayers.isEmpty)
@@ -642,7 +786,7 @@ class _ResultTabState extends State<ResultTab> {
                   Assets.icons.jerseyFlower,
                   isTopTeam: false,
                 );
-              }).toList(),
+              }),
 
               // Team B not ready message
               if (teamBPlayers.isEmpty)

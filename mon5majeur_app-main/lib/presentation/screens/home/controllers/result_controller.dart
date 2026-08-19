@@ -2,6 +2,7 @@
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../controllers/global_league_controller.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../data/models/match_result_model.dart';
@@ -10,7 +11,7 @@ import '../../../../data/services/api_url.dart';
 
 final logger = Logger();
 
-enum LeagueType { private, public }
+enum LeagueType { private, public, global }
 
 class ResultController extends GetxController {
   var isLoading = false.obs;
@@ -55,6 +56,25 @@ class ResultController extends GetxController {
     fetchMatchResult();
   }
 
+  void setGlobalLeague({int? initialMatchDay}) {
+    leagueId = null;
+    leagueType = LeagueType.global;
+    if (initialMatchDay != null && initialMatchDay > 0) {
+      currentMatchDay.value = initialMatchDay;
+    } else {
+      if (Get.isRegistered<GlobalLeagueController>()) {
+        final global = Get.find<GlobalLeagueController>();
+        if (global.currentMatchDay.value > 0) {
+          currentMatchDay.value = global.currentMatchDay.value;
+        }
+      }
+    }
+    logger.i(
+      "Global league result configured, Match Day: ${currentMatchDay.value}",
+    );
+    fetchMatchResult();
+  }
+
   void toggleCardExpansion(int index) {
     if (expandedCardIndex.value == index) {
       expandedCardIndex.value = null;
@@ -64,7 +84,7 @@ class ResultController extends GetxController {
   }
 
   Future<void> fetchMatchResult() async {
-    if (leagueId == null) {
+    if (leagueType != LeagueType.global && leagueId == null) {
       logger.e("League ID is null");
       return;
     }
@@ -75,9 +95,13 @@ class ResultController extends GetxController {
       final apiClient = ApiClient();
 
       // Use the appropriate endpoint based on league type
-      final endpoint = leagueType == LeagueType.public
-          ? ApiUrl.publicMatchResult(leagueId!, currentMatchDay.value)
-          : ApiUrl.privateMatchResult(leagueId!, currentMatchDay.value);
+      final endpoint = switch (leagueType) {
+        LeagueType.public =>
+          ApiUrl.publicMatchResult(leagueId!, currentMatchDay.value),
+        LeagueType.private =>
+          ApiUrl.privateMatchResult(leagueId!, currentMatchDay.value),
+        LeagueType.global => ApiUrl.globalMatchResult(currentMatchDay.value),
+      };
 
       final url = '${ApiUrl.baseUrl}$endpoint';
 
