@@ -27,6 +27,9 @@
     "style-loader": "^4.0.0",
     "sweetalert2": "^11.26.1"
   },
+  "overrides": {
+    "unrs-resolver": "^1.12.2"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
