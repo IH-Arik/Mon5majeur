@@ -14,6 +14,7 @@ def get_motor_client() -> AsyncIOMotorClient:
 
 
 async def init_db() -> None:
+    from app.modules.analytics.model import AccountDeletionLog
     from app.modules.auth.model import OTPToken, RefreshToken
     from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
     from app.modules.competitions.model import Competition, CompetitionEntry
@@ -62,6 +63,7 @@ async def init_db() -> None:
             UserBonusInventory,
             TokenWallet,
             TokenTransaction,
+            AccountDeletionLog,
         ],
     )
 

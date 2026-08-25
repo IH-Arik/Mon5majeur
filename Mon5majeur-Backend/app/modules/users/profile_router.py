@@ -274,6 +274,24 @@ async def delete_account(
     Hard-delete of all user data would require cascading deletion of
     LeagueMembership, FlutterPlayerSelection etc. — defer to a background task.
     """
+    from datetime import datetime, timezone
+
+    from app.modules.analytics.model import AccountDeletionLog
+    from app.modules.lineups.compat_model import FlutterPlayerSelection
+
+    # Logged once, before anonymisation. Guarded so that a repeated call on
+    # an already-deleted account cannot inflate the churn figure.
+    if current_user.is_active:
+        had_played = await FlutterPlayerSelection.find(
+            FlutterPlayerSelection.user_id == current_user.id
+        ).count() > 0
+        await AccountDeletionLog(
+            deleted_at=datetime.now(timezone.utc),
+            user_auto_id=current_user.auto_id,
+            deletion_type="soft",
+            had_validated_lineup=had_played,
+        ).insert()
+
     await current_user.save_updated(
         is_active=False,
         email=f"deleted_{current_user.auto_id}@deleted.invalid",

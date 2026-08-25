@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.modules.analytics.router import router as analytics_router
 from app.modules.auth.router import router as auth_router
 from app.modules.competitions.router import router as competitions_router
 from app.modules.fantasy_teams.router import router as fantasy_teams_router
@@ -31,3 +32,4 @@ api_v1_router.include_router(notifications_router)
 api_v1_router.include_router(files_router)
 api_v1_router.include_router(roles_router)
 api_v1_router.include_router(permissions_router)
+api_v1_router.include_router(analytics_router)

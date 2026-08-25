@@ -332,8 +332,14 @@ async def post_global_selection(
         "match_day": league.current_match_day,
     })
 
+    # The Global League has no LeagueMatch rows to read a night from, so the
+    # night is the NBA date currently in play — the same one the lock
+    # countdown above is computed against, keeping the two consistent.
+    night = await _nba_today()
+
     if doc:
         doc.selected_players = payload.selected_players
+        doc.nba_date = night
         await doc.save()
     else:
         doc = FlutterPlayerSelection(
@@ -343,6 +349,7 @@ async def post_global_selection(
             match_day=league.current_match_day,
             selected_players=payload.selected_players,
             submitted_at=datetime.now(timezone.utc),
+            nba_date=night,
         )
         await doc.insert()
 

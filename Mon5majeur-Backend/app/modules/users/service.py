@@ -60,6 +60,9 @@ class UserService:
         only this user's own documents are removed."""
         user = await self.get_user(user_id)
 
+        from datetime import datetime, timezone
+
+        from app.modules.analytics.model import AccountDeletionLog
         from app.modules.auth.model import OTPToken, RefreshToken
         from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
         from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
@@ -68,6 +71,20 @@ class UserService:
         from app.modules.lineups.model import LineupSlot, LineupSubmission
         from app.modules.notifications.model import Notification
         from app.modules.tokens.model import TokenTransaction, TokenWallet
+
+        # Audit the erasure BEFORE the data goes: afterwards there is nothing
+        # left to count, and the retention dashboard would under-report churn
+        # forever. Records no PII — only that a deletion happened, and
+        # whether the account had ever actually played.
+        had_played = await FlutterPlayerSelection.find(
+            FlutterPlayerSelection.user_id == user_id
+        ).count() > 0
+        await AccountDeletionLog(
+            deleted_at=datetime.now(timezone.utc),
+            user_auto_id=user.auto_id,
+            deletion_type="hard",
+            had_validated_lineup=had_played,
+        ).insert()
 
         await LineupSubmission.find(LineupSubmission.user_id == user_id).delete()
         await LineupSlot.find(LineupSlot.user_id == user_id).delete()

@@ -279,9 +279,14 @@ async def save_player_selection(
         sixth_man_player is not None,
     )
 
+    # The duel's own scheduled night is authoritative — never "today", since
+    # a lineup can legitimately be submitted the evening before an ET night.
+    night = match.nba_date if match else None
+
     if existing:
         existing.selected_players = selected_players
         existing.submitted_at = now
+        existing.nba_date = night
         existing.luxury_tax = luxury_tax
         existing.chef_curry = chef_curry
         existing.sixth_man_player = sixth_man_player
@@ -294,6 +299,7 @@ async def save_player_selection(
             match_day=match_day,
             selected_players=selected_players,
             submitted_at=now,
+            nba_date=night,
             luxury_tax=luxury_tax,
             chef_curry=chef_curry,
             sixth_man_player=sixth_man_player,
