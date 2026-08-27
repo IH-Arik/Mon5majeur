@@ -9,6 +9,8 @@ from app.shared.base_schema import BaseSchema
 
 StrongPassword = Annotated[str, StringConstraints(min_length=8, max_length=128)]
 
+UserStatus = Literal["Active", "Pending", "Banned", "Inactive"]
+
 
 # ── Profile update (partial — existing PATCH /me) ────────────────────────────
 
@@ -22,6 +24,7 @@ class UserAdminUpdate(UserUpdate):
     is_active: bool | None = None
     is_superuser: bool | None = None
     is_verified: bool | None = None
+    is_banned: bool | None = None
 
 
 # ── Complete profile (onboarding flow) ───────────────────────────────────────
@@ -88,6 +91,8 @@ class UserResponse(BaseSchema):
     is_active: bool
     is_superuser: bool
     is_verified: bool
+    is_banned: bool = False
+    status: UserStatus
     auth_provider: str
     # profile completion fields
     team_logo: str | None = None
@@ -131,3 +136,12 @@ class NBATeamListResponse(BaseSchema):
 class NotificationTypeItem(BaseSchema):
     slug: str
     label: str
+
+
+# ── Admin dashboard ───────────────────────────────────────────────────────────
+
+class UserStatsResponse(BaseSchema):
+    total_users: int
+    new_signups_30d: int
+    monthly_active_users: int  # distinct users with ≥1 validated lineup in the last 30 days
+    banned_users: int

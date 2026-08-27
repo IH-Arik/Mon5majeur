@@ -10,6 +10,7 @@ from app.core.sentry import init_sentry
 from app.exceptions.handlers import register_exception_handlers
 from app.middleware.cors import add_cors_middleware
 from app.middleware.logging import RequestLoggingMiddleware
+from app.modules.auth.admin_router import router as admin_auth_router
 from app.modules.auth.compat_router import router as auth_compat_router
 from app.modules.leagues.global_router import router as global_leagues_compat_router
 from app.modules.leagues.private_router import router as private_leagues_compat_router
@@ -17,8 +18,13 @@ from app.modules.leagues.public_router import router as public_leagues_compat_ro
 from app.modules.leagues.rules_router import router as league_rules_router
 from app.modules.leagues.ws_router import router as ws_router
 from app.modules.players.compat_router import router as players_compat_router
+from app.modules.bonuses.admin_router import router as bonuses_admin_router
 from app.modules.bonuses.router import router as bonuses_compat_router
+from app.modules.content.admin_router import router as content_admin_router
 from app.modules.content.router import router as content_router
+from app.modules.leagues.admin_match_router import router as matches_admin_router
+from app.modules.leagues.admin_router import router as leagues_admin_router
+from app.modules.tokens.admin_router import router as token_packs_admin_router
 from app.modules.tokens.router import router as tokens_compat_router
 from app.modules.users.profile_router import router as user_profiles_compat_router
 
@@ -42,6 +48,7 @@ def create_application() -> FastAPI:
     app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
     # Flutter-compat routers: /api/public-leagues/... /api/private-leagues/... /api/UserProfiles/
     app.include_router(auth_compat_router, prefix="/api")
+    app.include_router(admin_auth_router, prefix="/api")
     app.include_router(public_leagues_compat_router, prefix="/api")
     app.include_router(private_leagues_compat_router, prefix="/api")
     app.include_router(global_leagues_compat_router, prefix="/api")
@@ -49,6 +56,11 @@ def create_application() -> FastAPI:
     app.include_router(players_compat_router, prefix="/api")
     app.include_router(bonuses_compat_router, prefix="/api")
     app.include_router(tokens_compat_router, prefix="/api")
+    app.include_router(bonuses_admin_router, prefix="/api")
+    app.include_router(token_packs_admin_router, prefix="/api")
+    app.include_router(leagues_admin_router, prefix="/api")
+    app.include_router(matches_admin_router, prefix="/api")
+    app.include_router(content_admin_router, prefix="/api")
     app.include_router(league_rules_router, prefix="/api")
     app.include_router(content_router, prefix="/api")
     # WebSocket: wss://api.mon5majeur.com/ws/public-leagues/{id}/ and /ws/private-leagues/{id}/

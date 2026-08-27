@@ -1,103 +1,271 @@
-'use client';
+"use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import Pagination from "@/components/shared/Pagination";
+import baseApi from "@/api/baseAPi";
+import { ENDPOINTS } from "@/api/endPoints";
 
-interface MatchData {
+type MatchStatusFilter = "stuck" | "completed";
+
+interface MatchRow {
   id: string;
-  match: string;
-  league: string;
-  score: string;
+  league_name: string;
+  home_team: string;
+  away_team: string;
+  nba_date: string;
   status: string;
+  home_score: number | null;
+  away_score: number | null;
 }
 
-const initialMatches: MatchData[] = [
-  { id: "1", match: "Team A vs Team B", league: "Summer Slam League", score: "12-75", status: "Pending" },
-  { id: "2", match: "Team C vs Team D", league: "Champions Cup", score: "98-102", status: "Pending" },
-  { id: "3", match: "Team E vs Team F", league: "Pro League", score: "76-65", status: "Disputed" },
-  { id: "4", match: "Team G vs Team H", league: "Winter League", score: "112-90", status: "Pending" },
-  { id: "5", match: "Team I vs Team J", league: "City League", score: "89-84", status: "Disputed" },
-  { id: "6", match: "Team K vs Team L", league: "National Cup", score: "70-75", status: "Pending" },
-  { id: "7", match: "Team M vs Team N", league: "Premier League", score: "102-99", status: "Disputed" },
-  { id: "8", match: "Team O vs Team P", league: "All Stars", score: "88-91", status: "Disputed" },
-  { id: "9", match: "Team I vs Team J", league: "City League", score: "89-84", status: "Disputed" },
-  { id: "10", match: "Team K vs Team L", league: "National Cup", score: "70-75", status: "Pending" },
-  { id: "11", match: "Team M vs Team N", league: "Premier League", score: "102-99", status: "Disputed" },
-  { id: "12", match: "Team O vs Team P", league: "All Stars", score: "88-91", status: "Disputed" },
-];
+interface MatchPage {
+  data: MatchRow[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+const pageSize = 10;
 
 export default function MatchManagement() {
-  // Filter only Pending and Disputed matches
-  const filteredMatches = initialMatches.filter(
-    (match) => match.status === "Pending" || match.status === "Disputed"
-  );
-
-  const [matches, setMatches] = useState(filteredMatches);
+  const [filter, setFilter] = useState<MatchStatusFilter>("stuck");
+  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [homeInput, setHomeInput] = useState("");
+  const [awayInput, setAwayInput] = useState("");
 
-  const matchesPerPage = 10; // Show 10 matches per page
-  const totalPages = Math.ceil(matches.length / matchesPerPage);
-  const startIndex = (currentPage - 1) * matchesPerPage;
-  const paginatedMatches = matches.slice(startIndex, startIndex + matchesPerPage);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const handlePageChange = (page: number) => setCurrentPage(page);
-
-  const getStatusClasses = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "Disputed":
-        return "bg-red-100 text-red-800";
-      default:
-        return "";
+  const fetchMatches = async (status: MatchStatusFilter, page: number) => {
+    try {
+      setLoading(true);
+      const response = await baseApi.get<MatchPage>(ENDPOINTS.adminMatches, {
+        params: { status, page, size: pageSize },
+      });
+      setMatches(response.data.data);
+      setTotal(response.data.total);
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Failed to fetch matches",
+        icon: "error",
+        confirmButtonColor: "#319EE1",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="bg-white shadow rounded-lg overflow-hidden mt-6">
-      <div className="p-6">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm text-left border-collapse">
-            <thead className="text-[#828282] text-[12px] tracking-wider">
-              <tr>
-                <th className="px-6 py-3 font-semibold">Match</th>
-                <th className="px-6 py-3 font-semibold">League</th>
-                <th className="px-6 py-3 font-semibold">Score</th>
-                <th className="px-6 py-3 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedMatches.map((match) => (
-                <tr key={match.id} className="odd:bg-[#f8f8f8] even:bg-white transition">
-                  <td className="px-6 py-4 text-gray-800">{match.match}</td>
-                  <td className="px-6 py-4 text-gray-800">{match.league}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{match.score}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusClasses(match.status)}`}
-                    >
-                      {match.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {paginatedMatches.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                    No matches found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+  useEffect(() => {
+    fetchMatches(filter, currentPage);
+  }, [filter, currentPage]);
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+  const handleFilterChange = (next: MatchStatusFilter) => {
+    setFilter(next);
+    setCurrentPage(1);
+  };
+
+  const handleRescore = async (match: MatchRow) => {
+    setActingId(match.id);
+    try {
+      await baseApi.post(ENDPOINTS.adminMatchRescore(match.id));
+      Swal.fire({
+        title: "Rescored!",
+        text: "The match was scored from each side's saved lineup.",
+        icon: "success",
+        confirmButtonColor: "#319EE1",
+      });
+      fetchMatches(filter, currentPage);
+    } catch (error) {
+      console.error("Error rescoring match:", error);
+      Swal.fire({
+        title: "Could not rescore",
+        text:
+          (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+          "Check that the NBA games for this night are marked final.",
+        icon: "error",
+        confirmButtonColor: "#319EE1",
+      });
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const startEdit = (match: MatchRow) => {
+    setEditingId(match.id);
+    setHomeInput(String(match.home_score ?? 0));
+    setAwayInput(String(match.away_score ?? 0));
+  };
+
+  const handleSaveScore = async (match: MatchRow) => {
+    const home = Number(homeInput);
+    const away = Number(awayInput);
+    if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) {
+      Swal.fire({
+        title: "Invalid score",
+        text: "Scores must be non-negative numbers",
+        icon: "error",
+        confirmButtonColor: "#319EE1",
+      });
+      return;
+    }
+
+    setActingId(match.id);
+    try {
+      await baseApi.patch(ENDPOINTS.adminMatchScore(match.id), {
+        home_score: home,
+        away_score: away,
+      });
+      setEditingId(null);
+      fetchMatches(filter, currentPage);
+    } catch (error) {
+      console.error("Error overriding score:", error);
+      Swal.fire({
+        title: "Error!",
+        text: "Failed to update score",
+        icon: "error",
+        confirmButtonColor: "#319EE1",
+      });
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB");
+  };
+
+  return (
+    <div className="bg-white shadow rounded-lg overflow-hidden p-6">
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={() => handleFilterChange("stuck")}
+          className={`px-4 py-2 rounded cursor-pointer ${
+            filter === "stuck" ? "bg-[#E8632C] text-white" : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          Awaiting Score
+        </button>
+        <button
+          onClick={() => handleFilterChange("completed")}
+          className={`px-4 py-2 rounded cursor-pointer ${
+            filter === "completed" ? "bg-[#E8632C] text-white" : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          Completed (corrections)
+        </button>
       </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm text-left">
+          <thead className="text-[#828282]">
+            <tr>
+              <th className="px-6 py-3">League</th>
+              <th className="px-6 py-3">Match</th>
+              <th className="px-6 py-3">Night</th>
+              <th className="px-6 py-3">Score</th>
+              <th className="px-6 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="text-center py-8 text-gray-500">
+                  Loading matches...
+                </td>
+              </tr>
+            ) : matches.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-8 text-gray-500">
+                  {filter === "stuck" ? "No matches awaiting score" : "No completed matches"}
+                </td>
+              </tr>
+            ) : (
+              matches.map((match, i) => (
+                <tr key={match.id} className={i % 2 === 0 ? "bg-[#f8f8f8]" : "bg-white"}>
+                  <td className="px-6 py-4">{match.league_name}</td>
+                  <td className="px-6 py-4">
+                    {match.home_team} vs {match.away_team}
+                  </td>
+                  <td className="px-6 py-4">{formatDate(match.nba_date)}</td>
+                  <td className="px-6 py-4">
+                    {editingId === match.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          value={homeInput}
+                          onChange={(e) => setHomeInput(e.target.value)}
+                          className="w-16 border border-[#828282] rounded px-2 py-1"
+                        />
+                        -
+                        <input
+                          type="number"
+                          min={0}
+                          value={awayInput}
+                          onChange={(e) => setAwayInput(e.target.value)}
+                          className="w-16 border border-[#828282] rounded px-2 py-1"
+                        />
+                      </div>
+                    ) : match.home_score !== null && match.away_score !== null ? (
+                      `${match.home_score} - ${match.away_score}`
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {filter === "stuck" ? (
+                      <button
+                        onClick={() => handleRescore(match)}
+                        disabled={actingId === match.id}
+                        className="text-blue-500 hover:text-blue-700 cursor-pointer disabled:opacity-50"
+                      >
+                        {actingId === match.id ? "Scoring..." : "Rescore"}
+                      </button>
+                    ) : editingId === match.id ? (
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleSaveScore(match)}
+                          disabled={actingId === match.id}
+                          className="text-green-600 hover:text-green-800 cursor-pointer disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="text-gray-500 hover:text-gray-700 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEdit(match)}
+                        className="text-blue-500 hover:text-blue-700 cursor-pointer"
+                      >
+                        Override Score
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 }

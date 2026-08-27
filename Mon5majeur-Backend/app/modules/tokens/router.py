@@ -5,7 +5,9 @@ from fastapi import APIRouter, Depends, Query
 
 from app.exceptions.errors import BadRequestException
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
-from app.modules.tokens.model import BONUS_COSTS, DAILY_VIDEO_REWARD, TokenWallet
+from app.modules.bonuses import catalog as bonus_catalog
+from app.modules.tokens import catalog as token_pack_catalog
+from app.modules.tokens.model import DAILY_VIDEO_REWARD, TokenWallet
 from app.modules.tokens.schema import (
     AdminGrantRequest,
     IAPWebhookPayload,
@@ -21,17 +23,6 @@ router = APIRouter(prefix="/tokens", tags=["Tokens"])
 # Token rewards for game events
 MATCH_WIN_REWARD = 10
 LEAGUE_WIN_REWARD = 50
-
-# TEMPORARY (see mock_purchase below) — mirrors the 4 packs shown in
-# buy_token.dart (rookieTokens/allStarTokens/mvpTokens/hallOfFameTokens in
-# app_strings.dart). Swap this whole endpoint out once real App Store /
-# Play Store products exist — real purchases go through /iap/webhook instead.
-_MOCK_PACK_TOKENS = {
-    "rookie": 200,
-    "all_star": 550,
-    "mvp": 1200,
-    "hall_of_fame": 2500,
-}
 
 
 def get_token_service() -> TokenService:
@@ -62,10 +53,11 @@ async def transaction_history(
 
 @router.get(
     "/bonus-costs",
-    summary="Token costs for each bonus",
+    summary="Token costs for each bonus (only active bonuses are included)",
 )
 async def bonus_costs(_=Depends(get_current_user)) -> dict:
-    return BONUS_COSTS
+    offers = await bonus_catalog.list_offers()
+    return {o.slug: o.token_cost for o in offers if o.is_active}
 
 
 @router.post(
@@ -95,9 +87,9 @@ async def mock_purchase(
     user: User = Depends(get_current_user),
     service: TokenService = Depends(get_token_service),
 ) -> WalletResponse:
-    tokens = _MOCK_PACK_TOKENS.get(payload.pack)
+    tokens = await token_pack_catalog.get_active_token_amount(payload.pack)
     if tokens is None:
-        raise BadRequestException(f"Unknown token pack: {payload.pack}")
+        raise BadRequestException(f"Token pack '{payload.pack}' is currently unavailable")
 
     wallet = await service.credit(
         user.id,

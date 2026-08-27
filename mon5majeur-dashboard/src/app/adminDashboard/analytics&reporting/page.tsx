@@ -1,8 +1,6 @@
 import Image from "next/image";
 import img1 from "@/app/assets/ball.png";
-import UserChart from "@/components/modules/dashboard/chart/UserChart";
-import DurationChart from "@/components/modules/dashboard/chart/DurationChart";
-import LeagueChart from "@/components/modules/dashboard/chart/LeagueChart";
+import RetentionOverview from "@/components/modules/dashboard/analytics/RetentionOverview";
 
 export default function Page() {
   return (
@@ -19,10 +17,6 @@ export default function Page() {
               Uncover deep insights into player behavior, content performance, and
               monetization strategies to drive game growth and engagement.
             </p>
-
-            <button className="border border-[#111111] hover:border-white  px-10 lg:px-14 py-2 w-fit hover:bg-[#E8632C] hover:text-white transition">
-              Explore
-            </button>
           </div>
 
           {/* Right (4/12 on md+) */}
@@ -34,19 +28,17 @@ export default function Page() {
                 alt="Basketball"
                 fill
                 className="object-vover object-center"
-                // sizes="(max-width: 768px) 100vw, (max-width: 1024px) 40vw, 33vw"
                 priority
               />
             </div>
           </div>
         </div>
       </section>
-      <h2 className="text-center text-[28px] font-semibold mt-15 mb-10">User Activity & Engagement</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <UserChart></UserChart>
-        <DurationChart></DurationChart>
-        <LeagueChart></LeagueChart>
-      </div>
+      <h2 className="text-center text-[28px] font-semibold mt-15 mb-2">Retention Analytics</h2>
+      <p className="text-center text-gray-500 mb-6">
+        Every figure below counts a validated lineup — never &quot;opened the app&quot;.
+      </p>
+      <RetentionOverview />
     </div>
   );
 }
