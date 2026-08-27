@@ -16,8 +16,8 @@ from pydantic import BaseModel
 
 from app.exceptions.errors import BadRequestException
 from app.modules.auth.dependencies import get_current_user
+from app.modules.bonuses import catalog as bonus_catalog
 from app.modules.bonuses.model import UserBonusInventory
-from app.modules.tokens.model import BONUS_COSTS
 from app.modules.tokens.service import TokenService
 from app.modules.users.model import User
 
@@ -108,9 +108,9 @@ async def purchase_bonus(
     payload: PurchaseRequest,
     current_user: User = Depends(get_current_user),
 ) -> PurchaseResponse:
-    cost = BONUS_COSTS.get(payload.bonus)
+    cost = await bonus_catalog.get_active_cost(payload.bonus)
     if cost is None:
-        raise BadRequestException(f"Unknown bonus: {payload.bonus}")
+        raise BadRequestException(f"Bonus '{payload.bonus}' is currently unavailable")
 
     svc = TokenService()
 

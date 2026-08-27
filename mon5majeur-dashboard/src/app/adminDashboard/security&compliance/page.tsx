@@ -5,7 +5,7 @@ export default function page() {
   return (
     <div>
       <h2 className='text-[24px] md:text-[28px] lg:text-[30px] font-semibold'>Security & Compliance</h2>
-      <p className='text-[14px] md:text-[16px]'>Matches awaiting score verification or dispute resolution.</p>
+      <p className='text-[14px] md:text-[16px]'>Manage the FAQ content shown to players in the app.</p>
       <Security></Security>
     </div>
   )

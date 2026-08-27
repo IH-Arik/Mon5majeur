@@ -1,5 +1,5 @@
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
 from app.modules.users.constants import NBA_TEAMS, NOTIFICATION_TYPES, TEAM_LOGOS
@@ -13,6 +13,7 @@ from app.modules.users.schema import (
     TeamLogoItem,
     UserAdminUpdate,
     UserResponse,
+    UserStatsResponse,
     UserUpdate,
 )
 from app.modules.users.service import UserService
@@ -116,10 +117,21 @@ async def delete_me(
 
 @router.get("", response_model=Page[UserResponse], summary="List all users (admin)", dependencies=[Depends(get_current_superuser)])
 async def list_users(
+    search: str | None = Query(None, description="Match against email, full name, or team name"),
     params: PaginationParams = Depends(),
     service: UserService = Depends(get_user_service),
 ) -> Page[User]:
-    return await service.list_users(params)
+    return await service.list_users(params, search=search)
+
+
+@router.get(
+    "/stats/",
+    response_model=UserStatsResponse,
+    summary="User counters for the dashboard's stat cards (admin)",
+    dependencies=[Depends(get_current_superuser)],
+)
+async def user_stats(service: UserService = Depends(get_user_service)) -> UserStatsResponse:
+    return await service.stats()
 
 
 @router.get("/{user_id}", response_model=UserResponse, summary="Get user by ID (admin)", dependencies=[Depends(get_current_superuser)])

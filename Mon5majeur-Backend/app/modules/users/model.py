@@ -7,6 +7,17 @@ from pymongo import ASCENDING, IndexModel
 from app.database.base import BaseDocument
 
 
+def derive_user_status(*, is_banned: bool, is_active: bool, is_verified: bool) -> str:
+    """Pure so it's testable without spinning up a Beanie-initialized DB."""
+    if is_banned:
+        return "Banned"
+    if not is_active:
+        return "Inactive"
+    if not is_verified:
+        return "Pending"
+    return "Active"
+
+
 class User(BaseDocument):
     email: Indexed(str, unique=True)  # type: ignore[valid-type]
     hashed_password: str | None = None          # None for OAuth-only accounts
@@ -18,6 +29,10 @@ class User(BaseDocument):
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
+    is_banned: bool = False  # admin action — distinct from is_active, which
+    # also goes False when a user soft-deletes their own account (see
+    # profile_router.delete_account). Keeping them separate means the
+    # dashboard can tell "banned by admin" apart from "deleted by user".
 
     auth_provider: Literal["email", "google", "apple"] = "email"
     google_id: str | None = None
@@ -45,6 +60,14 @@ class User(BaseDocument):
 
     # FCM push token (updated by mobile app on login/refresh)
     fcm_token: str | None = None
+
+    @property
+    def status(self) -> str:
+        """Single display status for the admin dashboard, derived rather
+        than stored so it can never drift out of sync with the flags above."""
+        return derive_user_status(
+            is_banned=self.is_banned, is_active=self.is_active, is_verified=self.is_verified
+        )
 
     class Settings:
         name = "users"

@@ -1,9 +1,5 @@
-import React from 'react'
+import ContentPageEditor from "./ContentPageEditor";
 
 export default function TermsAndConditions() {
-  return (
-    <div>
-      <h2 className='text-[20px] mt-10'>Terms & Conditions</h2>
-    </div>
-  )
+  return <ContentPageEditor slug="terms_of_use" heading="Terms & Conditions" />;
 }

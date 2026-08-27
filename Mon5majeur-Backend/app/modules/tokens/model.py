@@ -6,6 +6,8 @@ from pymongo import ASCENDING, DESCENDING, IndexModel
 
 from app.database.base import BaseDocument
 
+TokenPackSlug = Literal["rookie", "all_star", "mvp", "hall_of_fame"]
+
 
 class TokenWallet(BaseDocument):
     """One wallet per user. Balance in tokens (integers)."""
@@ -47,13 +49,29 @@ class TokenTransaction(BaseDocument):
         ]
 
 
-# Shop purchase costs per bonus (spec prices, in tokens)
-BONUS_COSTS = {
-    "chef_curry": 130,
-    "sixth_man": 170,
-    "luxury_tax": 150,
-    "live_scoring": 200,   # per-month subscription (QA 08/08/2026 item 3)
-    "stop_pub": 450,       # per-year subscription
-}
-
 DAILY_VIDEO_REWARD = 6   # tokens earned per rewarded-ad video
+
+
+class TokenPack(BaseDocument):
+    """
+    Admin-editable catalog row for one of the 4 fixed token packs shown in
+    the Flutter shop (buy_token.dart hardcodes these 4 slugs and their icons)
+    — there is no "create a new pack" here, only price/availability control
+    over the existing 4. See tokens.catalog for seeding and defaults.
+
+    price_usd is informational only (shown in the dashboard) — /mock-purchase
+    doesn't charge real money, and once real IAP is wired up, the actual
+    charge is whatever price is configured in the App Store / Play Store
+    product, not this field.
+    """
+    slug: TokenPackSlug
+    display_name: str
+    token_amount: int
+    price_usd: float
+    is_active: bool = True
+
+    class Settings:
+        name = "token_packs"
+        indexes = [
+            IndexModel([("slug", ASCENDING)], unique=True),
+        ]

@@ -1,9 +1,5 @@
-import React from 'react'
+import ContentPageEditor from "./ContentPageEditor";
 
 export default function LegalNotice() {
-  return (
-    <div>
-      <h1 className='text-[20px] mt-10'>Legal Notice</h1>
-    </div>
-  )
+  return <ContentPageEditor slug="legal_notices" heading="Legal Notice" />;
 }

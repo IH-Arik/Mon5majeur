@@ -1,9 +1,12 @@
 from datetime import date, datetime
+from typing import Literal
 
 from beanie import PydanticObjectId
 from pymongo import ASCENDING, IndexModel
 
 from app.database.base import BaseDocument
+
+BonusSlug = Literal["chef_curry", "sixth_man", "luxury_tax", "live_scoring", "stop_pub"]
 
 
 class UserBonusQuota(BaseDocument):
@@ -56,4 +59,25 @@ class UserBonusInventory(BaseDocument):
         name = "user_bonus_inventories"
         indexes = [
             IndexModel([("user_id", ASCENDING)], unique=True),
+        ]
+
+
+class BonusOffer(BaseDocument):
+    """
+    Admin-editable catalog row for one of the 5 fixed bonus types.
+
+    The set of bonus types is fixed by the Flutter app (it hardcodes the 5
+    slugs and what each one does) — there is no "create a new bonus" here,
+    only price/availability control over the existing 5. See
+    bonuses.catalog for the seeding logic and defaults.
+    """
+    slug: BonusSlug
+    display_name: str
+    token_cost: int
+    is_active: bool = True
+
+    class Settings:
+        name = "bonus_offers"
+        indexes = [
+            IndexModel([("slug", ASCENDING)], unique=True),
         ]

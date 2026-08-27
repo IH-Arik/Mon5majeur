@@ -16,8 +16,9 @@ def get_motor_client() -> AsyncIOMotorClient:
 async def init_db() -> None:
     from app.modules.analytics.model import AccountDeletionLog
     from app.modules.auth.model import OTPToken, RefreshToken
-    from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
+    from app.modules.bonuses.model import BonusOffer, UserBonusInventory, UserBonusQuota
     from app.modules.competitions.model import Competition, CompetitionEntry
+    from app.modules.content.model import ContentPageDoc, FaqEntryDoc
     from app.modules.fantasy_teams.model import FantasyTeam
     from app.modules.files.model import UploadedFile
     from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
@@ -30,7 +31,7 @@ async def init_db() -> None:
     from app.modules.permissions.model import Permission
     from app.modules.players.model import NBAGame, Player, PlayerGameStats
     from app.modules.roles.model import Role
-    from app.modules.tokens.model import TokenTransaction, TokenWallet
+    from app.modules.tokens.model import TokenPack, TokenTransaction, TokenWallet
     from app.modules.users.model import User
 
     client = get_motor_client()
@@ -61,9 +62,13 @@ async def init_db() -> None:
             GlobalLeagueReward,
             UserBonusQuota,
             UserBonusInventory,
+            BonusOffer,
             TokenWallet,
             TokenTransaction,
+            TokenPack,
             AccountDeletionLog,
+            ContentPageDoc,
+            FaqEntryDoc,
         ],
     )
 

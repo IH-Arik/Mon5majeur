@@ -219,6 +219,8 @@ async def flutter_login(
     user = await service.user_repo.get_by_email(payload.email)
     if not user or not verify_password(payload.password, user.hashed_password or ""):
         raise UnauthorizedException("Invalid email or password")
+    if user.is_banned:
+        raise UnauthorizedException("This account has been banned")
     if not user.is_active:
         raise UnauthorizedException("Account is inactive")
 

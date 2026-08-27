@@ -4,7 +4,8 @@ from beanie import PydanticObjectId
 
 from app.core.logging import get_logger
 from app.exceptions.errors import BadRequestException, NotFoundException
-from app.modules.tokens.model import BONUS_COSTS, TokenTransaction, TokenWallet
+from app.modules.bonuses import catalog as bonus_catalog
+from app.modules.tokens.model import TokenTransaction, TokenWallet
 
 logger = get_logger(__name__)
 
@@ -73,9 +74,9 @@ class TokenService:
     async def spend_for_bonus(
         self, user_id: PydanticObjectId, bonus_slug: str
     ) -> TokenWallet:
-        cost = BONUS_COSTS.get(bonus_slug)
+        cost = await bonus_catalog.get_active_cost(bonus_slug)
         if cost is None:
-            raise BadRequestException(f"Unknown bonus: {bonus_slug}")
+            raise BadRequestException(f"Bonus '{bonus_slug}' is currently unavailable")
         return await self.debit(
             user_id,
             cost,
