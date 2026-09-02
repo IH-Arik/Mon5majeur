@@ -12,7 +12,7 @@ Schedule (all times are Europe/Paris):
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +55,55 @@ async def daily_close_job() -> None:
         archived = await archive_daily_scores(today)
         logger.info("CRON: archived %d Global League daily scores", archived)
 
+        # 5. Tell everyone the results are out (spec §4.8 notification 2).
+        #    Last, and in its own try: results are already published by now,
+        #    so a push failure must not fail the close.
+        try:
+            pushed = await _send_results_pushes(today)
+            logger.info("CRON: sent %d results pushes", pushed)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("CRON: results push failed: %s", exc, exc_info=True)
+
     except Exception as exc:
         logger.error("CRON daily_close_job failed: %s", exc, exc_info=True)
+
+
+async def _send_results_pushes(night: date) -> int:
+    """One "results are in" push per user for the night just closed.
+
+    Spec §4.8 golden rule — never spoil: the message names the stake (the
+    opponent, or that the standings moved) and never the score or who won.
+    That is what protects the paid live-score feature.
+
+    Private leagues take priority, and duel_contexts_for_night is keyed by
+    user, so nobody receives two pushes for the same night.
+    """
+    from app.modules.notifications.duel_context import duel_contexts_for_night
+    from app.modules.notifications.service import NotificationService
+
+    duels = await duel_contexts_for_night(night)
+    if not duels:
+        return 0
+
+    svc = NotificationService()
+    sent = 0
+
+    for user_id, duel in duels.items():
+        if duel.is_private:
+            body = f"🏀 Your duel vs {duel.opponent_name} is over — come see the result."
+        else:
+            body = "🏀 Standings updated — come see where you rank."
+
+        await svc.send_push_to_user(
+            user_id=user_id,
+            title="Results are in",
+            body=body,
+            data={"type": "daily_results"},
+            notification_type="daily_results",
+        )
+        sent += 1
+
+    return sent
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +150,7 @@ async def reminder_push_job() -> None:
 async def _send_reminder_pushes() -> None:
     from app.modules.leagues.model import League, LeagueMembership
     from app.modules.lineups.compat_model import FlutterPlayerSelection
+    from app.modules.notifications.duel_context import duel_contexts_for_night
 
     # NOTE: the team builder actually saves to FlutterPlayerSelection (the
     # Django-compat store keyed by league_auto_id + match_day), not
@@ -112,6 +160,10 @@ async def _send_reminder_pushes() -> None:
     active_leagues = await League.find(
         {"status": {"$in": ["regular_season", "playoffs"]}}  # "waiting" = no night to remind about yet
     ).to_list()
+
+    # Opponent names for tonight, private leagues preferred (spec §4.8).
+    night = await _nba_night_for_today()
+    duels = await duel_contexts_for_night(night) if night else {}
 
     notified: set = set()
 
@@ -134,17 +186,54 @@ async def _send_reminder_pushes() -> None:
             )
 
             if not already_submitted:
-                await _send_fcm_reminder(m.user_id)
+                await _send_fcm_reminder(m.user_id, duels.get(m.user_id))
                 notified.add(m.user_id)
 
 
-async def _send_fcm_reminder(user_id) -> None:
+async def _nba_night_for_today():
+    """Tonight's NBA date — the one the lock and the duels are keyed on.
+
+    Grouped by Goalserve's own date rather than the Paris calendar day
+    (spec §4.1): at 19:00 Paris the night's games are still ahead, and a
+    naive `date.today()` would drift onto the wrong slate.
+    """
+    from app.modules.players.model import NBAGame
+
+    game = await NBAGame.find().sort(-NBAGame.nba_date).first_or_none()
+    if game is None:
+        return None
+
+    today = datetime.now(timezone.utc).date()
+    # Only remind about a slate that has not been played yet.
+    return game.nba_date if game.nba_date >= today else None
+
+
+async def _send_fcm_reminder(user_id, duel=None) -> None:
+    """Spec §4.8 notification 3 — the 19:00 composition reminder.
+
+    Naming the opponent is the point: the tension is what makes the user
+    open the app. It reveals no score, so the "never spoil" rule holds.
+    """
     from app.modules.notifications.service import NotificationService
-    svc = NotificationService()
-    await svc.send_push_to_user(
+
+    if duel is not None and duel.is_private:
+        title = "Don't forget your team!"
+        body = (
+            f"Tonight you face {duel.opponent_name}. "
+            "Don't let them trash-talk you — set your lineup 🔥"
+        )
+    elif duel is not None:
+        title = "Don't forget your team!"
+        body = f"Tonight you face {duel.opponent_name} — set your lineup 🏀"
+    else:
+        # Global-League-only user: no duel to name.
+        body = "Don't forget your lineup tonight 🏀"
+        title = "Don't forget your team!"
+
+    await NotificationService().send_push_to_user(
         user_id=user_id,
-        title="Don't forget your team!",
-        body="Lock in your lineup before tip-off.",
+        title=title,
+        body=body,
         data={"type": "team_reminder"},
     )
 
@@ -222,9 +311,42 @@ async def sync_live_games_job() -> None:
     from app.modules.players.repository import PlayerRepository
 
     today = datetime.now(timezone.utc).date()
-    logger.info("CRON sync_live_games_job: checking live/finished games for %s", today)
 
     try:
+        games = await NBAGame.find(NBAGame.nba_date == today).to_list()
+        if not games:
+            logger.debug("CRON sync_live_games_job: no games today, skipping")
+            return
+
+        # This job runs every minute (spec §4.5: premium live score refreshes
+        # each minute), but Goalserve must only be called while a game is
+        # actually in progress — "LIVE games only". A game is worth polling
+        # when it is already live, or when it is scheduled and its tip-off
+        # has passed (that is the call that flips it to live). Once every
+        # game is final there is nothing left to learn until tomorrow.
+        now = datetime.now(timezone.utc)
+
+        def _worth_polling(g: NBAGame) -> bool:
+            if g.status == "live":
+                return True
+            if g.status != "scheduled":
+                return False
+            # No tip-off time recorded → poll rather than risk missing the
+            # start; a missing timestamp must not freeze the live score.
+            if g.tip_off_time is None:
+                return True
+            tip = g.tip_off_time
+            if tip.tzinfo is None:      # Mongo round-trips datetimes as naive UTC
+                tip = tip.replace(tzinfo=timezone.utc)
+            return now >= tip
+
+        if not any(_worth_polling(g) for g in games):
+            logger.debug(
+                "CRON sync_live_games_job: no game in progress for %s, skipping poll", today
+            )
+            return
+
+        logger.info("CRON sync_live_games_job: polling live games for %s", today)
         svc = PlayerService(PlayerRepository())
 
         # Scores + box score for every one of today's games that has
@@ -232,10 +354,9 @@ async def sync_live_games_job() -> None:
         synced = await svc.sync_scores_for_date(today)
         logger.info("CRON: synced %d player-stat rows for %s", synced, today)
 
+        # Re-read: the sync above just advanced statuses (scheduled → live →
+        # final), so the pre-poll copies are stale for the loop below.
         games = await NBAGame.find(NBAGame.nba_date == today).to_list()
-        if not games:
-            logger.info("CRON sync_live_games_job: no games today, skipping")
-            return
 
         # Flip tonight's matches from upcoming -> live (feeds Night's Results
         # LIVE badge + Live Score; only the 09:00 close ever marks "completed")

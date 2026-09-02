@@ -651,9 +651,12 @@ class AuthController extends GetxController {
         // Navigate to password reset screen
         Future.delayed(const Duration(milliseconds: 500), () {
           if (context.mounted) {
-            GoRouter.of(
-              context,
-            ).pushNamed(RoutePath.passwordReset, extra: {'email': email});
+            // The OTP travels with the email: change-password re-checks it,
+            // so the reset screen has to hand the same code back.
+            GoRouter.of(context).pushNamed(
+              RoutePath.passwordReset,
+              extra: {'email': email, 'otp': otp},
+            );
           }
         });
       } else {
@@ -681,6 +684,7 @@ class AuthController extends GetxController {
   Future<void> changePassword(
     BuildContext context,
     String email,
+    String otp,
     String newPassword,
     String confirmPassword,
   ) async {
@@ -710,6 +714,7 @@ class AuthController extends GetxController {
 
       final body = {
         "email": email,
+        "otp": otp,
         "new_password": newPassword,
         "confirm_password": confirmPassword,
       };

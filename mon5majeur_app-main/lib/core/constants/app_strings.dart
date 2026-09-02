@@ -448,6 +448,22 @@ class AppString {
   static const String cookiesAds = 'COOKIES / ADS';
   static const String dataProtection = 'DATA PROTECTION';
   static const String legalNotice = 'LEGAL NOTICE';
+
+  // Support tickets
+  static const String support = 'support';
+  static const String supportTickets = 'supportTickets';
+  static const String newSupportTicket = 'newSupportTicket';
+  static const String supportSubject = 'supportSubject';
+  static const String supportMessage = 'supportMessage';
+  static const String supportSend = 'supportSend';
+  static const String supportReply = 'supportReply';
+  static const String supportNoTickets = 'supportNoTickets';
+  static const String supportClosed = 'supportClosed';
+  static const String supportCreated = 'supportCreated';
+  static const String supportStatusOpen = 'supportStatusOpen';
+  static const String supportStatusPending = 'supportStatusPending';
+  static const String supportStatusResolved = 'supportStatusResolved';
+  static const String supportStatusClosed = 'supportStatusClosed';
   static const String deleteAccount = 'Delete Account';
   static const String logOut = 'Log out';
   static const String since2025 = 'Since 2025';

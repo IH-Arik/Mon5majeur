@@ -700,6 +700,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   onTap: () =>
                       context.go(RoutePath.legalNoticesScreen.addBasePath),
                 ),
+                _buildSettingItem(
+                  icon: Icons.support_agent_outlined,
+                  title: AppString.support.tr,
+                  onTap: () => context.go(RoutePath.supportScreen.addBasePath),
+                ),
 
                 SizedBox(height: 24.h),
 

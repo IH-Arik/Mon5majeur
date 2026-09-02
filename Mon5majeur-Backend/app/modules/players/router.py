@@ -2,6 +2,7 @@ from datetime import date
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from pydantic import BaseModel
 
 from app.exceptions.errors import NotFoundException
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
@@ -112,6 +113,40 @@ async def sync_injuries(
 ) -> dict:
     background_tasks.add_task(service.sync_injury_report)
     return {"detail": "Injury sync started"}
+
+
+class PlayerAvailabilityRequest(BaseModel):
+    is_out: bool
+    reason: str | None = None
+
+
+@router.patch(
+    "/{player_id}/availability",
+    summary="Mark a player OUT / back IN (admin)",
+    dependencies=[Depends(get_current_superuser)],
+)
+async def set_player_availability(
+    player_id: PydanticObjectId,
+    payload: PlayerAvailabilityRequest,
+    service: PlayerService = Depends(get_player_service),
+) -> dict:
+    """Manual availability control while no injury feed is subscribed.
+
+    Goes through set_player_availability so that marking someone OUT sends
+    the "fix your team before lock" push to everyone holding him (§4.7).
+    """
+    player = await Player.get(player_id)
+    if not player:
+        raise NotFoundException("Player not found")
+
+    changed = await service.set_player_availability(
+        player, is_out=payload.is_out, reason=payload.reason
+    )
+    return {
+        "player": player.full_name,
+        "is_out": player.is_out,
+        "changed": changed,
+    }
 
 
 @router.post(

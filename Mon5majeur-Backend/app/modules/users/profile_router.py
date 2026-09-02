@@ -19,7 +19,9 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from app.modules.auth.dependencies import get_current_user
+from app.modules.users.dependencies import get_user_service
 from app.modules.users.model import User
+from app.modules.users.service import UserService
 
 
 class ProfileStatsResponse(BaseModel):
@@ -268,36 +270,21 @@ async def get_token_balance(
 )
 async def delete_account(
     current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service),
 ) -> None:
     """
-    Soft-delete: marks account inactive and anonymises PII.
-    Hard-delete of all user data would require cascading deletion of
-    LeagueMembership, FlutterPlayerSelection etc. — defer to a background task.
+    Full erasure, per spec §5.3: "Account deletion must erase ALL data
+    (profile, lineups, history, payment-linked data), not just deactivate."
+
+    This is the endpoint the Flutter app actually calls, so the erasure has
+    to happen here — deferring to /api/v1/users/me would leave every shipped
+    build merely deactivating accounts. Same URL and 204 as before, so the
+    app is unaffected; only the behaviour behind it is now correct.
+
+    UserService.delete_user writes the AccountDeletionLog before erasing,
+    so the retention dashboard can still count churn afterwards.
     """
-    from datetime import datetime, timezone
-
-    from app.modules.analytics.model import AccountDeletionLog
-    from app.modules.lineups.compat_model import FlutterPlayerSelection
-
-    # Logged once, before anonymisation. Guarded so that a repeated call on
-    # an already-deleted account cannot inflate the churn figure.
-    if current_user.is_active:
-        had_played = await FlutterPlayerSelection.find(
-            FlutterPlayerSelection.user_id == current_user.id
-        ).count() > 0
-        await AccountDeletionLog(
-            deleted_at=datetime.now(timezone.utc),
-            user_auto_id=current_user.auto_id,
-            deletion_type="soft",
-            had_validated_lineup=had_played,
-        ).insert()
-
-    await current_user.save_updated(
-        is_active=False,
-        email=f"deleted_{current_user.auto_id}@deleted.invalid",
-        team_name=None,
-        team_logo=None,
-    )
+    await service.delete_user(current_user.id)
 
 
 @router.patch(

@@ -17,6 +17,24 @@ _scheduler: AsyncIOScheduler | None = None
 PARIS_TZ = "Europe/Paris"
 
 
+# Every minute across the NBA window (spec §4.5: the premium live score
+# refreshes every 1 minute during games). Early slates can tip off as soon
+# as ~19:30 Paris (spec §4.1), so the window opens at 19:00 rather than
+# 01:00. sync_live_games_job skips the Goalserve call whenever no game is
+# actually in progress, so an idle night costs nothing.
+#
+# Exposed as a function so the schedule can be asserted on without starting
+# the scheduler.
+LIVE_POLL_HOURS = "19-23,0-9"
+LIVE_POLL_MINUTES = "*"
+
+
+def live_poll_trigger() -> CronTrigger:
+    return CronTrigger(
+        hour=LIVE_POLL_HOURS, minute=LIVE_POLL_MINUTES, timezone=PARIS_TZ
+    )
+
+
 def get_scheduler() -> AsyncIOScheduler:
     global _scheduler
     if _scheduler is None:
@@ -55,14 +73,13 @@ def start_scheduler() -> None:
         misfire_grace_time=300,
     )
 
-    # Every 20 min from 01:00 to 09:00 Paris (= 7pm–3am ET, NBA game window)
-    # Polls live/finished game box-scores and computes fantasy scores
     scheduler.add_job(
         sync_live_games_job,
-        CronTrigger(hour="1-9", minute="0,20,40", timezone=PARIS_TZ),
+        live_poll_trigger(),
         id="sync_live_games",
         replace_existing=True,
         misfire_grace_time=60,
+        max_instances=1,   # a slow Goalserve reply must not stack up pollers
     )
 
     # 09:00 Paris — daily close (scores → standings → prices)

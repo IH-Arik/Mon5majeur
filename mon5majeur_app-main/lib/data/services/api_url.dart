@@ -1,7 +1,8 @@
 // Update api_url.dart
 class ApiUrl {
-  static const baseUrl =
-      "https://energize-dyslexic-frisbee.ngrok-free.dev"; // Dev: ngrok tunnel → localhost:8000
+  static const baseUrl = "https://api.mon5majeur.com"; // Production
+  // Dev: ngrok tunnel → localhost:8000
+  // static const baseUrl = "https://energize-dyslexic-frisbee.ngrok-free.dev";
 
   static const imageBaseUrl = baseUrl;
 
@@ -38,6 +39,12 @@ class ApiUrl {
   static const privacyPolicy = "/api/privacy-policies/";
   static const termsOfUse = "/api/terms-of-use/";
   static const leagueRules = "/api/leagues/rules/";
+
+  // Support tickets (Settings → Support)
+  static const supportTickets = "/api/support/tickets/";
+  static String supportTicket(String id) => "/api/support/tickets/$id/";
+  static String supportTicketReply(String id) =>
+      "/api/support/tickets/$id/reply/";
 
   // Private League endpoints
   static const privateLeagues = "/api/private-leagues/";

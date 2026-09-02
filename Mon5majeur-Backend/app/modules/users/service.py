@@ -121,8 +121,12 @@ class UserService:
         from app.modules.analytics.model import AccountDeletionLog
         from app.modules.auth.model import OTPToken, RefreshToken
         from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
+        from app.modules.competitions.model import CompetitionEntry
+        from app.modules.fantasy_teams.model import FantasyTeam
         from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
         from app.modules.leagues.model import LeagueMembership
+        from app.modules.leagues.reward_model import GlobalLeagueReward
+        from app.modules.support.model import SupportTicket
         from app.modules.lineups.compat_model import FlutterPlayerSelection
         from app.modules.lineups.model import LineupSlot, LineupSubmission
         from app.modules.notifications.model import Notification
@@ -154,5 +158,11 @@ class UserService:
         await Notification.find(Notification.recipient_id == user_id).delete()
         await OTPToken.find(OTPToken.user_id == user_id).delete()
         await RefreshToken.find(RefreshToken.user_id == user_id).delete()
+        # Support threads copy the email and pseudo at creation so they stay
+        # readable — which makes them PII that has to go with the account.
+        await SupportTicket.find(SupportTicket.user_id == user_id).delete()
+        await GlobalLeagueReward.find(GlobalLeagueReward.user_id == user_id).delete()
+        await CompetitionEntry.find(CompetitionEntry.user_id == user_id).delete()
+        await FantasyTeam.find(FantasyTeam.owner_id == user_id).delete()
 
         await self.repo.delete(user)

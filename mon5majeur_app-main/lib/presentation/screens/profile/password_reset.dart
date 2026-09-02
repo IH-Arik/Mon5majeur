@@ -10,7 +10,11 @@ import '../authentication/controller/auth_controller.dart';
 class PasswordReset extends StatefulWidget {
   final String email;
 
-  const PasswordReset({super.key, required this.email});
+  /// The code verified on the previous screen. change-password re-checks it,
+  /// so it has to be carried through rather than re-entered.
+  final String otp;
+
+  const PasswordReset({super.key, required this.email, required this.otp});
 
   @override
   State<PasswordReset> createState() => _PasswordResetState();
@@ -232,6 +236,7 @@ class _PasswordResetState extends State<PasswordReset> {
                                 _authController.changePassword(
                                   context,
                                   widget.email,
+                                  widget.otp,
                                   _passwordController.text,
                                   _confirmController.text,
                                 );
