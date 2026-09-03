@@ -8,6 +8,7 @@ import 'package:logger/logger.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
@@ -315,7 +316,7 @@ class AuthController extends GetxController {
             response.body['email']?.toString() ??
             response.body['error']?.toString() ??
             "Registration failed";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Sign Up Error: $e");
@@ -357,25 +358,67 @@ class AuthController extends GetxController {
       logger.i("Verify OTP Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.body;
-
         _otpTimer?.cancel(); // Stop the timer
 
-        showSnackbar(
-          context,
-          "Success",
-          data['message'] ?? "Registration complete. You can now log in.",
-        );
+        showSnackbar(context, AppString.successGeneric.tr, AppString.registrationComplete.tr);
 
-        // Navigate first, then clear form
-        Future.delayed(const Duration(seconds: 1), () {
-          context.go(RoutePath.signInScreen.addBasePath);
+        // QA 28/08/2026 #1: verifying the code used to dump the user back
+        // on the sign-in screen to type their password again — pure
+        // friction, since it's the same password they just typed for
+        // sign-up and passwordController still holds it (see the signUp
+        // comment above: intentionally not cleared, for OTP resend). Log
+        // them in with it now so verifying the code IS what gets them into
+        // the app, same as the login()/social-login flows below.
+        final loginEmail = email ?? lastRegisteredEmail ?? "";
+        final loginPassword = passwordController.text;
 
-          // Clear form after navigation
-          emailController.clear();
-          passwordController.clear();
-          confirmPasswordController.clear();
-          lastRegisteredEmail = null;
+        Future.delayed(const Duration(milliseconds: 500), () async {
+          if (!context.mounted) return;
+
+          if (loginPassword.isEmpty) {
+            // Password wasn't available (e.g. this OTP screen was reached
+            // some other way) — fall back to asking for it manually rather
+            // than silently failing to sign the user in.
+            context.go(RoutePath.signInScreen.addBasePath);
+            return;
+          }
+
+          try {
+            final apiClient = ApiClient();
+            final loginResponse = await apiClient.post(
+              url: ApiUrl.baseUrl + ApiUrl.login,
+              isBasic: true,
+              body: {"email": loginEmail, "password": loginPassword},
+              showResult: true,
+            );
+
+            if (loginResponse.statusCode == 200 && context.mounted) {
+              await _clearStoredAuth();
+              _resetUserScopedControllers();
+              await _persistAuthSession(loginResponse.body);
+
+              final hasProfile = await _refreshSessionAndCheckProfile();
+              if (!context.mounted) return;
+
+              emailController.clear();
+              passwordController.clear();
+              confirmPasswordController.clear();
+              lastRegisteredEmail = null;
+
+              context.go(
+                hasProfile
+                    ? RoutePath.home.addBasePath
+                    : RoutePath.profileSetup.addBasePath,
+              );
+            } else if (context.mounted) {
+              context.go(RoutePath.signInScreen.addBasePath);
+            }
+          } catch (e) {
+            logger.e("Auto-login after OTP verify failed: $e");
+            if (context.mounted) {
+              context.go(RoutePath.signInScreen.addBasePath);
+            }
+          }
         });
       } else {
         final errorMessage =
@@ -384,11 +427,11 @@ class AuthController extends GetxController {
             response.body['otp']?.toString() ??
             response.body['error']?.toString() ??
             "OTP verification failed";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Verify OTP Error: $e");
-      showSnackbar(context, "Error", "OTP verification failed", isError: true);
+      showSnackbar(context, AppString.errorGeneric.tr, AppString.otpVerificationFailed.tr, isError: true);
     } finally {
       isLoading.value = false;
     }
@@ -432,11 +475,11 @@ class AuthController extends GetxController {
         startOtpTimer();
       } else {
         final errorMessage = response.body['message'] ?? "Failed to resend OTP";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Resend OTP Error: $e");
-      showSnackbar(context, "Error", "Failed to resend OTP", isError: true);
+      showSnackbar(context, AppString.errorGeneric.tr, AppString.failedToResendOtp.tr, isError: true);
     } finally {
       isLoading.value = false;
     }
@@ -494,7 +537,7 @@ class AuthController extends GetxController {
         _resetUserScopedControllers();
         await _persistAuthSession(data);
 
-        showSnackbar(context, "Success", "Login successful!");
+        showSnackbar(context, AppString.successGeneric.tr, AppString.loginSuccessful.tr);
 
         // Check profile and navigate
         Future.delayed(const Duration(milliseconds: 100), () async {
@@ -529,7 +572,7 @@ class AuthController extends GetxController {
             (response.statusCode == null
                 ? "Connection failed. Check your internet."
                 : "Invalid credentials (${response.statusCode})");
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Login Error: $e");
@@ -595,7 +638,7 @@ class AuthController extends GetxController {
             response.body['message'] ??
             response.body['email']?.toString() ??
             "Failed to send OTP";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Forgot Password Error: $e");
@@ -665,7 +708,7 @@ class AuthController extends GetxController {
             response.body['otp']?.toString() ??
             response.body['error']?.toString() ??
             "Invalid OTP";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Verify Forgot Password OTP Error: $e");
@@ -692,7 +735,7 @@ class AuthController extends GetxController {
 
     // Validate passwords match
     if (newPassword != confirmPassword) {
-      showSnackbar(context, "Error", "Passwords do not match", isError: true);
+      showSnackbar(context, AppString.errorGeneric.tr, AppString.passwordsDoNotMatch.tr, isError: true);
       return;
     }
 
@@ -755,7 +798,7 @@ class AuthController extends GetxController {
             response.body['new_password']?.toString() ??
             response.body['error']?.toString() ??
             "Failed to change password";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Change Password Error: $e");
@@ -807,7 +850,7 @@ class AuthController extends GetxController {
         startOtpTimer();
       } else {
         final errorMessage = response.body['message'] ?? "Failed to resend OTP";
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Resend Forgot Password OTP Error: $e");
@@ -875,7 +918,7 @@ class AuthController extends GetxController {
         _resetUserScopedControllers();
         await _persistAuthSession(data);
 
-        showSnackbar(context, "Success", "Google login successful!");
+        showSnackbar(context, AppString.successGeneric.tr, AppString.googleLoginSuccessful.tr);
 
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
@@ -902,7 +945,7 @@ class AuthController extends GetxController {
             response.body['detail'] ??
             response.body['message'] ??
             "Google login failed";
-        showSnackbar(context, "Error", error.toString(), isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
       }
     } catch (e) {
       logger.e("Google sign-in error: $e");
@@ -980,7 +1023,7 @@ class AuthController extends GetxController {
         _resetUserScopedControllers();
         await _persistAuthSession(data);
 
-        showSnackbar(context, "Success", "Apple login successful!");
+        showSnackbar(context, AppString.successGeneric.tr, AppString.appleLoginSuccessful.tr);
 
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
@@ -1007,7 +1050,7 @@ class AuthController extends GetxController {
             response.body['detail'] ??
             response.body['message'] ??
             "Apple login failed";
-        showSnackbar(context, "Error", error.toString(), isError: true);
+        showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
       }
     } on SignInWithAppleAuthorizationException catch (e) {
       logger.e("Apple sign-in authorization error: $e");

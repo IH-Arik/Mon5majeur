@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -39,7 +40,7 @@ class CreateLeagueScreen extends StatelessWidget {
                 /// Title
                 Center(
                   child: Text(
-                    AppString.createALeague,
+                    AppString.createALeague.tr,
                     style: TextStyle(
                       fontFamily: 'Raleway',
                       fontWeight: FontWeight.w700,
@@ -55,7 +56,7 @@ class CreateLeagueScreen extends StatelessWidget {
                 /// Subtitle
                 Center(
                   child: Text(
-                    AppString.chooseLeagueType,
+                    AppString.chooseLeagueType.tr,
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       fontWeight: FontWeight.w400,
@@ -110,7 +111,7 @@ class CreateLeagueScreen extends StatelessWidget {
                           SizedBox(height: 20.h),
 
                           Text(
-                            AppString.privateLeague,
+                            AppString.privateLeague.tr,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 22.sp,
@@ -122,7 +123,7 @@ class CreateLeagueScreen extends StatelessWidget {
                           SizedBox(height: 8.h),
 
                           Text(
-                            AppString.playWithFriendsUsingCode,
+                            AppString.playWithFriendsUsingCode.tr,
                             style: TextStyle(
                               color: Color(0xFF6B6E82),
                               fontSize: 15.sp,
@@ -180,7 +181,7 @@ class CreateLeagueScreen extends StatelessWidget {
                           SizedBox(height: 20.h),
 
                           Text(
-                            AppString.publicLeague,
+                            AppString.publicLeague.tr,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 22.sp,
@@ -192,7 +193,7 @@ class CreateLeagueScreen extends StatelessWidget {
                           SizedBox(height: 8.h),
 
                           Text(
-                            AppString.openForAnyoneToJoin,
+                            AppString.openForAnyoneToJoin.tr,
                             style: TextStyle(
                               color: Color(0xFF6B6E82),
                               fontSize: 15.sp,

@@ -586,7 +586,7 @@ class _GlobalLeagueCard extends StatelessWidget {
             final selection = controller.globalLeagueSelection.value;
             // Night score comes from the loaded selection; "—" until available.
             final nightScore = selection == null
-                ? AppString.noResultPlaceholder
+                ? AppString.noResultPlaceholder.tr
                 : '${controller.totalPoints.value} pts';
             // Real per-user validated/locked lineup flag from the backend.
             final validated = selection?.lineupSubmitted ?? false;
@@ -619,11 +619,11 @@ class _GlobalLeagueCard extends StatelessWidget {
                           ),
                           SizedBox(height: 6.h),
                           _statLine(
-                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder}',
+                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder.tr}',
                           ),
                           SizedBox(height: 6.h),
                           _statLine(
-                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder}',
+                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder.tr}',
                           ),
                         ],
                       ),
@@ -922,7 +922,7 @@ class _AnimatedMatchCard extends StatelessWidget {
                               _scoreText(
                                 hasResult
                                     ? '${mainPair.scoreA}'
-                                    : AppString.noResultPlaceholder,
+                                    : AppString.noResultPlaceholder.tr,
                                 const Color(0xFF22C55E),
                               ),
                               SizedBox(width: 12.w),
@@ -931,7 +931,7 @@ class _AnimatedMatchCard extends StatelessWidget {
                               _scoreText(
                                 hasResult
                                     ? '${mainPair.scoreB}'
-                                    : AppString.noResultPlaceholder,
+                                    : AppString.noResultPlaceholder.tr,
                                 const Color(0xFFEF4444),
                               ),
                               Expanded(

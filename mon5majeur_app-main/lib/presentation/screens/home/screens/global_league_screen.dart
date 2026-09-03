@@ -145,22 +145,29 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   ),
                 ),
 
-                // Balance display
+                // Balance display — QA 28/08/2026 #3: this is the remaining
+                // team-building budget, meaningful only while composing a
+                // team (tab 0). Left showing on every tab it read as an
+                // unexplained, unlabeled "100M" with no apparent purpose;
+                // an empty-width box keeps the header's spaceBetween layout
+                // from jumping when it's hidden.
                 SizedBox(
                   width: 64.w,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      balance,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: const Color(0xFFFF8C42),
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  child: _selectedTab == 0
+                      ? FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            balance,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: const Color(0xFFFF8C42),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ],
             ),
@@ -226,19 +233,35 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   }
 
   Widget _buildTabBar() {
+    // QA 28/08/2026 #3: 6 tabs (5 labelled + the live-score bolt icon) in a
+    // plain unconstrained Row overflowed on narrower phones, cutting the
+    // 6th tab off the screen with no way to reach it. ConstrainedBox +
+    // horizontal scroll keeps the old evenly-spread look wherever all 6
+    // already fit, and turns the overflow into a swipe instead of a clip
+    // on screens where they don't.
     return Container(
       color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTab(AppString.createTeam.tr, Icons.add, 0),
-          _buildTab(AppString.myTeam.tr, Icons.group, 1),
-          _buildTab(AppString.result.tr, Icons.bar_chart, 2),
-          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
-          _buildTab(AppString.rules.tr, Icons.menu_book, 4),
-          _buildLiveTab(),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildTab(AppString.createTeam.tr, Icons.add, 0),
+                  _buildTab(AppString.myTeam.tr, Icons.group, 1),
+                  _buildTab(AppString.result.tr, Icons.bar_chart, 2),
+                  _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
+                  _buildTab(AppString.rules.tr, Icons.menu_book, 4),
+                  _buildLiveTab(),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

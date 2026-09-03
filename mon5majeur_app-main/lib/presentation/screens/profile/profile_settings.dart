@@ -98,7 +98,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _profileId = profile.id;
         _teamName = profile.teamName.isNotEmpty
             ? profile.teamName
-            : AppString.defaultTeamName;
+            : AppString.defaultTeamName.tr;
         selectedTeam = profile.favoriteTeam.isNotEmpty
             ? profile.favoriteTeam
             : (teams.isNotEmpty ? teams.first : '');
@@ -563,7 +563,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 SizedBox(height: 12.h),
                 Text(
-                  _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName,
+                  _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName.tr,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20.sp,
@@ -572,7 +572,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  'Since $_sinceYear',
+                  '${AppString.sincePrefix.tr} \$_sinceYear',
                   style: TextStyle(
                     color: const Color(0xFFB0B0B0),
                     fontSize: 12.sp,
@@ -583,7 +583,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Email
                 _buildSettingItem(
                   icon: Icons.email_outlined,
-                  title: _email.isNotEmpty ? _email : AppString.emailLabel,
+                  title: _email.isNotEmpty ? _email : AppString.emailLabel.tr,
                 ),
 
                 // Password → Change Password screen
@@ -608,7 +608,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 // Username
                 _buildSettingItem(
                   icon: Icons.person_outline,
-                  title: _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName,
+                  title: _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName.tr,
                 ),
 
                 // Favorite Team — saves on selection
