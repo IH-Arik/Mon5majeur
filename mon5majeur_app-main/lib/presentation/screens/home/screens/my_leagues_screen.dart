@@ -429,7 +429,7 @@ class LeagueCard extends StatelessWidget {
                       ),
                       SizedBox(width: 2.w),
                       Text(
-                        league.season,
+                        league.season.tr,
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 10.sp,
@@ -442,7 +442,7 @@ class LeagueCard extends StatelessWidget {
                       ),
                       SizedBox(width: 4.w),
                       Text(
-                        '${league.totalTeams} teams',
+                        AppString.teamsCountText(league.totalTeams),
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 10.sp,
