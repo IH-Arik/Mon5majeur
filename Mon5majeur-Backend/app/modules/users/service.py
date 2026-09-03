@@ -35,14 +35,6 @@ class UserService:
             raise NotFoundException("User not found")
         return user
 
-    # Only fields with a stable, indexable value qualify — `status` is
-    # derived at read time (see derive_user_status), so there is nothing in
-    # Mongo to sort on for it.
-    _SORTABLE_FIELDS: dict = {
-        "full_name": User.full_name,
-        "created_at": User.created_at,
-    }
-
     async def list_users(
         self,
         params: PaginationParams,
@@ -61,7 +53,16 @@ class UserService:
                 ]
             }
 
-        sort_field = self._SORTABLE_FIELDS.get(sort_by, User.created_at)
+        # Only fields with a stable, indexable value qualify — `status` is
+        # derived at read time (see derive_user_status), so there is nothing
+        # in Mongo to sort on for it. Built here (not as a class attribute)
+        # because these field expressions only resolve after init_beanie()
+        # has run at app startup.
+        sortable_fields: dict = {
+            "full_name": User.full_name,
+            "created_at": User.created_at,
+        }
+        sort_field = sortable_fields.get(sort_by, User.created_at)
         direction = -sort_field if sort_dir == "desc" else +sort_field
 
         query = User.find(query_filter)
