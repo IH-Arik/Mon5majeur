@@ -118,10 +118,12 @@ async def delete_me(
 @router.get("", response_model=Page[UserResponse], summary="List all users (admin)", dependencies=[Depends(get_current_superuser)])
 async def list_users(
     search: str | None = Query(None, description="Match against email, full name, or team name"),
+    sort_by: str = Query("created_at", pattern="^(full_name|created_at)$"),
+    sort_dir: str = Query("desc", pattern="^(asc|desc)$"),
     params: PaginationParams = Depends(),
     service: UserService = Depends(get_user_service),
 ) -> Page[User]:
-    return await service.list_users(params, search=search)
+    return await service.list_users(params, search=search, sort_by=sort_by, sort_dir=sort_dir)
 
 
 @router.get(

@@ -35,7 +35,21 @@ class UserService:
             raise NotFoundException("User not found")
         return user
 
-    async def list_users(self, params: PaginationParams, search: str | None = None) -> Page[User]:
+    # Only fields with a stable, indexable value qualify — `status` is
+    # derived at read time (see derive_user_status), so there is nothing in
+    # Mongo to sort on for it.
+    _SORTABLE_FIELDS: dict = {
+        "full_name": User.full_name,
+        "created_at": User.created_at,
+    }
+
+    async def list_users(
+        self,
+        params: PaginationParams,
+        search: str | None = None,
+        sort_by: str = "created_at",
+        sort_dir: str = "desc",
+    ) -> Page[User]:
         query_filter: dict = {}
         if search:
             pattern = re.compile(re.escape(search), re.IGNORECASE)
@@ -47,10 +61,13 @@ class UserService:
                 ]
             }
 
+        sort_field = self._SORTABLE_FIELDS.get(sort_by, User.created_at)
+        direction = -sort_field if sort_dir == "desc" else +sort_field
+
         query = User.find(query_filter)
         total = await query.count()
         items = (
-            await query.sort(-User.created_at)
+            await query.sort(direction)
             .skip(params.offset)
             .limit(params.limit)
             .to_list()

@@ -103,6 +103,11 @@ class UserResponse(BaseSchema):
     push_notifications_enabled: bool = False
     notification_types: list[str] = []
     is_profile_complete: bool = False
+    # Additive fields for the admin detail view — safe for existing
+    # consumers (Flutter's own /me call) since they simply ignore the extras.
+    created_at: datetime
+    token_balance: int = 0
+    premium_until: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

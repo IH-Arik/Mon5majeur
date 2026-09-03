@@ -42,7 +42,11 @@ export default function CardUser() {
   const statsData = [
     { label: "Total User", value: stats.total_users, icon: <FiUsers /> },
     {
-      label: "Monthly Active User",
+      label: "Active Users (Lineup, 30d)",
+      // "Active" here means submitted a full lineup, not merely opened the
+      // app — mirrors the Retention Analytics definition so the two
+      // dashboards never disagree on what "active" means.
+      hint: "Users who submitted a complete 5-player lineup in the last 30 days. Logging in without playing does not count.",
       value: stats.monthly_active_users,
       icon: <MdDone className="border rounded-full p-0.5" />,
     },
@@ -55,7 +59,10 @@ export default function CardUser() {
       {statsData.map((stat, index) => (
         <div key={index} className="bg-white shadow rounded-2xl  p-4 lg:px-6 ">
           <div className="flex justify-between mb-4">
-            <div className="text-[16px] md:text-[18px] lg:text-[20px] text-[#828282]">
+            <div
+              className="text-[16px] md:text-[18px] lg:text-[20px] text-[#828282]"
+              title={stat.hint}
+            >
               {stat.label}
             </div>
             <div className=" text-[20px] text-[#828282]">{stat.icon}</div>
