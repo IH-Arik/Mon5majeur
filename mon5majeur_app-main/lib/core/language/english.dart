@@ -175,6 +175,11 @@ class EnglishTranslation {
     AppString.waitingForTeamsToJoin:
         'Waiting for teams to join or for you to start the league',
     AppString.teamsJoined: 'Teams joined',
+    AppString.waitingForTeam: 'Waiting for Team',
+    AppString.publicLeagueCreatedSuccessfully:
+        'Public league created successfully!',
+    AppString.privateLeagueCreatedSuccessfullyTemplate:
+        'Private league created successfully! Code: @code',
     AppString.leagueStartsWhenYouHitStart:
         'The league starts when you hit start',
     AppString.joinedTeamLists: 'Joined team lists',

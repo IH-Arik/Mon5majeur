@@ -175,6 +175,11 @@ class FrenchTranslation {
     AppString.waitingRoom: 'Salle d\'attente',
     AppString.waitingForTeamsToJoin: 'En attente de nouvelles équipes',
     AppString.teamsJoined: 'Équipes rejointes',
+    AppString.waitingForTeam: 'En attente d\'équipe',
+    AppString.publicLeagueCreatedSuccessfully:
+        'Ligue publique créée avec succès !',
+    AppString.privateLeagueCreatedSuccessfullyTemplate:
+        'Ligue privée créée avec succès ! Code : @code',
     AppString.leagueStartsWhenYouHitStart:
         'La ligue commence quand vous cliquez sur Démarrer',
     AppString.joinedTeamLists: 'Liste des équipes',

@@ -592,6 +592,10 @@ class AppString {
   // Add these missing constants to app_strings.dart after line 174 (after teamsJoined)
 
   static const String waitingForTeam = 'Waiting for Team';
+  static const String publicLeagueCreatedSuccessfully =
+      'Public league created successfully!';
+  static const String privateLeagueCreatedSuccessfullyTemplate =
+      'Private league created successfully! Code: @code';
   static const String joinedTeams = 'Joined Teams';
   static const String morePlayers = 'more players';
   static const String noMatchesToday = 'noMatchesToday';
