@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { FaBars, FaTimes, FaStore, FaUsers } from "react-icons/fa";
 
 import { Toaster } from "react-hot-toast";
+import baseApi from "@/api/baseAPi";
+import { ENDPOINTS } from "@/api/endPoints";
 
 // 🖼️ Images
 import img1 from "@/app/assets/LOGO-MON5MAJEUR-FOND-01_1-removebg-preview 1.png";
@@ -17,7 +19,28 @@ import { SiIndiansuperleague } from "react-icons/si";
 import { MdOutlineAnalytics, MdOutlineSportsScore } from "react-icons/md";
 import { GrCompliance } from "react-icons/gr";
 
+interface AdminProfile {
+  full_name: string | null;
+  email: string;
+  avatar_url: string | null;
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
+  // Was hardcoded to "Olivia Rhye" regardless of who was actually logged
+  // in; now reflects the signed-in admin's real profile.
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await baseApi.get<AdminProfile>(ENDPOINTS.me);
+        setProfile(res.data);
+      } catch (error) {
+        console.error("Error fetching admin profile:", error);
+      }
+    };
+    loadProfile();
+  }, []);
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const pathname = usePathname();
@@ -164,17 +187,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="h-20 border-b border-[#B1B1B1] bg-white px-4 flex items-center justify-between gap-5">
             {/* ✅ Left: Profile section */}
             <div className="flex items-center gap-3 border border-[#B1B1B1] px-3 py-1 md:py-2 rounded-xl cursor-pointer hover:shadow-sm">
-              <Image
-                src={img2}
-                alt="User Avatar"
-                width={36}
-                height={36}
-                className="rounded-full object-cover w-8 "
-              />
+              {profile?.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt={profile.full_name || profile.email}
+                  width={36}
+                  height={36}
+                  className="rounded-full object-cover w-8 h-8"
+                />
+              ) : (
+                <Image
+                  src={img2}
+                  alt="User Avatar"
+                  width={36}
+                  height={36}
+                  className="rounded-full object-cover w-8 "
+                />
+              )}
               <div className="text-sm leading-tight ">
-                <div className="font-medium text-black">Olivia Rhye</div>
+                <div className="font-medium text-black">
+                  {profile?.full_name || "Admin"}
+                </div>
                 <div className="text-gray-500 text-xs">
-                  olivia@untitledui.com
+                  {profile?.email || ""}
                 </div>
               </div>
               {/* <Image
