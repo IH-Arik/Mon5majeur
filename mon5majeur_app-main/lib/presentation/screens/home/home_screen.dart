@@ -10,6 +10,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../../../data/models/my_league_model.dart';
 import '../../widgets/navigation.dart';
 import '../tutorial/tutorial_controller.dart';
 import '../tutorial/tutorial_skip_button.dart';
@@ -1198,7 +1199,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
             child: Transform.translate(
               offset: Offset(0, 30.h * (1 - value)),
               child: GestureDetector(
-                onTap: () => context.go(RoutePath.myLeague.addBasePath),
+                onTap: () => _navigateToLeague(context, league),
                 child: Container(
                   padding: EdgeInsets.all(16.r),
                   decoration: BoxDecoration(
@@ -1303,6 +1304,21 @@ class _AnimatedLeagueCard extends StatelessWidget {
         },
       );
     });
+  }
+
+  // Tapping the "Mes Ligues" card should open that specific league —
+  // same routing HomeController.myLeagues.first feeds into, matching
+  // my_leagues_screen.dart's _navigateToLeague.
+  static void _navigateToLeague(BuildContext context, MyLeagueModel league) {
+    if (league.league.isStarted == true) {
+      context.go(
+        '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/${league.leagueId}?matchDay=${league.currentMatchday}&isPrivate=${league.isPrivate}',
+      );
+    } else {
+      context.go(
+        '${RoutePath.createPrivateLeagueWaitingRoomScreen.addBasePath}?leagueId=${league.leagueId}&isPublic=${!league.isPrivate}',
+      );
+    }
   }
 
   // Helper method to get ordinal (1st, 2nd, 3rd... / 1er, 2e, 3e... in French)
