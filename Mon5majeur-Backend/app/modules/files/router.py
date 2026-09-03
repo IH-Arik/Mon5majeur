@@ -1,5 +1,4 @@
-import uuid
-
+from beanie import PydanticObjectId
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, status
 
 from app.modules.auth.dependencies import get_current_user
@@ -23,7 +22,7 @@ async def upload_file(
 
 @router.get("/{file_id}", response_model=FileResponse, summary="Get file metadata")
 async def get_file(
-    file_id: uuid.UUID,
+    file_id: PydanticObjectId,
     current_user: User = Depends(get_current_user),
     service: FileService = Depends(get_file_service),
 ) -> UploadedFile:
@@ -32,7 +31,7 @@ async def get_file(
 
 @router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a file")
 async def delete_file(
-    file_id: uuid.UUID,
+    file_id: PydanticObjectId,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     service: FileService = Depends(get_file_service),
