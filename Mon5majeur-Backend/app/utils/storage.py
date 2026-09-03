@@ -38,7 +38,7 @@ async def save_file(content: bytes, original_name: str, ext: str) -> tuple[str, 
         )
         raise
 
-    public_url = f"/static/{stored_name}"
+    public_url = f"{settings.PUBLIC_BASE_URL}/static/{stored_name}"
     return stored_name, storage_path, public_url
 
 

@@ -105,6 +105,17 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
     ALLOWED_UPLOAD_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf", "docx"]
+    # Absolute origin (e.g. "https://api.mon5majeur.com") the /static/... path
+    # returned by an upload is prefixed with. The dashboard and mobile app are
+    # served from a different origin than the API, so a bare "/static/..."
+    # resolves against *their* origin and 404s — empty stays relative, for
+    # local dev where everything shares one origin.
+    PUBLIC_BASE_URL: str = ""
+
+    @field_validator("PUBLIC_BASE_URL", mode="after")
+    @classmethod
+    def strip_trailing_slash(cls, v: str) -> str:
+        return v.rstrip("/")
 
     @field_validator("UPLOAD_DIR", mode="after")
     @classmethod
