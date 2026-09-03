@@ -1266,27 +1266,27 @@ class _AnimatedLeagueCard extends StatelessWidget {
                               children: [
                                 Text(
                                   league.userRank > 0
-                                      ? '#${_getOrdinal(league.userRank)} of ${league.totalTeams} teams'
-                                      : '${league.totalTeams} teams',
+                                      ? '#${_getOrdinal(league.userRank)} ${AppString.ofWord.tr} ${AppString.teamsCountText(league.totalTeams)}'
+                                      : AppString.teamsCountText(league.totalTeams),
                                   style: TextStyle(
                                     color: const Color(0xFFFF6B35),
-                                    fontSize: 8.sp,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                                 _infoDivider(),
                                 Text(
-                                  league.season,
+                                  league.season.tr,
                                   style: TextStyle(
                                     color: Colors.grey,
-                                    fontSize: 8.sp,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                                 _infoDivider(),
                                 Text(
-                                  'Matchday ${league.currentMatchday}',
+                                  '${AppString.matchday.tr} ${league.currentMatchday}',
                                   style: TextStyle(
                                     color: Colors.grey,
-                                    fontSize: 8.sp,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                               ],
@@ -1305,8 +1305,11 @@ class _AnimatedLeagueCard extends StatelessWidget {
     });
   }
 
-  // Helper method to get ordinal (1st, 2nd, 3rd, etc.)
+  // Helper method to get ordinal (1st, 2nd, 3rd... / 1er, 2e, 3e... in French)
   static String _getOrdinal(int number) {
+    if (Get.locale?.languageCode == 'fr') {
+      return number == 1 ? '${number}er' : '${number}e';
+    }
     if (number % 100 >= 11 && number % 100 <= 13) {
       return '${number}th';
     }
@@ -1368,7 +1371,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 6.w),
       child: Text(
         '|',
-        style: TextStyle(color: Colors.grey, fontSize: 8.sp),
+        style: TextStyle(color: Colors.grey, fontSize: 11.sp),
       ),
     );
   }

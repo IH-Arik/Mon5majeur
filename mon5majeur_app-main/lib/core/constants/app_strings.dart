@@ -91,6 +91,12 @@ class AppString {
   static const String chefsCurryBonusActivated = 'Chefs Curry Bonus Activated';
   static const String luxuryTaxBonusActivated = 'Luxury Tax Bonus Activated';
   static const String matchday = 'Matchday';
+  static const String teamCountSingularTemplate = '@n team';
+  static const String teamCountPluralTemplate = '@n teams';
+  static const String ofWord = 'of';
+  static String teamsCountText(int n) => n == 1
+      ? teamCountSingularTemplate.trParams({'n': '$n'})
+      : teamCountPluralTemplate.trParams({'n': '$n'});
   static const String budgetUsed = 'Budget Used';
   static const String chooseYourJersey = 'Choose your Jersey';
   static const String confirm = 'Confirm';
