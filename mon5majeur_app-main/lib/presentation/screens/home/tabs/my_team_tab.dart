@@ -13,6 +13,11 @@ class MyTeamTab extends StatefulWidget {
   final int? leagueId;
   final int? matchDay;
   final bool isPrivate; // ADD THIS
+  // Global League has no leagueId/matchDay-driven fetch of its own (see
+  // initState) - its real, backend-computed team total (from
+  // PlayerGameStats, not this tab's per-player sum) is fetched by
+  // GlobalLeagueController instead and handed in here.
+  final int? totalPointsOverride;
 
   const MyTeamTab({
     super.key,
@@ -21,6 +26,7 @@ class MyTeamTab extends StatefulWidget {
     this.leagueId,
     this.matchDay,
     this.isPrivate = false, // ADD THIS
+    this.totalPointsOverride,
   });
 
   @override
@@ -132,12 +138,15 @@ class _MyTeamTabState extends State<MyTeamTab> {
     }
   }
 
-  int get totalPoints => selectedPlayers.fold(0, (sum, player) {
-    if (player != null) {
-      return sum + _pointsFor(player);
-    }
-    return sum;
-  });
+  int get totalPoints {
+    if (widget.totalPointsOverride != null) return widget.totalPointsOverride!;
+    return selectedPlayers.fold(0, (sum, player) {
+      if (player != null) {
+        return sum + _pointsFor(player);
+      }
+      return sum;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
