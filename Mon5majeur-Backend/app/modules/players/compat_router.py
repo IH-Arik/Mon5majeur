@@ -11,6 +11,7 @@ from datetime import date, datetime, timedelta, timezone
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from app.core.config import settings
 from app.modules.auth.dependencies import get_current_user
 from app.modules.leagues.schema import (
     GameCompatResponse,
@@ -178,7 +179,13 @@ async def players_today(
     has_next = offset + len(players) < total
     next_url: str | None = None
     if has_next:
-        base = str(request.base_url).rstrip("/")
+        # request.base_url reflects the scheme FastAPI sees behind the
+        # reverse proxy (http, since TLS is terminated upstream), not the
+        # https origin the app actually talks to - the Flutter app then
+        # calls the bare-http "next" URL and the page silently fails to
+        # load (same class of bug as the file-upload public_url fix).
+        # PUBLIC_BASE_URL is already the correct external origin.
+        base = settings.PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
         next_url = f"{base}/api/players-today/?page={page + 1}"
 
     return PlayersTodayPageResponse(
