@@ -9,6 +9,7 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../controllers/global_league_controller.dart';
+import '../../../../data/models/player.dart';
 import '../tabs/build_your_team_global_tab.dart';
 import '../tabs/global_leaderboard_tab.dart';
 import '../tabs/my_team_tab.dart';
@@ -60,9 +61,24 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   BuildYourTeamTabGlobal(
                     onTeamSaved: _onTeamSaved, // ADD THIS
                   ),
-                  MyTeamTab(
-                    key: _myTeamKey, // ADD THIS
-                  ),
+                  // MyTeamTab only fetches a saved team when given a
+                  // leagueId + matchDay (the private/public league path) -
+                  // the Global League has neither of those, so without this
+                  // it silently rendered 5 empty jerseys. Feed it the squad
+                  // GlobalLeagueController already fetches on join, padded
+                  // to 5 slots so _buildPlayerWithPoints's fixed indices
+                  // (0-4) never run off the end of a shorter list.
+                  Obx(() {
+                    final squad = List<Player?>.filled(5, null);
+                    for (
+                      var i = 0;
+                      i < _controller.selectedPlayers.length && i < 5;
+                      i++
+                    ) {
+                      squad[i] = _controller.selectedPlayers[i];
+                    }
+                    return MyTeamTab(key: _myTeamKey, savedPlayers: squad);
+                  }),
                   Obx(
                     () => ResultTab(
                       key: ValueKey(
