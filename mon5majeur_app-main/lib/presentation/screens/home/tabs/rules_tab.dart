@@ -7,7 +7,14 @@ import 'package:mon5majeur_app/data/services/api_service.dart';
 import 'package:mon5majeur_app/data/services/api_url.dart';
 
 class RulesTab extends StatefulWidget {
-  const RulesTab({super.key});
+  // QA4 #7: the Rules tab showed the same content everywhere - Private
+  // League sections (Match Day Duels, Standings & Tiebreakers, Playoffs)
+  // leaking into the Global League, which has none of those mechanics.
+  // The backend now serves different, approved copy per mode - this flag
+  // (and the current app language) picks which one to request.
+  final bool isGlobal;
+
+  const RulesTab({super.key, this.isGlobal = false});
 
   @override
   State<RulesTab> createState() => _RulesTabState();
@@ -26,8 +33,11 @@ class _RulesTabState extends State<RulesTab> {
 
   Future<void> _fetchRules() async {
     try {
+      final leagueType = widget.isGlobal ? 'global' : 'private';
+      final lang = Get.locale?.languageCode == 'fr' ? 'fr' : 'en';
       final response = await ApiClient().get(
-        url: '${ApiUrl.baseUrl}${ApiUrl.leagueRules}',
+        url:
+            '${ApiUrl.baseUrl}${ApiUrl.leagueRules}?league_type=$leagueType&lang=$lang',
         showResult: true,
       );
 

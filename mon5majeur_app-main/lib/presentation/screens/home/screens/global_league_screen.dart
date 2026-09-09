@@ -83,7 +83,7 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                     return MyTeamTab(key: _resultKey, savedPlayers: squad);
                   }),
                   const LeaderboardTab(),
-                  const RulesTab(),
+                  const RulesTab(isGlobal: true),
                 ],
               ),
             ),
