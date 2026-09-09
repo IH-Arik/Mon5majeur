@@ -395,6 +395,10 @@ class AppString {
   static const String lockInPrefix = 'Lock in ';
   static const String lockClosed = 'Locked for tonight';
   static const String noGamesScheduled = 'No games scheduled';
+  static const String editYourFive = 'Edit your 5';
+  static const String lineupLockedCta = 'Lineup locked';
+  static const String noGameTonight = 'No game tonight';
+  static const String locksAtPrefix = 'Locks at ';
   static const String noResultPlaceholder = '—';
   static const String earnFreeTokens = 'Earn 6 free tokens';
   static const String celebrationEmoji = '🎉';

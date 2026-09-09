@@ -650,13 +650,9 @@ class _GlobalLeagueCard extends StatelessWidget {
     );
   }
 
-  // Right-side team status / CTA:
-  //   validated=false → 🔴 Set your 5    + "Lock in ..."
-  //   validated=true  → 🟢 5 Validated   + "Tap to edit"
+  // Right-side team status / CTA — see _homeCardCta for the 4-state logic.
   static Widget _validationStatus(bool validated, int? lockInSeconds) {
-    final color = validated
-        ? const Color(0xFF22C55E)
-        : const Color(0xFFEF4444);
+    final cta = _homeCardCta(validated, lockInSeconds);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -666,11 +662,14 @@ class _GlobalLeagueCard extends StatelessWidget {
             Container(
               width: 8.w,
               height: 8.w,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cta.dotColor,
+              ),
             ),
             SizedBox(width: 6.w),
             Text(
-              validated ? AppString.fiveValidated.tr : AppString.setYourFive.tr,
+              cta.ctaText,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 11.sp,
@@ -679,29 +678,60 @@ class _GlobalLeagueCard extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: 2.h),
-        Text(
-          validated ? AppString.tapToEdit.tr : formatLockCountdown(lockInSeconds),
-          style: TextStyle(color: Colors.grey, fontSize: 8.sp),
-        ),
+        if (cta.subLabelText != null) ...[
+          SizedBox(height: 2.h),
+          Text(
+            cta.subLabelText!,
+            style: TextStyle(color: Colors.grey, fontSize: 8.sp),
+          ),
+        ],
       ],
     );
   }
 }
 
-/// Formats a lock countdown from seconds-until-lock.
-String formatLockCountdown(int? lockInSeconds) {
+/// The Home league card's 4-state CTA (QA #4 item 1): which of
+/// Set/Edit/Locked/No-game to show is driven purely by lock timing and
+/// whether a lineup was submitted - previously "validated" alone decided
+/// the label, so a validated-but-already-locked lineup still showed
+/// "Tap to edit" as if it could still be changed. Shared by both home
+/// cards (Global League + My Leagues) since the spec applies to both.
+class _HomeCardCta {
+  final Color dotColor;
+  final String ctaText;
+  final String? subLabelText;
+  const _HomeCardCta(this.dotColor, this.ctaText, this.subLabelText);
+}
+
+_HomeCardCta _homeCardCta(bool validated, int? lockInSeconds) {
   if (lockInSeconds == null) {
-    return AppString.noGamesScheduled.tr;
+    return _HomeCardCta(Colors.grey, AppString.noGameTonight.tr, null);
   }
   if (lockInSeconds <= 0) {
-    return AppString.lockClosed.tr;
+    return _HomeCardCta(
+      Colors.grey,
+      AppString.lineupLockedCta.tr,
+      AppString.lockClosed.tr,
+    );
   }
-  final duration = Duration(seconds: lockInSeconds);
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-  return '${AppString.lockInPrefix.tr}$hours'
-      'h${minutes.toString().padLeft(2, '0')}';
+  final lockTime = DateTime.now().add(Duration(seconds: lockInSeconds));
+  final subLabel = '${AppString.locksAtPrefix.tr}${_formatClockTime(lockTime)}';
+  return validated
+      ? _HomeCardCta(const Color(0xFF22C55E), AppString.editYourFive.tr, subLabel)
+      : _HomeCardCta(const Color(0xFFEF4444), AppString.setYourFive.tr, subLabel);
+}
+
+/// Locale-specific clock time for the lock label - FR: "1h30" (24-hour, no
+/// leading zero, no colon); EN: "1:30 AM" (12-hour). Deliberately not the
+/// same format for both, per spec.
+String _formatClockTime(DateTime t) {
+  final minute = t.minute.toString().padLeft(2, '0');
+  if (Get.locale?.languageCode == 'fr') {
+    return '${t.hour}h$minute';
+  }
+  final hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  final period = t.hour < 12 ? 'AM' : 'PM';
+  return '$hour12:$minute $period';
 }
 
 /// Animated Action Card (Join/Create League)
@@ -1342,12 +1372,10 @@ class _AnimatedLeagueCard extends StatelessWidget {
   }
 
   // Right-side validation status:
-  //   validated=false → 🔴 Set your 5   + "Lock in ..."
-  //   validated=true  → 🟢 5 Validated  + "Tap to edit"
+  // See _homeCardCta for the 4-state logic (shared with the Global League
+  // card above).
   static Widget _leagueValidationStatus(bool validated, int? lockInSeconds) {
-    final color = validated
-        ? const Color(0xFF22C55E)
-        : const Color(0xFFEF4444);
+    final cta = _homeCardCta(validated, lockInSeconds);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -1357,13 +1385,14 @@ class _AnimatedLeagueCard extends StatelessWidget {
             Container(
               width: 8.w,
               height: 8.w,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: cta.dotColor,
+              ),
             ),
             SizedBox(width: 6.w),
             Text(
-              validated
-                  ? AppString.fiveValidated.tr
-                  : AppString.setYourFive.tr,
+              cta.ctaText,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 11.sp,
@@ -1372,11 +1401,13 @@ class _AnimatedLeagueCard extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: 2.h),
-        Text(
-          validated ? AppString.tapToEdit.tr : formatLockCountdown(lockInSeconds),
-          style: TextStyle(color: Colors.grey, fontSize: 8.sp),
-        ),
+        if (cta.subLabelText != null) ...[
+          SizedBox(height: 2.h),
+          Text(
+            cta.subLabelText!,
+            style: TextStyle(color: Colors.grey, fontSize: 8.sp),
+          ),
+        ],
       ],
     );
   }
