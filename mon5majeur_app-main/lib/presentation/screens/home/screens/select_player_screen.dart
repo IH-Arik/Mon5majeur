@@ -282,31 +282,51 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           color: const Color(0xFF2A2D3E),
           borderRadius: BorderRadius.circular(12.r),
         ),
+        // QA4 #9: mirrors _buildPlayerCard's column widths exactly (avatar
+        // spacer, flexible name area, then the same fixed-width last-scores
+        // and price boxes used below) so headers line up with their content
+        // instead of being spread across the row independently of it.
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              AppString.player.tr,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+            SizedBox(width: 50.w),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                AppString.player.tr,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Text(
-              AppString.lastScores.tr,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
+            SizedBox(
+              width: 76.w,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  AppString.lastScores.tr,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
-            Text(
-              AppString.price.tr,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+            SizedBox(width: 12.w),
+            SizedBox(
+              width: 48.w,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  AppString.price.tr,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
@@ -394,9 +414,25 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
               _buildPlayerAvatar(player),
               SizedBox(width: 12.w),
               Expanded(child: _buildPlayerInfo(player)),
-              _buildLastScores(player),
+              // QA4 #9: fixed-width box wider than the chips, left-aligned
+              // within it, so the empty space on its right pushes the
+              // badges away from the price instead of hugging it. Same
+              // width as the header's matching box above.
+              SizedBox(
+                width: 76.w,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildLastScores(player),
+                ),
+              ),
               SizedBox(width: 12.w),
-              _buildPlayerPrice(player),
+              SizedBox(
+                width: 48.w,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _buildPlayerPrice(player),
+                ),
+              ),
             ],
           ),
         ),
@@ -443,7 +479,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
             player.trigram!,
             style: TextStyle(
               color: Colors.white54,
-              fontSize: 9.sp,
+              fontSize: 11.sp,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -500,13 +536,13 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                 color: player.isHome == false
                     ? const Color(0xFFE05353)
                     : const Color(0xFF4CAF50),
-                size: 13.r,
+                size: 15.r,
               ),
               SizedBox(width: 3.w),
               Flexible(
                 child: Text(
                   player.opponentTrigram!,
-                  style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                  style: TextStyle(color: Colors.white54, fontSize: 14.sp),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -535,7 +571,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
         ),
         child: Text(
           value?.toString() ?? '—',
-          style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+          style: TextStyle(color: Colors.white70, fontSize: 13.sp),
         ),
       );
     }

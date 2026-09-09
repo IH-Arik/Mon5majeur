@@ -34,8 +34,6 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           _buildTabSelector(),
           SizedBox(height: 16.h),
           _buildPeriodSelector(),
-          SizedBox(height: 12.h),
-          _buildRewardBanner(),
           SizedBox(height: 16.h),
           _buildSearchBar(),
           SizedBox(height: 16.h),
@@ -117,8 +115,8 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
         SizedBox(width: 16.w),
         Text(
           isWeekly
-              ? AppString.weekWithNumber(currentPeriod).tr
-              : AppString.monthWithNumber(currentPeriod).tr,
+              ? '${AppString.week.tr} $currentPeriod'
+              : '${AppString.month.tr} $currentPeriod',
           style: TextStyle(
             color: Colors.white,
             fontSize: 16.sp,
@@ -131,31 +129,6 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           icon: Icon(Icons.chevron_right, color: Colors.white54, size: 24.r),
         ),
       ],
-    );
-  }
-
-  Widget _buildRewardBanner() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2D3E),
-        borderRadius: BorderRadius.circular(8.r),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.emoji_events, color: Color(0xFFFF6B3D), size: 16.r),
-          SizedBox(width: 8.w),
-          Text(
-            isWeekly
-                ? AppString.top8WeeklyReward.tr
-                : AppString.monthlyWinnerReward.tr,
-            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
-          ),
-          SizedBox(width: 4.w),
-          if (!isWeekly) Text('🏅', style: TextStyle(fontSize: 14.sp)),
-        ],
-      ),
     );
   }
 
@@ -248,8 +221,10 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
               ),
             ),
           ),
-          // if top one show jersey icon
-          if (isTopOne)
+          // QA4 #6: the jersey reward only exists for the Monthly
+          // standings (Weekly has no jersey mechanic) - showing it on
+          // both tabs implied a prize that doesn't exist for Weekly.
+          if (isTopOne && !isWeekly)
             Padding(
               padding: EdgeInsets.only(right: 8.w),
               child: Text('👕', style: TextStyle(fontSize: 16.sp)),

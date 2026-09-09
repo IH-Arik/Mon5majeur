@@ -230,8 +230,10 @@ class _MyLeaguesScreenState extends State<MyLeaguesScreen>
               SizedBox(height: 16.h),
               Text(
                 controller.searchQuery.value.isEmpty
-                    ? (isPrivate ? 'No Private Leagues' : 'No Public Leagues')
-                    : 'No leagues match your search',
+                    ? (isPrivate
+                        ? AppString.noPrivateLeagues.tr
+                        : AppString.noPublicLeagues.tr)
+                    : AppString.noLeaguesMatchSearch.tr,
                 style: TextStyle(
                   color: Colors.grey[400],
                   fontSize: 16.sp,
@@ -242,8 +244,8 @@ class _MyLeaguesScreenState extends State<MyLeaguesScreen>
               if (controller.searchQuery.value.isEmpty)
                 Text(
                   isPrivate
-                      ? 'Join a private league with a code'
-                      : 'Explore and join public leagues',
+                      ? AppString.joinPrivateLeagueWithCode.tr
+                      : AppString.exploreAndJoinPublicLeagues.tr,
                   style: TextStyle(color: Colors.grey[600], fontSize: 14.sp),
                 ),
               if (controller.searchQuery.value.isEmpty) ...[

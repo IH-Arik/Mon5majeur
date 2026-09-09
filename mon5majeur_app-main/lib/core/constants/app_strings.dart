@@ -419,9 +419,20 @@ class AppString {
   static const String noNotifications = 'No notifications yet';
   static const String myLeaguesTitle = 'My leagues';
   static const String searchHint = 'Search your leagues by name';
+  static const String noActivePublicLeaguesAvailable =
+      'No active public leagues available';
+  static const String noLeaguesFound = 'No leagues found';
+  static const String noPrivateLeagues = 'No Private Leagues';
+  static const String noPublicLeagues = 'No Public Leagues';
+  static const String noLeaguesMatchSearch = 'No leagues match your search';
+  static const String joinPrivateLeagueWithCode =
+      'Join a private league with a code';
+  static const String exploreAndJoinPublicLeagues =
+      'Explore and join public leagues';
   static const String waiting = 'waiting';
   static const String rank = 'Rank';
   static const String week = 'Week';
+  static const String month = 'Month';
   static const String separator = '|';
   static const String todaysNbaResults = 'Todays Nba Results';
   static const String todaysFantasyPlayersScore =
@@ -444,8 +455,8 @@ class AppString {
   static const String sinceYear = 'Since 2025';
   static const String sincePrefix = 'sincePrefix';
   static const String statisticsOverview = 'Statistics Overview';
-  static const String statWLNB = 'W / L / NB';
-  static const String statWLNBValue = '12W-4L-2NB';
+  static const String statWLNB = 'W / L';
+  static const String statWLNBValue = '12W-4L';
   static const String statLeaguePlay = 'League Play';
   static const String statLeaguePlayValue = '20 Matches';
   static const String statRegularSeason = 'Regular season';
@@ -456,7 +467,7 @@ class AppString {
   static const String wins = 'wins';
   static const String victories = 'victories';
   static const String trophies = 'Trophies';
-  static const String performanceHighlights = 'Performance Highlights';
+  static const String performanceHighlights = 'Duel stats';
   static const String avgPointScoredValue = '92.3';
   static const String avgPointConceded = 'Average Point Conceded';
   static const String avgPointConcededValue = '87.3';
@@ -584,8 +595,7 @@ class AppString {
   static const String jersey = 'Jersey';
   static const String buyCustomJerseys = 'Buy Custom Jerseys';
   static const String browseJerseyStyles = 'Browse jersey styles';
-  static const String jerseySelectionHint =
-      'Preview the available jerseys used in team building.';
+  static const String jerseySelectionHint = 'Dress your 5 with new jerseys.';
   static const String viewStyles = 'View styles';
   static const String comingSoon = 'Coming SOON';
   static const String tokens = ' Tokens';

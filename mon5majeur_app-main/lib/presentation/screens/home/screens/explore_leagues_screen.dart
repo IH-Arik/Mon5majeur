@@ -215,8 +215,8 @@ class _ExploreLeaguesScreenState extends State<ExploreLeaguesScreen> {
                             SizedBox(height: 16.h),
                             Text(
                               _searchController.text.isEmpty
-                                  ? 'No active public leagues available'
-                                  : 'No leagues found',
+                                  ? AppString.noActivePublicLeaguesAvailable.tr
+                                  : AppString.noLeaguesFound.tr,
                               style: TextStyle(
                                 color: const Color(0xFF6B6E82),
                                 fontSize: 16.sp,

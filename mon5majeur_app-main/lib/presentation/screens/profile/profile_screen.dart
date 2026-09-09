@@ -126,7 +126,15 @@ class ProfileScreen extends StatelessWidget {
                               Expanded(
                                 child: _StatCard(
                                   title: AppString.statWLNB.tr,
-                                  value: '${s.wins}W-${s.losses}L-${s.noMatch}NB',
+                                  // QA4 #12: there is no draw mechanic - a
+                                  // duel is always won or lost - so the
+                                  // stored noMatch/draw count is dropped
+                                  // entirely rather than displayed. Letters
+                                  // follow the same language as the label
+                                  // above (V/D in FR, W/L in EN).
+                                  value: Get.locale?.languageCode == 'fr'
+                                      ? '${s.wins}V - ${s.losses}D'
+                                      : '${s.wins}W - ${s.losses}L',
                                   valueColor: const Color(0xFFFF6B35),
                                 ),
                               ),
