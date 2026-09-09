@@ -68,5 +68,17 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Mon5Majeur requires access to the camera to take profile photos and capture images for support requests.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mon5Majeur requires access to the microphone for audio recording and voice search features.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mon5Majeur requires access to your photo library to select and upload your profile picture and support attachments.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Mon5Majeur requires permission to save photos and receipts to your photo library.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Mon5Majeur requires speech recognition permission to transcribe voice queries and search players or leagues hands-free.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mon5Majeur uses your location while using the app to show relevant local competitions, regional leagues, and nearby events.</string>
 </dict>
 </plist>
