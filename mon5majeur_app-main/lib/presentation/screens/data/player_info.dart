@@ -22,19 +22,6 @@ class PlayerInfoScreen extends StatelessWidget {
     required this.team,
   });
 
-  // Function to get random jersey image
-  AssetGenImage _getRandomJersey() {
-    final jerseys = [
-      Assets.icons.jerseyDevil,
-      Assets.icons.jerseyFlower,
-      Assets.icons.jerseyUfo,
-      Assets.icons.jerseyShark,
-      Assets.icons.jerseySnake,
-      Assets.icons.jerseyZebra,
-    ];
-    return jerseys[Random().nextInt(jerseys.length)];
-  }
-
   // Function to get team border color
   Color _getTeamColor() {
     switch (team.toLowerCase()) {
@@ -111,8 +98,14 @@ class PlayerInfoScreen extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        /// Jersey Image
-                        _getRandomJersey().image(width: 80.w, height: 100.h),
+                        /// Jersey Image — QA4 #10: was a random decorative
+                        /// league-mascot jersey (devil/flower/ufo/shark/
+                        /// snake/zebra); every screen must use the same
+                        /// approved reference jersey instead.
+                        Assets.icons.jerseyReference.image(
+                          width: 80.w,
+                          height: 100.h,
+                        ),
                         SizedBox(width: 22.w),
 
                         /// Player Info

@@ -1000,9 +1000,14 @@ class _DataScreenState extends State<DataScreen> {
         ),
         child: Row(
           children: [
-            /// Player Avatar/Jersey
+            /// Player Avatar/Jersey — QA4 #10: was the wrong (Lakers #20)
+            /// jersey asset; the approved reference jersey must be used
+            /// on every screen that shows this generic per-row jersey.
             Center(
-              child: Assets.icons.dress.image(width: 28.w, height: 42.h),
+              child: Assets.icons.jerseyReference.image(
+                width: 28.w,
+                height: 42.h,
+              ),
             ),
             SizedBox(width: 12.w),
 

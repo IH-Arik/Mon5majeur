@@ -369,7 +369,13 @@ class _PlayerScoreCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Center(child: Assets.icons.dress.image(width: 28.w, height: 42.h)),
+          // QA4 #10: was the wrong (Lakers #20) jersey asset.
+          Center(
+            child: Assets.icons.jerseyReference.image(
+              width: 28.w,
+              height: 42.h,
+            ),
+          ),
           SizedBox(width: 12.w),
           Expanded(
             child: Column(

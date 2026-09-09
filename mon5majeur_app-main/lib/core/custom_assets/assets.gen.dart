@@ -122,6 +122,10 @@ class $AssetsIconsGen {
   /// File path: assets/icons/jersey.png
   AssetGenImage get jersey => const AssetGenImage('assets/icons/jersey.png');
 
+  /// File path: assets/icons/jersey_reference.png
+  AssetGenImage get jerseyReference =>
+      const AssetGenImage('assets/icons/jersey_reference.png');
+
   /// File path: assets/icons/jersey_devil.png
   AssetGenImage get jerseyDevil =>
       const AssetGenImage('assets/icons/jersey_devil.png');
@@ -356,6 +360,7 @@ class $AssetsIconsGen {
     hourglass,
     icons,
     jersey,
+    jerseyReference,
     jerseyDevil,
     jerseyFlower,
     jerseyShark,
