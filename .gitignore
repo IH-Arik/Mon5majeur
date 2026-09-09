@@ -87,6 +87,11 @@ temp_interactive_push.bat
 *.key
 *.p12
 *.pfx
+*.jks
+*.keystore
+key.properties
+**/key.properties
+
 
 # Malware incident evidence (kept locally only)
 malware_evidence/

@@ -29,6 +29,19 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    plugins.withId("com.android.library") {
+        project.dependencies {
+            add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
+        }
+    }
+    plugins.withId("com.android.application") {
+        project.dependencies {
+            add("implementation", "androidx.concurrent:concurrent-futures:1.2.0")
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
