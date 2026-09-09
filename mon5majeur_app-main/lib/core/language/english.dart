@@ -120,7 +120,7 @@ class EnglishTranslation {
     AppString.getExtraBudget: 'Get extra 2M to your budget',
     AppString.createTeam: 'Create Team',
     AppString.myTeam: 'My Team',
-    AppString.result: 'Result',
+    AppString.result: 'Results',
     AppString.leaderboard: 'Leaderboard',
     AppString.rules: 'Rules',
       AppString.selectPlayer: 'Select Player',

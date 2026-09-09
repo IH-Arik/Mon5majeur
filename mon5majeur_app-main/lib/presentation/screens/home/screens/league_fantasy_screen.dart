@@ -8,7 +8,6 @@ import 'package:mon5majeur_app/core/constants/feature_flags.dart';
 import 'package:mon5majeur_app/core/custom_assets/assets.gen.dart';
 import '../tabs/build_your_team_tab.dart';
 import '../tabs/leaderboard_tab.dart';
-import '../tabs/my_team_tab.dart';
 import '../tabs/result_tab.dart';
 import '../tabs/rules_tab.dart';
 
@@ -39,12 +38,10 @@ class LeagueFantasyScreen extends StatefulWidget {
 
 class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   int _selectedTab = 0;
-  Key _myTeamKey = UniqueKey();
   Key _resultKey = UniqueKey();
 
   void _onTeamSaved() {
     setState(() {
-      _myTeamKey = UniqueKey();
       _resultKey = UniqueKey();
     });
   }
@@ -67,12 +64,6 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
                     matchDay: widget.matchDay,
                     isPrivate: widget.isPrivate,
                     onTeamSaved: _onTeamSaved,
-                  ),
-                  MyTeamTab(
-                    key: _myTeamKey,
-                    leagueId: widget.leagueId,
-                    matchDay: widget.matchDay,
-                    isPrivate: widget.isPrivate,
                   ),
                   ResultTab(
                     key: _resultKey,
@@ -213,33 +204,21 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   }
 
   Widget _buildTabBar() {
-    // Same fix as GlobalLeagueScreen (QA 28/08/2026 #3): an unconstrained
-    // Row of 5 labelled tabs can overflow on narrower phones with no way
-    // to reach whatever gets cut off. ConstrainedBox + horizontal scroll
-    // keeps the evenly-spread look wherever it all fits, and turns any
-    // overflow into a swipe instead of a clip.
+    // QA4 #2: no scrollable tab bar - all tabs must be visible at once.
+    // "My Team" was removed (redundant with Results, which already shows
+    // the match directly), bringing this down to 4 tabs that fit in a
+    // plain Row without scrolling.
     return Container(
       color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildTab(AppString.createTeam.tr, Icons.add, 0),
-                  _buildTab(AppString.myTeam.tr, Icons.group, 1),
-                  _buildTab(AppString.result.tr, Icons.receipt, 2),
-                  _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
-                  _buildTab(AppString.rules.tr, Icons.menu_book, 4),
-                ],
-              ),
-            ),
-          );
-        },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildTab(AppString.createTeam.tr, Icons.add, 0),
+          _buildTab(AppString.result.tr, Icons.receipt, 1),
+          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 2),
+          _buildTab(AppString.rules.tr, Icons.menu_book, 3),
+        ],
       ),
     );
   }

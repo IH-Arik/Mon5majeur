@@ -13,7 +13,6 @@ import '../../../../data/models/player.dart';
 import '../tabs/build_your_team_global_tab.dart';
 import '../tabs/global_leaderboard_tab.dart';
 import '../tabs/my_team_tab.dart';
-import '../tabs/result_tab.dart';
 import '../tabs/rules_tab.dart';
 
 class GlobalLeagueScreen extends StatefulWidget {
@@ -25,8 +24,7 @@ class GlobalLeagueScreen extends StatefulWidget {
 
 class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   int _selectedTab = 0;
-  Key _myTeamKey = UniqueKey(); // Add this
-  Key _resultKey = UniqueKey(); // Add this
+  Key _resultKey = UniqueKey();
 
   late final GlobalLeagueController _controller; // ADD THIS
 
@@ -38,9 +36,8 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   }
 
   void _onTeamSaved() {
-    // Refresh MyTeam and Result tabs by giving them new keys
+    // Refresh the Results tab (the saved squad) with a new key
     setState(() {
-      _myTeamKey = UniqueKey();
       _resultKey = UniqueKey();
     });
   }
@@ -61,13 +58,19 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   BuildYourTeamTabGlobal(
                     onTeamSaved: _onTeamSaved, // ADD THIS
                   ),
-                  // MyTeamTab only fetches a saved team when given a
-                  // leagueId + matchDay (the private/public league path) -
-                  // the Global League has neither of those, so without this
-                  // it silently rendered 5 empty jerseys. Feed it the squad
-                  // GlobalLeagueController already fetches on join, padded
-                  // to 5 slots so _buildPlayerWithPoints's fixed indices
-                  // (0-4) never run off the end of a shorter list.
+                  // QA4 #4: this tab used to render ResultTab(isGlobal: true),
+                  // which showed a user ranking - exactly the Classement
+                  // tab's content, duplicated. Résultats must show the
+                  // player's OWN lineup with per-player and nightly points
+                  // instead, so it now renders the same squad view that
+                  // used to live behind a separate, redundant "My Team" tab
+                  // (removed per QA4 #2). MyTeamTab only fetches a saved
+                  // team when given a leagueId + matchDay (the private/
+                  // public league path) - the Global League has neither, so
+                  // the squad GlobalLeagueController already fetches on
+                  // join is handed in directly, padded to 5 slots so
+                  // _buildPlayerWithPoints's fixed indices (0-4) never run
+                  // off the end of a shorter list.
                   Obx(() {
                     final squad = List<Player?>.filled(5, null);
                     for (
@@ -77,19 +80,8 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                     ) {
                       squad[i] = _controller.selectedPlayers[i];
                     }
-                    return MyTeamTab(key: _myTeamKey, savedPlayers: squad);
+                    return MyTeamTab(key: _resultKey, savedPlayers: squad);
                   }),
-                  Obx(
-                    () => ResultTab(
-                      key: ValueKey(
-                        'global-result-${_controller.currentMatchDay.value}-${_resultKey.hashCode}',
-                      ),
-                      matchDay: _controller.currentMatchDay.value > 0
-                          ? _controller.currentMatchDay.value
-                          : null,
-                      isGlobal: true,
-                    ),
-                  ),
                   const LeaderboardTab(),
                   const RulesTab(),
                 ],
@@ -249,35 +241,23 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   }
 
   Widget _buildTabBar() {
-    // QA 28/08/2026 #3: 6 tabs (5 labelled + the live-score bolt icon) in a
-    // plain unconstrained Row overflowed on narrower phones, cutting the
-    // 6th tab off the screen with no way to reach it. ConstrainedBox +
-    // horizontal scroll keeps the old evenly-spread look wherever all 6
-    // already fit, and turns the overflow into a swipe instead of a clip
-    // on screens where they don't.
+    // QA4 #2: the client explicitly does not want a scrollable tab bar -
+    // all tabs must be visible at once, on every screen size. Removing the
+    // redundant "My Team" tab (its content moved into Résultats, see
+    // build()) brings this down to 5 tabs, which fit in a plain Row
+    // without scrolling.
     return Container(
       color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildTab(AppString.createTeam.tr, Icons.add, 0),
-                  _buildTab(AppString.myTeam.tr, Icons.group, 1),
-                  _buildTab(AppString.result.tr, Icons.bar_chart, 2),
-                  _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
-                  _buildTab(AppString.rules.tr, Icons.menu_book, 4),
-                  _buildLiveTab(),
-                ],
-              ),
-            ),
-          );
-        },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildTab(AppString.createTeam.tr, Icons.add, 0),
+          _buildTab(AppString.result.tr, Icons.scoreboard, 1),
+          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 2),
+          _buildTab(AppString.rules.tr, Icons.menu_book, 3),
+          _buildLiveTab(),
+        ],
       ),
     );
   }

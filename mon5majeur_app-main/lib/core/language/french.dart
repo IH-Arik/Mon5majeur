@@ -122,7 +122,7 @@ class FrenchTranslation {
     AppString.getExtraBudget: 'Obtenez 2M de budget en plus',
     AppString.createTeam: 'Créer une équipe',
     AppString.myTeam: 'Mon équipe',
-    AppString.result: 'Résultat',
+    AppString.result: 'Résultats',
     AppString.leaderboard: 'Classement',
     AppString.rules: 'Règles',
     AppString.selectPlayer: 'Sélectionner un joueur',
