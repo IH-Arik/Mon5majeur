@@ -77,11 +77,7 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                     ) {
                       squad[i] = _controller.selectedPlayers[i];
                     }
-                    return MyTeamTab(
-                      key: _myTeamKey,
-                      savedPlayers: squad,
-                      totalPointsOverride: _controller.totalPoints.value,
-                    );
+                    return MyTeamTab(key: _myTeamKey, savedPlayers: squad);
                   }),
                   Obx(
                     () => ResultTab(
