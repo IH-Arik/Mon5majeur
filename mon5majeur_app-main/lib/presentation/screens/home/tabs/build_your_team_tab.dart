@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/models/bonus_inventory_model.dart';
 import '../../../../data/models/game_model.dart';
 import '../../../../data/models/player.dart';
@@ -1603,7 +1604,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
               Icon(Icons.access_time, color: Colors.white70, size: 14.r),
               SizedBox(width: 4.w),
               Text(
-                game.gameTime,
+                formatGameLocalTime(game.datetimeUtc) ?? game.gameTime,
                 style: TextStyle(color: Colors.white70, fontSize: 11.sp),
               ),
             ],

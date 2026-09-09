@@ -96,7 +96,6 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   Widget _buildHeader() {
     return Obx(() {
       // Make header reactive to controller changes
-      final balance = _controller.currentBalance.value;
       final matchDay = _controller.currentMatchDay.value;
 
       return Container(
@@ -105,23 +104,19 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
         padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Back Button
-                GestureDetector(
-                  onTap: () => context.go(RoutePath.home.addBasePath),
-                  child: SizedBox(
-                    width: 30.w,
-                    height: 30.h,
-                    child: Assets.icons.backButton.image(fit: BoxFit.contain),
-                  ),
-                ),
-
-                // Center Content (Logo + Text)
-                Expanded(
-                  child: Column(
+            SizedBox(
+              width: double.infinity,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // QA4 #5: the title block must be centered on the full
+                  // header width, not between the back button and a
+                  // "100M" balance box of unequal width (that box is
+                  // removed - it duplicated info already on the budget
+                  // bar and had no label). A Stack + Positioned back
+                  // button keeps the title independently centered
+                  // regardless of what (if anything) sits at the edges.
+                  Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildLeagueLogo(),
@@ -151,33 +146,19 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                       ],
                     ],
                   ),
-                ),
-
-                // Balance display — QA 28/08/2026 #3: this is the remaining
-                // team-building budget, meaningful only while composing a
-                // team (tab 0). Left showing on every tab it read as an
-                // unexplained, unlabeled "100M" with no apparent purpose;
-                // an empty-width box keeps the header's spaceBetween layout
-                // from jumping when it's hidden.
-                SizedBox(
-                  width: 64.w,
-                  child: _selectedTab == 0
-                      ? FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            balance,
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              color: const Color(0xFFFF8C42),
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-              ],
+                  Positioned(
+                    left: 0,
+                    child: GestureDetector(
+                      onTap: () => context.go(RoutePath.home.addBasePath),
+                      child: SizedBox(
+                        width: 30.w,
+                        height: 30.h,
+                        child: Assets.icons.backButton.image(fit: BoxFit.contain),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             if (kAdsEnabled && _selectedTab == 0) ...[
               SizedBox(height: 12.h),

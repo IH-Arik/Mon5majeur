@@ -6,6 +6,7 @@ import 'package:showcaseview/showcaseview.dart';
 
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/player.dart';
@@ -982,7 +983,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           ),
           SizedBox(height: 8.h),
           Text(
-            game.gameTime,
+            formatGameLocalTime(game.datetimeUtc) ?? game.gameTime,
             style: TextStyle(color: Colors.white70, fontSize: 12.sp),
           ),
         ],

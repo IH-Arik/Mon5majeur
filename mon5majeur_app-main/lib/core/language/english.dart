@@ -328,6 +328,7 @@ class EnglishTranslation {
     AppString.noGamesScheduled: 'No games scheduled',
     AppString.editYourFive: 'Edit your 5',
     AppString.lineupLockedCta: 'Lineup locked',
+    AppString.lineupLocked: 'Locked — night has started',
     AppString.noGameTonight: 'No game tonight',
     AppString.locksAtPrefix: 'Locks at ',
     AppString.earnFreeTokens: 'Earn 6 free tokens',
