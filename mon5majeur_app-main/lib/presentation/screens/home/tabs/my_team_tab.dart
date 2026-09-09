@@ -163,9 +163,7 @@ class _MyTeamTabState extends State<MyTeamTab> {
             ),
           ),
           SizedBox(height: 16.h),
-          Positioned.fill(
-            child: Assets.icons.timer.image(height: 33.h, width: 33.w),
-          ),
+          Assets.icons.timer.image(height: 33.h, width: 33.w),
           SizedBox(height: 16.h),
           _buildCourtField(),
           SizedBox(height: 16.h),
