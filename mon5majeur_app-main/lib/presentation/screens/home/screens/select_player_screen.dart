@@ -231,7 +231,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                 style: TextStyle(color: Colors.white70, fontSize: 14.sp),
               ),
               Text(
-                '\$${widget.remainingBudget.toInt()} M',
+                '${widget.remainingBudget.toInt()}M',
                 style: TextStyle(
                   color: const Color(0xFF4CAF50),
                   fontSize: 14.sp,
@@ -545,7 +545,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
 
   Widget _buildPlayerPrice(Player player) {
     return Text(
-      '${player.price.toInt()} M',
+      '${player.price.toInt()}M',
       style: TextStyle(
         color: Colors.white,
         fontSize: 16.sp,

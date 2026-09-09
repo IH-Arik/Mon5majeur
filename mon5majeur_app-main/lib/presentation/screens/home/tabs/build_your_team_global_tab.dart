@@ -613,7 +613,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                   style: TextStyle(color: Colors.white70, fontSize: 14.sp),
                 ),
                 Text(
-                  '\$${usedBudget.toInt()} M / ${totalBudget.toInt()} M',
+                  '${usedBudget.toInt()}M / ${totalBudget.toInt()}M',
                   style: TextStyle(
                     color: overBudget ? const Color(0xFFF84A4A) : Colors.white,
                     fontSize: 14.sp,
@@ -874,7 +874,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                 ),
               ),
               child: Text(
-                '${player.price.toInt()} M',
+                '${player.price.toInt()}M',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
