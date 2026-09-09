@@ -13,6 +13,11 @@ class MyTeamTab extends StatefulWidget {
   final int? leagueId;
   final int? matchDay;
   final bool isPrivate; // ADD THIS
+  // Global League has no leagueId/matchDay-driven fetch of its own (see
+  // initState) - its real, backend-computed team total (from
+  // PlayerGameStats, not this tab's per-player sum) is fetched by
+  // GlobalLeagueController instead and handed in here.
+  final int? totalPointsOverride;
 
   const MyTeamTab({
     super.key,
@@ -21,6 +26,7 @@ class MyTeamTab extends StatefulWidget {
     this.leagueId,
     this.matchDay,
     this.isPrivate = false, // ADD THIS
+    this.totalPointsOverride,
   });
 
   @override
@@ -41,14 +47,15 @@ class _MyTeamTabState extends State<MyTeamTab> {
     Assets.icons.jerseyZebra,
   ];
 
-  // Mock points for players
-  final Map<String, int> playerPoints = {
-    AppString.nikolaVucevic: 21,
-    AppString.jasonTatum: 12,
-    AppString.lebronJames: 22,
-    AppString.donovanMitchell: 9,
-    AppString.stephenCurry: 19,
-  };
+  // Real fantasy score for a player's most recent played game - lastTwoScores
+  // is chronological [older, newer], backed by Player.recent_two_scores on
+  // the API (the same field pricing.py stamps from real PlayerGameStats).
+  // Was previously a hardcoded map keyed to five specific legacy names, so
+  // every current/real player always showed 0.
+  int _pointsFor(Player player) {
+    if (player.lastTwoScores.isEmpty) return 0;
+    return player.lastTwoScores.last ?? 0;
+  }
 
   @override
   void initState() {
@@ -131,12 +138,15 @@ class _MyTeamTabState extends State<MyTeamTab> {
     }
   }
 
-  int get totalPoints => selectedPlayers.fold(0, (sum, player) {
-    if (player != null) {
-      return sum + (playerPoints[player.name] ?? 0);
-    }
-    return sum;
-  });
+  int get totalPoints {
+    if (widget.totalPointsOverride != null) return widget.totalPointsOverride!;
+    return selectedPlayers.fold(0, (sum, player) {
+      if (player != null) {
+        return sum + _pointsFor(player);
+      }
+      return sum;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +231,7 @@ class _MyTeamTabState extends State<MyTeamTab> {
 
   Widget _buildPlayerWithPoints(int index, String position) {
     final player = selectedPlayers[index];
-    final points = player != null ? (playerPoints[player.name] ?? 0) : 0;
+    final points = player != null ? _pointsFor(player) : 0;
 
     return Column(
       children: [

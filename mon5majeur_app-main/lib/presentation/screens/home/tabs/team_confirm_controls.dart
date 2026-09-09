@@ -35,7 +35,7 @@ LineupState lineupStateFor({
 /// nothing truthful to show in that brief window.
 String formatTimeLeft(int? lockInSeconds) {
   if (lockInSeconds == null) return AppString.fourHoursLeft.tr;
-  if (lockInSeconds <= 0) return AppString.lineupLocked;
+  if (lockInSeconds <= 0) return AppString.lineupLocked.tr;
   final duration = Duration(seconds: lockInSeconds);
   final hours = duration.inHours;
   final minutes = duration.inMinutes.remainder(60);
@@ -102,9 +102,9 @@ class TeamStatusBanner extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(
                   state == LineupState.locked
-                      ? AppString.lineupLocked
+                      ? AppString.lineupLocked.tr
                       : complete
-                          ? AppString.teamComplete
+                          ? AppString.teamComplete.tr
                           : AppString.youNeedMorePlayers(remainingPlayers),
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -189,7 +189,7 @@ class TeamConfirmButton extends StatelessWidget {
               )
             else
               Text(
-                confirmed ? AppString.teamConfirmed : AppString.confirmMyTeam,
+                confirmed ? AppString.teamConfirmed.tr : AppString.confirmMyTeam.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -232,7 +232,7 @@ Future<void> showTeamValidatedDialog(BuildContext context) {
             ),
             SizedBox(height: 16.h),
             Text(
-              AppString.teamValidated,
+              AppString.teamValidated.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16.sp,

@@ -44,7 +44,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
         children: [
           SizedBox(height: 8.h),
           Text(
-            AppString.leagueStandings,
+            AppString.leagueStandings.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 16.sp,
@@ -86,7 +86,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
-                  AppString.regularSeason,
+                  AppString.regularSeason.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isRegularSeason ? Colors.white : Colors.white54,
@@ -111,7 +111,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(
-                  AppString.playOff,
+                  AppString.playOff.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: !isRegularSeason ? Colors.white : Colors.white54,

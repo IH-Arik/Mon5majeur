@@ -286,7 +286,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              AppString.player,
+              AppString.player.tr,
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 14.sp,
@@ -302,7 +302,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
               ),
             ),
             Text(
-              AppString.price,
+              AppString.price.tr,
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 14.sp,
@@ -360,7 +360,17 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
         _tutorial.advanceTo(3);
       }
       widget.onPlayerSelected(player);
-      Navigator.pop(context);
+      // Reached via Navigator.push() from build_your_team_*_tab.dart, so
+      // this is normally safe unconditionally — but the tutorial showcase
+      // fires this same handler through its own onTargetClick, whose
+      // context can land here with nothing left to pop, and an unguarded
+      // pop asserts and crashes the whole app (go_router: "You have popped
+      // the last page off of the stack"). canPop() costs nothing on the
+      // normal path and makes the tutorial path merely a no-op instead of
+      // a crash.
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
     }
 
     // Cross-cutting rule (spec Part 1 §6.0): an OUT player is dimmed

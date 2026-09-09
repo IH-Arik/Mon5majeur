@@ -369,11 +369,56 @@ class PlayerService:
     # Injury: NBA CDN doesn't have a free injury feed — mark manually or skip
     # ------------------------------------------------------------------
 
+    async def set_player_availability(
+        self, player: Player, is_out: bool, reason: str | None = None
+    ) -> bool:
+        """Single entry point for flipping a player's IN/OUT status.
+
+        Every injury source — the Goalserve feed once subscribed, or an admin
+        marking a player by hand — must go through here, because the spec's
+        "notify the users holding him" rule (§4.7 point 3) hangs off the
+        IN → OUT *transition*, not off the status itself. Writing `is_out`
+        directly would silently skip the alert.
+
+        Returns True if the status actually changed.
+        """
+        if player.is_out == is_out:
+            # Re-listed active, or still out for the same reason: no
+            # transition, so no push. §4.7 "last known status wins".
+            if is_out and reason and player.out_reason != reason:
+                await player.save_updated(out_reason=reason)
+            return False
+
+        await player.save_updated(is_out=is_out, out_reason=reason if is_out else None)
+
+        if is_out:
+            from app.modules.notifications.service import NotificationService
+
+            # Never let a notification failure undo an availability update —
+            # a player wrongly left selectable is the worse outcome.
+            try:
+                await NotificationService().notify_player_out(
+                    player_id=player.id,
+                    player_name=player.full_name,
+                    reason=reason or "Sidelined",
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "notify_player_out failed for %s: %s", player.full_name, exc, exc_info=True
+                )
+
+        return True
+
     async def sync_injury_report(self) -> int:
         """
         NBA CDN has no free injury feed.
         Injury status can be inferred from DNP in box-scores (did_not_play=True).
         This method is a no-op until Goalserve basketball subscription is activated.
+
+        When that feed is wired, map it per §4.7 (OUT_KEYWORDS against the
+        report's `description`) and apply each result through
+        set_player_availability() — that is what sends the "your player is
+        OUT" push. Do not set `is_out` directly.
         """
         logger.info("sync_injury_report: skipped (no free NBA injury feed; use Goalserve when subscribed)")
         return 0

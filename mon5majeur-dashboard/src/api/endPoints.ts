@@ -6,6 +6,12 @@ export const ENDPOINTS = {
   forgetPassword:"/auth/forgot-password/",
   otpVerify:"/auth/verify-forgot-password-otp/",
   resetPassword:"/auth/change-password/",
+  // Change password while logged in (Settings → Reset Password)
+  changePasswordAuth:"/auth/change-password-auth/",
+
+  // Signed-in admin's own profile (Settings → Accounting)
+  me: "/v1/users/me",
+  fileUpload: "/v1/files",
 
   // Bonus catalog (5 fixed bonus types — price/active-status only, no create/delete)
   adminBonusCatalog: "/admin/bonuses/",
@@ -40,5 +46,12 @@ export const ENDPOINTS = {
 
   // Retention analytics (the real /api/v1 router — not /api compat)
   adminRetentionOverview: "/v1/analytics/retention/overview",
+
+  // Support Center — ticket inbox
+  adminTickets: "/admin/support/tickets/",
+  adminTicketCounters: "/admin/support/tickets/counters/",
+  adminTicketItem: (id: string) => `/admin/support/tickets/${id}/`,
+  adminTicketReply: (id: string) => `/admin/support/tickets/${id}/reply/`,
+  adminTicketStatus: (id: string) => `/admin/support/tickets/${id}/status/`,
 };
 

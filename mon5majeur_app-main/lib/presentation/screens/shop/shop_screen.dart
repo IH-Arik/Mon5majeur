@@ -8,7 +8,6 @@ import '../../../core/constants/feature_flags.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
-import '../home/tabs/jersey_selection_screen.dart';
 import '../../widgets/navigation.dart';
 import 'shop_controller.dart';
 
@@ -304,19 +303,25 @@ class ShopScreen extends StatelessWidget {
                       SizedBox(height: 16.h),
                     ],
 
-                    /// Jersey styles preview
+                    /// Jersey SALE — reserved for a future in-game jersey
+                    /// store (QA 28/08/2026 #2). This card must stay a
+                    /// "Coming soon" placeholder: it is not the same thing
+                    /// as the free jersey customization already reachable
+                    /// from team building — this card used to open that
+                    /// same free-styles screen, which is out of scope here
+                    /// and confuses players into thinking there's nothing
+                    /// left to sell.
                     _BonusCard(
                       backgroundColor: const Color(0xFF1a2744),
                       borderColor: const Color(0xFF2d4a7c),
                       iconAsset: Assets.icons.jersey,
                       title: AppString.jersey.tr,
-                      subtitle: AppString.browseJerseyStyles.tr,
+                      subtitle: AppString.comingSoon.tr,
                       description: AppString.jerseySelectionHint.tr,
-                      tokenAmount: '6',
-                      buttonText: AppString.viewStyles.tr,
+                      tokenAmount: '',
+                      buttonText: AppString.comingSoon.tr,
                       buttonColor: const Color(0xFF8B5CF6),
-                      tokenSuffix: 'styles',
-                      onUnlock: () => _openJerseyCatalog(context),
+                      onUnlock: null,
                     ),
 
                     SizedBox(height: 80.h),
@@ -388,11 +393,6 @@ class ShopScreen extends StatelessWidget {
     );
   }
 
-  void _openJerseyCatalog(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const JerseySelectionScreen()),
-    );
-  }
 }
 
 // ─── Bonus Card Widget ────────────────────────────────────────────────────────

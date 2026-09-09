@@ -266,6 +266,20 @@ class ProfileSetupController extends GetxController {
         await SharedPrefsHelper.setBool(AppConstants.isProfileCompleted, true);
         if (!context.mounted) return;
 
+        // HomeController is a GetX singleton that fetched its profile once,
+        // at login — for a brand-new account that's before this screen ever
+        // ran, so it cached an empty profile. Navigating to home alone
+        // doesn't re-trigger that fetch (an existing singleton's onInit
+        // doesn't fire again), so the header was stuck showing the "Team
+        // Name" placeholder until something else happened to refetch.
+        // The POST response already has the saved profile — push it in
+        // directly rather than firing a second request for the same data.
+        if (Get.isRegistered<HomeController>()) {
+          Get.find<HomeController>()
+            ..userProfile.value = savedProfile
+            ..profileExists.value = true;
+        }
+
         showSnackbar(
           context,
           'Success',

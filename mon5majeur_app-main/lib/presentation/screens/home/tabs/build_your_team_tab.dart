@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../data/models/bonus_inventory_model.dart';
@@ -737,7 +738,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         children: [
           SizedBox(height: 12.h),
           Text(
-            AppString.buildYourTeam,
+            AppString.buildYourTeam.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 16.sp,
@@ -835,17 +836,17 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     switch (activeBonus!) {
       case BonusType.sixthMan:
         icon = Assets.icons.sixman;
-        label = AppString.sixthManBonusActivated;
+        label = AppString.sixthManBonusActivated.tr;
         color = const Color(0xFF2941F1);
         break;
       case BonusType.chefsCurry:
         icon = Assets.icons.chefcurry;
-        label = AppString.chefsCurryBonusActivated;
+        label = AppString.chefsCurryBonusActivated.tr;
         color = const Color(0xFFFECD56);
         break;
       case BonusType.luxuryTax:
         icon = Assets.icons.luxarytax;
-        label = AppString.luxuryTaxBonusActivated;
+        label = AppString.luxuryTaxBonusActivated.tr;
         color = const Color(0xFF3CDF1C);
         break;
     }
@@ -930,7 +931,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  AppString.budgetUsed,
+                  AppString.budgetUsed.tr,
                   style: TextStyle(color: Colors.white70, fontSize: 14.sp),
                 ),
                 Text(
@@ -1046,7 +1047,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             children: [
               _buildBonusOptionItem(
                 icon: Assets.icons.sixman,
-                label: AppString.sixthMan,
+                label: AppString.sixthMan.tr,
                 count: sixthManAvailable,
                 isActivated: sixthManActivated,
                 onTap: () => _selectBonus(BonusType.sixthMan),
@@ -1056,7 +1057,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           SizedBox(height: 12.h),
           _buildBonusOptionItem(
             icon: Assets.icons.chefcurry,
-            label: AppString.chefsCurry,
+            label: AppString.chefsCurry.tr,
             count: chefsCurryAvailable,
             isActivated: chefsCurryActivated,
             onTap: () => _selectBonus(BonusType.chefsCurry),
@@ -1064,7 +1065,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           SizedBox(height: 12.h),
           _buildBonusOptionItem(
             icon: Assets.icons.luxarytax,
-            label: AppString.luxuryTax,
+            label: AppString.luxuryTax.tr,
             count: luxuryTaxAvailable,
             isActivated: luxuryTaxActivated,
             onTap: () => _selectBonus(BonusType.luxuryTax),
@@ -1164,7 +1165,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             ),
             SizedBox(height: 4.h),
             Text(
-              AppString.changeJersey,
+              AppString.changeJersey.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -1368,7 +1369,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                     width: 28.w,
                     height: 9.h,
                     child: Text(
-                      AppString.sixthMan,
+                      AppString.sixthMan.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -1493,7 +1494,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                     ),
                   ),
                   Text(
-                    AppString.bonuses,
+                    AppString.bonuses.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -1517,7 +1518,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              AppString.todaysGames,
+              AppString.todaysGames.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14.sp,

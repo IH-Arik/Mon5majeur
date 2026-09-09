@@ -10,6 +10,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../../../data/models/my_league_model.dart';
 import '../../widgets/navigation.dart';
 import '../tutorial/tutorial_controller.dart';
 import '../tutorial/tutorial_skip_button.dart';
@@ -586,7 +587,7 @@ class _GlobalLeagueCard extends StatelessWidget {
             final selection = controller.globalLeagueSelection.value;
             // Night score comes from the loaded selection; "—" until available.
             final nightScore = selection == null
-                ? AppString.noResultPlaceholder
+                ? AppString.noResultPlaceholder.tr
                 : '${controller.totalPoints.value} pts';
             // Real per-user validated/locked lineup flag from the backend.
             final validated = selection?.lineupSubmitted ?? false;
@@ -619,11 +620,11 @@ class _GlobalLeagueCard extends StatelessWidget {
                           ),
                           SizedBox(height: 6.h),
                           _statLine(
-                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder}',
+                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder.tr}',
                           ),
                           SizedBox(height: 6.h),
                           _statLine(
-                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder}',
+                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder.tr}',
                           ),
                         ],
                       ),
@@ -922,7 +923,7 @@ class _AnimatedMatchCard extends StatelessWidget {
                               _scoreText(
                                 hasResult
                                     ? '${mainPair.scoreA}'
-                                    : AppString.noResultPlaceholder,
+                                    : AppString.noResultPlaceholder.tr,
                                 const Color(0xFF22C55E),
                               ),
                               SizedBox(width: 12.w),
@@ -931,7 +932,7 @@ class _AnimatedMatchCard extends StatelessWidget {
                               _scoreText(
                                 hasResult
                                     ? '${mainPair.scoreB}'
-                                    : AppString.noResultPlaceholder,
+                                    : AppString.noResultPlaceholder.tr,
                                 const Color(0xFFEF4444),
                               ),
                               Expanded(
@@ -1198,7 +1199,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
             child: Transform.translate(
               offset: Offset(0, 30.h * (1 - value)),
               child: GestureDetector(
-                onTap: () => context.go(RoutePath.myLeague.addBasePath),
+                onTap: () => _navigateToLeague(context, league),
                 child: Container(
                   padding: EdgeInsets.all(16.r),
                   decoration: BoxDecoration(
@@ -1266,27 +1267,27 @@ class _AnimatedLeagueCard extends StatelessWidget {
                               children: [
                                 Text(
                                   league.userRank > 0
-                                      ? '#${_getOrdinal(league.userRank)} of ${league.totalTeams} teams'
-                                      : '${league.totalTeams} teams',
+                                      ? '#${_getOrdinal(league.userRank)} ${AppString.ofWord.tr} ${AppString.teamsCountText(league.totalTeams)}'
+                                      : AppString.teamsCountText(league.totalTeams),
                                   style: TextStyle(
                                     color: const Color(0xFFFF6B35),
-                                    fontSize: 8.sp,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                                 _infoDivider(),
                                 Text(
-                                  league.season,
+                                  league.season.tr,
                                   style: TextStyle(
                                     color: Colors.grey,
-                                    fontSize: 8.sp,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                                 _infoDivider(),
                                 Text(
-                                  'Matchday ${league.currentMatchday}',
+                                  '${AppString.matchday.tr} ${league.currentMatchday}',
                                   style: TextStyle(
                                     color: Colors.grey,
-                                    fontSize: 8.sp,
+                                    fontSize: 11.sp,
                                   ),
                                 ),
                               ],
@@ -1305,8 +1306,26 @@ class _AnimatedLeagueCard extends StatelessWidget {
     });
   }
 
-  // Helper method to get ordinal (1st, 2nd, 3rd, etc.)
+  // Tapping the "Mes Ligues" card should open that specific league —
+  // same routing HomeController.myLeagues.first feeds into, matching
+  // my_leagues_screen.dart's _navigateToLeague.
+  static void _navigateToLeague(BuildContext context, MyLeagueModel league) {
+    if (league.league.isStarted == true) {
+      context.go(
+        '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/${league.leagueId}?matchDay=${league.currentMatchday}&isPrivate=${league.isPrivate}',
+      );
+    } else {
+      context.go(
+        '${RoutePath.createPrivateLeagueWaitingRoomScreen.addBasePath}?leagueId=${league.leagueId}&isPublic=${!league.isPrivate}',
+      );
+    }
+  }
+
+  // Helper method to get ordinal (1st, 2nd, 3rd... / 1er, 2e, 3e... in French)
   static String _getOrdinal(int number) {
+    if (Get.locale?.languageCode == 'fr') {
+      return number == 1 ? '${number}er' : '${number}e';
+    }
     if (number % 100 >= 11 && number % 100 <= 13) {
       return '${number}th';
     }
@@ -1368,7 +1387,7 @@ class _AnimatedLeagueCard extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 6.w),
       child: Text(
         '|',
-        style: TextStyle(color: Colors.grey, fontSize: 8.sp),
+        style: TextStyle(color: Colors.grey, fontSize: 11.sp),
       ),
     );
   }

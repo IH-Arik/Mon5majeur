@@ -58,8 +58,15 @@ class FlutterVerifyForgotOtpRequest(BaseModel):
 
 
 class FlutterChangePasswordRequest(BaseModel):
-    """POST /api/auth/change-password/ — called after forgot-password OTP verified. No auth."""
+    """POST /api/auth/change-password/ — called after forgot-password OTP verified. No auth.
+
+    `otp` is required and re-checked here. The earlier verify step leaves no
+    trace on the token, so this endpoint is the only place that can prove the
+    caller actually holds the code — without it, knowing an email would be
+    enough to take over the account.
+    """
     email: EmailStr
+    otp: str
     new_password: str
     confirm_password: str
 
@@ -133,26 +140,6 @@ async def _validate_and_consume_otp(user: User, otp: str, purpose: str) -> OTPTo
     token = await _validate_otp_peek(user, otp, purpose)
     await token.delete()
     return token
-
-
-async def _consume_any_valid_reset_otp(user: User) -> None:
-    """Consume the most recent valid reset_password OTP for a user.
-
-    Called at the end of the forgot-password flow where the OTP was already
-    verified in the previous step (verify-forgot-password-otp) but not consumed.
-    Raises if no valid token exists — prevents skipping the OTP step.
-    """
-    from datetime import datetime, timezone
-    token = await OTPToken.find_one(
-        OTPToken.user_id == user.id,
-        OTPToken.purpose == "reset_password",
-    )
-    if not token:
-        raise BadRequestException("No active password reset request found. Please request a new OTP.")
-    if token.is_expired:
-        await token.delete()
-        raise BadRequestException("Reset session expired. Please request a new OTP.")
-    await token.delete()
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -278,8 +265,10 @@ async def flutter_change_password(
     if not user:
         raise BadRequestException("Invalid request")
 
-    # Consume the verified reset OTP — proves the user completed the OTP step
-    await _consume_any_valid_reset_otp(user)
+    # Re-check the code itself, not merely that some token exists — the peek
+    # in verify-forgot-password-otp records nothing, so skipping this would
+    # let anyone who triggered a reset for an address complete it.
+    await _validate_and_consume_otp(user, payload.otp, "reset_password")
     await user.save_updated(hashed_password=hash_password(payload.new_password))
     return {"message": "Password changed successfully."}
 

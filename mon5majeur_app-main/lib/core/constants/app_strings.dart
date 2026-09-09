@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+
 class AppString {
   static const String forgotPasswordTitle = 'Forgot Password?';
   static const String forgotPasswordSubtitle =
@@ -22,6 +24,14 @@ class AppString {
   static const String successTitle = 'Successful';
   static const String successInfo =
       'Congratulations! Your password has been changed. Click continue to login';
+  static const String successGeneric = 'Success';
+  static const String errorGeneric = 'Error';
+  static const String loginSuccessful = 'Login successful!';
+  static const String registrationComplete = 'Registration complete!';
+  static const String otpVerificationFailed = 'OTP verification failed';
+  static const String failedToResendOtp = 'Failed to resend OTP';
+  static const String googleLoginSuccessful = 'Google login successful!';
+  static const String appleLoginSuccessful = 'Apple login successful!';
   static const String continueButton = 'Continue';
   static const String loginTitle = "Log in";
   static const String emailLabel = "Email Address";
@@ -81,6 +91,12 @@ class AppString {
   static const String chefsCurryBonusActivated = 'Chefs Curry Bonus Activated';
   static const String luxuryTaxBonusActivated = 'Luxury Tax Bonus Activated';
   static const String matchday = 'Matchday';
+  static const String teamCountSingularTemplate = '@n team';
+  static const String teamCountPluralTemplate = '@n teams';
+  static const String ofWord = 'of';
+  static String teamsCountText(int n) => n == 1
+      ? teamCountSingularTemplate.trParams({'n': '$n'})
+      : teamCountPluralTemplate.trParams({'n': '$n'});
   static const String budgetUsed = 'Budget Used';
   static const String chooseYourJersey = 'Choose your Jersey';
   static const String confirm = 'Confirm';
@@ -106,7 +122,7 @@ class AppString {
   static const String viewDetails = 'View Details';
   static const String leagueRules = 'League Rules';
   static const String eliteBallers = 'Elite Ballers';
-  static const String privateLeague = 'private League';
+  static const String privateLeague = 'Private League';
   static const String getExtraBudget = 'Get extra 2M to your budget';
   static const String createTeam = 'Create Team';
   static const String myTeam = 'My Team';
@@ -204,7 +220,12 @@ class AppString {
   static const String plus = '+';
   static const String bonuses = 'Bonuses';
   static const String teamComplete = 'Team Complete';
-  static String youNeedMorePlayers(int n) => 'You need $n more players.';
+  // Template holds a GetX @n placeholder — youNeedMorePlayers() below fills
+  // it via .trParams so the count survives translation instead of always
+  // reading in English (QA 28/08/2026 #4).
+  static const String youNeedMorePlayersTemplate = 'You need @n more players.';
+  static String youNeedMorePlayers(int n) =>
+      youNeedMorePlayersTemplate.trParams({'n': '$n'});
   static const String lineupLocked = 'Locked — night has started';
   static const String todaysGames = "Today's Games";
   static const String lalVsGsw = 'LAL Vs GSW';
@@ -448,6 +469,22 @@ class AppString {
   static const String cookiesAds = 'COOKIES / ADS';
   static const String dataProtection = 'DATA PROTECTION';
   static const String legalNotice = 'LEGAL NOTICE';
+
+  // Support tickets
+  static const String support = 'support';
+  static const String supportTickets = 'supportTickets';
+  static const String newSupportTicket = 'newSupportTicket';
+  static const String supportSubject = 'supportSubject';
+  static const String supportMessage = 'supportMessage';
+  static const String supportSend = 'supportSend';
+  static const String supportReply = 'supportReply';
+  static const String supportNoTickets = 'supportNoTickets';
+  static const String supportClosed = 'supportClosed';
+  static const String supportCreated = 'supportCreated';
+  static const String supportStatusOpen = 'supportStatusOpen';
+  static const String supportStatusPending = 'supportStatusPending';
+  static const String supportStatusResolved = 'supportStatusResolved';
+  static const String supportStatusClosed = 'supportStatusClosed';
   static const String deleteAccount = 'Delete Account';
   static const String logOut = 'Log out';
   static const String since2025 = 'Since 2025';
@@ -555,6 +592,10 @@ class AppString {
   // Add these missing constants to app_strings.dart after line 174 (after teamsJoined)
 
   static const String waitingForTeam = 'Waiting for Team';
+  static const String publicLeagueCreatedSuccessfully =
+      'Public league created successfully!';
+  static const String privateLeagueCreatedSuccessfullyTemplate =
+      'Private league created successfully! Code: @code';
   static const String joinedTeams = 'Joined Teams';
   static const String morePlayers = 'more players';
   static const String noMatchesToday = 'noMatchesToday';
@@ -588,5 +629,9 @@ class AppString {
   // Part 1 — Player Selection Row Redesign
   static const String lastScores = 'lastScores';
 
-  static String budgetExceededBy(int n) => 'Budget exceeded by ${n}M';
+  // See youNeedMorePlayersTemplate above — same @n-placeholder pattern so
+  // the amount survives translation (QA 28/08/2026 #4).
+  static const String budgetExceededByTemplate = 'Budget exceeded by @nM';
+  static String budgetExceededBy(int n) =>
+      budgetExceededByTemplate.trParams({'n': '$n'});
 }

@@ -63,10 +63,14 @@ class ProfileScreen extends StatelessWidget {
                     height: 60.h,
                     decoration: BoxDecoration(shape: BoxShape.circle),
                     child: ClipOval(
-                      child: Assets.icons.logo1.image(
-                        width: 56.w,
-                        height: 60.h,
-                        fit: BoxFit.cover,
+                      child: Obx(
+                        () => _teamLogoAsset(
+                          controller.stats.value.teamLogo,
+                        ).image(
+                          width: 56.w,
+                          height: 60.h,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
@@ -311,6 +315,27 @@ class ProfileScreen extends StatelessWidget {
       /// Bottom Navigation Bar
       bottomNavigationBar: const NavigationWidget(currentIndex: 4),
     );
+  }
+
+  // Get team logo asset based on team_logo string from API
+  // (same mapping used by HomeController.getTeamLogoAsset).
+  AssetGenImage _teamLogoAsset(String teamLogo) {
+    switch (teamLogo.toLowerCase()) {
+      case 'paris_fc':
+        return Assets.icons.logo1;
+      case 'lakers':
+        return Assets.icons.logo2;
+      case 'boston_celtics':
+        return Assets.icons.logo3;
+      case 'chicago_bulls':
+        return Assets.icons.logo4;
+      case 'atlanta_hawks':
+        return Assets.icons.logo5;
+      case 'golden_state_warriors':
+        return Assets.icons.logo6;
+      default:
+        return Assets.icons.logo1;
+    }
   }
 }
 

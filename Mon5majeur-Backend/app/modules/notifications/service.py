@@ -57,28 +57,62 @@ class NotificationService:
             if data and data.get("type") in notification_types or not notification_types:
                 await send_push(user.fcm_token, title, body, data)
 
-    async def notify_player_out(self, player_name: str, reason: str) -> None:
-        """Send OUT alert to all users who have this player in their active lineup."""
-        from app.modules.lineups.model import LineupSlot
+    async def notify_player_out(
+        self,
+        player_id: PydanticObjectId,
+        player_name: str,
+        reason: str,
+        nba_date=None,
+    ) -> None:
+        """Alert every user holding this player in a not-yet-locked lineup
+        (spec §4.7 point 3 / §4.8 notification 1).
+
+        Reads FlutterPlayerSelection, which is where the team builder
+        actually writes; LineupSlot is only populated by the /api/v1/lineups
+        path the app does not use, so querying it found nobody. Both stores
+        are checked so neither path is missed.
+
+        One push per user even if the player sits in several of their
+        leagues — §4.8 forbids bursts.
+        """
         from datetime import datetime, timezone
 
-        today = datetime.now(timezone.utc).date()
+        from app.modules.lineups.compat_model import FlutterPlayerSelection
+        from app.modules.lineups.model import LineupSlot
+
+        night = nba_date or datetime.now(timezone.utc).date()
+        recipients: list = []
+
+        # selected_players / sixth_man_player hold the raw player JSON, so the
+        # id is matched inside the embedded documents.
+        pid = str(player_id)
+        selections = await FlutterPlayerSelection.find(
+            {
+                "nba_date": datetime.combine(night, datetime.min.time()),
+                "$or": [
+                    {"selected_players.id": {"$in": [pid, player_id]}},
+                    {"sixth_man_player.id": {"$in": [pid, player_id]}},
+                ],
+            }
+        ).to_list()
+        recipients.extend(s.user_id for s in selections)
 
         slots = await LineupSlot.find(
-            LineupSlot.player_name == player_name,
-            LineupSlot.nba_date == today,
+            LineupSlot.player_id == player_id,
+            LineupSlot.nba_date == night,
             LineupSlot.score_finalized == False,  # noqa: E712
         ).to_list()
+        recipients.extend(s.user_id for s in slots)
 
         notified: set = set()
-        for slot in slots:
-            if slot.user_id in notified:
+        for user_id in recipients:
+            if user_id in notified:
                 continue
+            notified.add(user_id)
             await self.send_push_to_user(
-                user_id=slot.user_id,
+                user_id=user_id,
                 title=f"{player_name} is OUT",
                 body=f"Reason: {reason}. Update your lineup before tip-off.",
                 data={"type": "player_out", "player_name": player_name},
                 notification_type="player_out",
             )
-            notified.add(slot.user_id)

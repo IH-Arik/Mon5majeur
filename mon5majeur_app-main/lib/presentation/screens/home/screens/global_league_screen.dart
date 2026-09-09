@@ -9,6 +9,7 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../controllers/global_league_controller.dart';
+import '../../../../data/models/player.dart';
 import '../tabs/build_your_team_global_tab.dart';
 import '../tabs/global_leaderboard_tab.dart';
 import '../tabs/my_team_tab.dart';
@@ -60,9 +61,28 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   BuildYourTeamTabGlobal(
                     onTeamSaved: _onTeamSaved, // ADD THIS
                   ),
-                  MyTeamTab(
-                    key: _myTeamKey, // ADD THIS
-                  ),
+                  // MyTeamTab only fetches a saved team when given a
+                  // leagueId + matchDay (the private/public league path) -
+                  // the Global League has neither of those, so without this
+                  // it silently rendered 5 empty jerseys. Feed it the squad
+                  // GlobalLeagueController already fetches on join, padded
+                  // to 5 slots so _buildPlayerWithPoints's fixed indices
+                  // (0-4) never run off the end of a shorter list.
+                  Obx(() {
+                    final squad = List<Player?>.filled(5, null);
+                    for (
+                      var i = 0;
+                      i < _controller.selectedPlayers.length && i < 5;
+                      i++
+                    ) {
+                      squad[i] = _controller.selectedPlayers[i];
+                    }
+                    return MyTeamTab(
+                      key: _myTeamKey,
+                      savedPlayers: squad,
+                      totalPointsOverride: _controller.totalPoints.value,
+                    );
+                  }),
                   Obx(
                     () => ResultTab(
                       key: ValueKey(
@@ -145,22 +165,29 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   ),
                 ),
 
-                // Balance display
+                // Balance display — QA 28/08/2026 #3: this is the remaining
+                // team-building budget, meaningful only while composing a
+                // team (tab 0). Left showing on every tab it read as an
+                // unexplained, unlabeled "100M" with no apparent purpose;
+                // an empty-width box keeps the header's spaceBetween layout
+                // from jumping when it's hidden.
                 SizedBox(
                   width: 64.w,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      balance,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: const Color(0xFFFF8C42),
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  child: _selectedTab == 0
+                      ? FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            balance,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: const Color(0xFFFF8C42),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ],
             ),
@@ -226,19 +253,35 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   }
 
   Widget _buildTabBar() {
+    // QA 28/08/2026 #3: 6 tabs (5 labelled + the live-score bolt icon) in a
+    // plain unconstrained Row overflowed on narrower phones, cutting the
+    // 6th tab off the screen with no way to reach it. ConstrainedBox +
+    // horizontal scroll keeps the old evenly-spread look wherever all 6
+    // already fit, and turns the overflow into a swipe instead of a clip
+    // on screens where they don't.
     return Container(
       color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTab(AppString.createTeam.tr, Icons.add, 0),
-          _buildTab(AppString.myTeam.tr, Icons.group, 1),
-          _buildTab(AppString.result.tr, Icons.bar_chart, 2),
-          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
-          _buildTab(AppString.rules.tr, Icons.menu_book, 4),
-          _buildLiveTab(),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildTab(AppString.createTeam.tr, Icons.add, 0),
+                  _buildTab(AppString.myTeam.tr, Icons.group, 1),
+                  _buildTab(AppString.result.tr, Icons.bar_chart, 2),
+                  _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
+                  _buildTab(AppString.rules.tr, Icons.menu_book, 4),
+                  _buildLiveTab(),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

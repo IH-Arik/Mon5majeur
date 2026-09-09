@@ -28,6 +28,7 @@ async def init_db() -> None:
     from app.modules.lineups.compat_model import FlutterPlayerSelection
     from app.modules.lineups.model import LineupSlot, LineupSubmission
     from app.modules.notifications.model import Notification
+    from app.modules.support.model import SupportTicket
     from app.modules.permissions.model import Permission
     from app.modules.players.model import NBAGame, Player, PlayerGameStats
     from app.modules.roles.model import Role
@@ -69,6 +70,7 @@ async def init_db() -> None:
             AccountDeletionLog,
             ContentPageDoc,
             FaqEntryDoc,
+            SupportTicket,
         ],
     )
 

@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../../controllers/my_leagues_controller.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/private_league_model.dart';
@@ -196,14 +197,16 @@ class CreateLeagueController extends GetxController {
         if (isPublic) {
           showSnackbar(
             context,
-            "Success",
-            "Public league created successfully!",
+            AppString.successGeneric.tr,
+            AppString.publicLeagueCreatedSuccessfully.tr,
           );
         } else {
           showSnackbar(
             context,
-            "Success",
-            "Private league created successfully! Code: ${leagueData.joinCode}",
+            AppString.successGeneric.tr,
+            AppString.privateLeagueCreatedSuccessfullyTemplate.trParams({
+              'code': leagueData.joinCode ?? '',
+            }),
           );
         }
 

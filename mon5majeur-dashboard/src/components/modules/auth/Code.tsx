@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import img1 from "@/app/assets/auth/basketball.png";
 import Image from "next/image";
@@ -5,11 +6,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import baseApi from "@/api/baseAPi";
+import { ENDPOINTS } from "@/api/endPoints";
 
 export default function Code() {
   const router = useRouter();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const resetEmail = localStorage.getItem("reset_email");
@@ -42,13 +46,41 @@ export default function Code() {
     }
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     const otpString = otp.join("");
-    localStorage.setItem("reset_otp", otpString);
-    toast.success("OTP verified successfully!");
-    setTimeout(() => {
-      router.push("/setPassword");
-    }, 1000);
+
+    if (!email) {
+      toast.error("Session expired. Please request a new code.");
+      router.push("/forgetPassword");
+      return;
+    }
+
+    // Checked against the server rather than assumed correct: a wrong code
+    // has to fail here, not silently at the set-password step.
+    try {
+      setLoading(true);
+      const res = await baseApi.post(ENDPOINTS.otpVerify, {
+        email,
+        otp: otpString,
+      });
+
+      if (res.status === 200 || res.status === 201) {
+        localStorage.setItem("reset_otp", otpString);
+        toast.success("OTP verified successfully!");
+        setTimeout(() => {
+          router.push("/setPassword");
+        }, 1000);
+      }
+    } catch (error: unknown) {
+      console.error("Verify OTP Error:", error);
+      const errorMessage =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.response?.data?.detail ||
+        "Invalid or expired code. Please try again.";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isOtpComplete = otp.every((digit) => digit !== ""); // Check if all OTP fields are filled
@@ -84,15 +116,15 @@ export default function Code() {
         {/* Verify Code*/}
         <button
           onClick={handleVerifyCode}
-          disabled={!isOtpComplete}
-          className={`w-full font-bold text-[20px] lg:text-[24px] py-3 lg:py-4 rounded-xl mt-6 
+          disabled={!isOtpComplete || loading}
+          className={`w-full font-bold text-[20px] lg:text-[24px] py-3 lg:py-4 rounded-xl mt-6
                                 ${
-                                  isOtpComplete
+                                  isOtpComplete && !loading
                                     ? "bg-[#E8632C] text-white cursor-pointer"
                                     : "bg-[#E8632C80] text-white cursor-not-allowed"
                                 }`}
         >
-          Verify Code
+          {loading ? "Verifying..." : "Verify Code"}
         </button>
 
         {/* Resend Link */}

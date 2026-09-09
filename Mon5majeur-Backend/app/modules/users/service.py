@@ -35,7 +35,13 @@ class UserService:
             raise NotFoundException("User not found")
         return user
 
-    async def list_users(self, params: PaginationParams, search: str | None = None) -> Page[User]:
+    async def list_users(
+        self,
+        params: PaginationParams,
+        search: str | None = None,
+        sort_by: str = "created_at",
+        sort_dir: str = "desc",
+    ) -> Page[User]:
         query_filter: dict = {}
         if search:
             pattern = re.compile(re.escape(search), re.IGNORECASE)
@@ -47,10 +53,22 @@ class UserService:
                 ]
             }
 
+        # Only fields with a stable, indexable value qualify — `status` is
+        # derived at read time (see derive_user_status), so there is nothing
+        # in Mongo to sort on for it. Built here (not as a class attribute)
+        # because these field expressions only resolve after init_beanie()
+        # has run at app startup.
+        sortable_fields: dict = {
+            "full_name": User.full_name,
+            "created_at": User.created_at,
+        }
+        sort_field = sortable_fields.get(sort_by, User.created_at)
+        direction = -sort_field if sort_dir == "desc" else +sort_field
+
         query = User.find(query_filter)
         total = await query.count()
         items = (
-            await query.sort(-User.created_at)
+            await query.sort(direction)
             .skip(params.offset)
             .limit(params.limit)
             .to_list()
@@ -121,8 +139,12 @@ class UserService:
         from app.modules.analytics.model import AccountDeletionLog
         from app.modules.auth.model import OTPToken, RefreshToken
         from app.modules.bonuses.model import UserBonusInventory, UserBonusQuota
+        from app.modules.competitions.model import CompetitionEntry
+        from app.modules.fantasy_teams.model import FantasyTeam
         from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
         from app.modules.leagues.model import LeagueMembership
+        from app.modules.leagues.reward_model import GlobalLeagueReward
+        from app.modules.support.model import SupportTicket
         from app.modules.lineups.compat_model import FlutterPlayerSelection
         from app.modules.lineups.model import LineupSlot, LineupSubmission
         from app.modules.notifications.model import Notification
@@ -154,5 +176,11 @@ class UserService:
         await Notification.find(Notification.recipient_id == user_id).delete()
         await OTPToken.find(OTPToken.user_id == user_id).delete()
         await RefreshToken.find(RefreshToken.user_id == user_id).delete()
+        # Support threads copy the email and pseudo at creation so they stay
+        # readable — which makes them PII that has to go with the account.
+        await SupportTicket.find(SupportTicket.user_id == user_id).delete()
+        await GlobalLeagueReward.find(GlobalLeagueReward.user_id == user_id).delete()
+        await CompetitionEntry.find(CompetitionEntry.user_id == user_id).delete()
+        await FantasyTeam.find(FantasyTeam.owner_id == user_id).delete()
 
         await self.repo.delete(user)

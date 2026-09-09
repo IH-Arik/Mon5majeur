@@ -33,6 +33,11 @@ class _CreatePrivateLeagueWaitingRoomScreenState
   late final CreateLeagueController _controller;
   late final HomeController _homeController;
   int? _currentUserTeamId;
+  // True once the leagueId fetch has actually finished (success or failure).
+  // Without this, the very first Obx build sees currentLeague == null
+  // before getLeagueDetails() even starts and bounces straight back to
+  // My Leagues — the fetch is scheduled but hasn't run a single frame yet.
+  bool _fetchAttempted = false;
 
   @override
   void initState() {
@@ -54,8 +59,13 @@ class _CreatePrivateLeagueWaitingRoomScreenState
 
     // Fetch league details if leagueId is provided
     if (widget.leagueId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _controller.getLeagueDetails(context, widget.leagueId!);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _controller.getLeagueDetails(context, widget.leagueId!);
+        if (mounted) {
+          setState(() {
+            _fetchAttempted = true;
+          });
+        }
       });
     }
   }
@@ -74,9 +84,11 @@ class _CreatePrivateLeagueWaitingRoomScreenState
       '🔍 DEBUG - League Creator: ${_controller.currentLeague.value?.creator}',
     );
 
-    setState(() {
-      _currentUserTeamId = teamId;
-    });
+    if (mounted) {
+      setState(() {
+        _currentUserTeamId = teamId;
+      });
+    }
 
     // Force rebuild after data is loaded
     Future.delayed(Duration.zero, () {
@@ -333,12 +345,17 @@ class _CreatePrivateLeagueWaitingRoomScreenState
 
           final league = _controller.currentLeague.value;
           if (league == null) {
-            // Automatically redirect to My Leagues if league not found
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) {
-                context.go(RoutePath.myLeague.addBasePath);
-              }
-            });
+            // Only redirect once the fetch has actually had a chance to run —
+            // otherwise this fires on the very first frame, before
+            // getLeagueDetails() has even started, and bounces back to My
+            // Leagues before the league ever loads.
+            if (widget.leagueId == null || _fetchAttempted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  context.go(RoutePath.myLeague.addBasePath);
+                }
+              });
+            }
 
             return const Center(
               child: CircularProgressIndicator(color: Color(0xFFCC5123)),

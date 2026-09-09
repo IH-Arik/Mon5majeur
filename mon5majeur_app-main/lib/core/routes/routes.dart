@@ -19,6 +19,7 @@ import '../../presentation/screens/profile setup/profile_setup_screen.dart';
 import '../../presentation/screens/profile/password_reset.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/profile/profile_settings.dart';
+import '../../presentation/screens/profile/support_screen.dart';
 import '../../presentation/screens/shop/buy_token.dart';
 import '../../presentation/screens/shop/shop_screen.dart';
 import '../../presentation/widgets/error_screen.dart';
@@ -365,12 +366,18 @@ class AppRouter {
         builder: (context, state) => const ProfileSettingsScreen(),
       ),
       GoRoute(
+        name: RoutePath.supportScreen,
+        path: RoutePath.supportScreen.addBasePath,
+        builder: (context, state) => const SupportScreen(),
+      ),
+      GoRoute(
         name: RoutePath.passwordReset,
         path: RoutePath.passwordReset.addBasePath,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           final email = extra['email'] as String? ?? '';
-          return PasswordReset(email: email);
+          final otp = extra['otp'] as String? ?? '';
+          return PasswordReset(email: email, otp: otp);
         },
       ),
 

@@ -26,7 +26,7 @@ from app.modules.leagues.schema import (
 )
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
-from app.modules.players.model import NBAGame, PlayerGameStats
+from app.modules.players.model import NBAGame, Player, PlayerGameStats
 from app.modules.users.model import User
 
 router = APIRouter(prefix="/global-leagues", tags=["Global League (Flutter compat)"])
@@ -143,6 +143,36 @@ async def _is_locked_today() -> bool:
     return now_utc >= tip_off
 
 
+async def _enrich_with_scores(selected_players: list[dict]) -> list[dict]:
+    """Attach each player's current recent_two_scores (the same
+    real, cron-maintained field the Players Today picker shows as
+    "Last scores") to the stored selection dicts, as last_two_scores -
+    the Flutter Player model's expected key. The stored selection is a
+    point-in-time snapshot (id/name/position/price) with no live score
+    field, so without this the "My Team" screen's per-player points
+    stay frozen at 0 forever, game or no game."""
+    ids = []
+    for p in selected_players:
+        raw_id = p.get("id")
+        if raw_id:
+            try:
+                ids.append(PydanticObjectId(str(raw_id)))
+            except Exception:
+                pass
+    if not ids:
+        return selected_players
+
+    players = await Player.find({"_id": {"$in": ids}}).to_list()
+    scores_by_id = {str(pl.id): (pl.recent_two_scores or [None, None]) for pl in players}
+
+    enriched = []
+    for p in selected_players:
+        item = dict(p)
+        item["last_two_scores"] = scores_by_id.get(str(p.get("id")), [None, None])
+        enriched.append(item)
+    return enriched
+
+
 async def _build_response(
     league: League,
     selected_players: list[dict],
@@ -156,10 +186,11 @@ async def _build_response(
     submitted, lock_in_seconds = await _lock_info(user_id, league)
     today = await _nba_today()
     weekly_rank, monthly_rank = await get_weekly_monthly_rank(league, user_id, today)
+    enriched_players = await _enrich_with_scores(selected_players)
 
     return GlobalLeagueSelectionResponse(
         match_day=league.current_match_day,
-        selected_players=selected_players,
+        selected_players=enriched_players,
         total_points=total_points,
         max_balance=f"{int(_MAX_BALANCE)}M",
         current_balance=f"{remaining:.0f}M",

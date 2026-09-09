@@ -1,8 +1,17 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# app/core/config.py -> app/core -> app -> project root. A relative
+# UPLOAD_DIR must not depend on the process's working directory: gunicorn/
+# systemd can launch uvicorn from a different cwd than a plain `python -m`
+# run does, silently pointing uploads at (and creating) the wrong directory
+# — one that may not be writable, which is exactly what a 500 on every
+# upload while everything else works looks like.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -96,6 +105,27 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
     ALLOWED_UPLOAD_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf", "docx"]
+    # Absolute origin (e.g. "https://api.mon5majeur.com") the /static/... path
+    # returned by an upload is prefixed with. The dashboard and mobile app are
+    # served from a different origin than the API, so a bare "/static/..."
+    # resolves against *their* origin and 404s — empty stays relative, for
+    # local dev where everything shares one origin.
+    PUBLIC_BASE_URL: str = ""
+
+    @field_validator("PUBLIC_BASE_URL", mode="after")
+    @classmethod
+    def strip_trailing_slash(cls, v: str) -> str:
+        return v.rstrip("/")
+
+    @field_validator("UPLOAD_DIR", mode="after")
+    @classmethod
+    def resolve_upload_dir(cls, v: str) -> str:
+        """A relative path is anchored to the project root, not whatever the
+        process's cwd happens to be — see _PROJECT_ROOT above. An operator
+        who sets an absolute UPLOAD_DIR in .env (e.g. a mounted volume) is
+        left untouched."""
+        p = Path(v)
+        return str(p if p.is_absolute() else _PROJECT_ROOT / p)
 
     @field_validator("ALLOWED_UPLOAD_EXTENSIONS", mode="before")
     @classmethod

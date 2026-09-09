@@ -213,18 +213,33 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   }
 
   Widget _buildTabBar() {
+    // Same fix as GlobalLeagueScreen (QA 28/08/2026 #3): an unconstrained
+    // Row of 5 labelled tabs can overflow on narrower phones with no way
+    // to reach whatever gets cut off. ConstrainedBox + horizontal scroll
+    // keeps the evenly-spread look wherever it all fits, and turns any
+    // overflow into a swipe instead of a clip.
     return Container(
       color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTab(AppString.createTeam.tr, Icons.add, 0),
-          _buildTab(AppString.myTeam.tr, Icons.group, 1),
-          _buildTab(AppString.result.tr, Icons.receipt, 2),
-          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
-          _buildTab(AppString.rules.tr, Icons.menu_book, 4),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildTab(AppString.createTeam.tr, Icons.add, 0),
+                  _buildTab(AppString.myTeam.tr, Icons.group, 1),
+                  _buildTab(AppString.result.tr, Icons.receipt, 2),
+                  _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 3),
+                  _buildTab(AppString.rules.tr, Icons.menu_book, 4),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
