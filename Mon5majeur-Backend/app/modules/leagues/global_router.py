@@ -27,6 +27,7 @@ from app.modules.leagues.schema import (
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
+from app.modules.players.scoring import compute_fantasy_score
 from app.modules.users.model import User
 
 router = APIRouter(prefix="/global-leagues", tags=["Global League (Flutter compat)"])
@@ -144,31 +145,44 @@ async def _is_locked_today() -> bool:
 
 
 async def _enrich_with_scores(selected_players: list[dict]) -> list[dict]:
-    """Attach each player's current recent_two_scores (the same
-    real, cron-maintained field the Players Today picker shows as
-    "Last scores") to the stored selection dicts, as last_two_scores -
-    the Flutter Player model's expected key. The stored selection is a
-    point-in-time snapshot (id/name/position/price) with no live score
-    field, so without this the "My Team" screen's per-player points
-    stay frozen at 0 forever, game or no game."""
-    ids = []
-    for p in selected_players:
-        raw_id = p.get("id")
-        if raw_id:
-            try:
-                ids.append(PydanticObjectId(str(raw_id)))
-            except Exception:
-                pass
-    if not ids:
-        return selected_players
+    """Attach each player's TODAY score to the stored selection dicts, as
+    last_two_scores (the Flutter Player model's expected key) - the
+    "My Team" screen's per-player badges are explicitly labelled
+    "Points for today", so this must be the same live/finalized score
+    live_scores/service.py computes for the Live Score screen, not a
+    player's last PLAYED game (recent_two_scores) which can be stale
+    from days ago and silently disagrees with Live Score once today's
+    games are actually in progress. Before any game, this is 0 for
+    everyone, exactly like Live Score shows pre-tip-off.
 
-    players = await Player.find({"_id": {"$in": ids}}).to_list()
-    scores_by_id = {str(pl.id): (pl.recent_two_scores or [None, None]) for pl in players}
-
+    The stored selection is a point-in-time snapshot (id/name/position/
+    price) with no live score field, so without this the "My Team"
+    screen's per-player points stay frozen at 0 forever, game or no
+    game."""
+    today = await _nba_today()
     enriched = []
     for p in selected_players:
         item = dict(p)
-        item["last_two_scores"] = scores_by_id.get(str(p.get("id")), [None, None])
+        raw_id = p.get("id")
+        today_score = 0.0
+        try:
+            player_id = PydanticObjectId(str(raw_id)) if raw_id else None
+        except Exception:
+            player_id = None
+
+        if player_id:
+            stat = await PlayerGameStats.find_one(
+                PlayerGameStats.player_id == player_id,
+                PlayerGameStats.nba_date == today,
+            )
+            if stat:
+                today_score = stat.fantasy_score if stat.score_computed else compute_fantasy_score(stat)
+                today_score = today_score or 0.0
+            player_doc = await Player.get(player_id)
+            if player_doc and player_doc.is_out:
+                today_score = 0.0  # OUT player live -> 0, spec §4.7
+
+        item["last_two_scores"] = [None, round(today_score)]
         enriched.append(item)
     return enriched
 
