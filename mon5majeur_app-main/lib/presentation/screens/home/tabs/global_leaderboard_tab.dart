@@ -356,19 +356,10 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(width: 12.w),
-          // View Details button
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3A3D4E),
-              borderRadius: BorderRadius.circular(4.r),
-            ),
-            child: Text(
-              AppString.viewDetails.tr,
-              style: TextStyle(color: Colors.white70, fontSize: 10.sp),
-            ),
-          ),
+          // "View Details" used to sit here but had no onTap at all - dead,
+          // misleading UI. A weekly/monthly total has no single night's
+          // lineup to show as "details" in the first place, so removed
+          // rather than wired to a fake action.
           if (isTopOne) ...[
             SizedBox(width: 8.w),
             Text('🏆', style: TextStyle(fontSize: 16.sp)),
