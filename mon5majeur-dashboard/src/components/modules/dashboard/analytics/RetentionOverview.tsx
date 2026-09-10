@@ -38,6 +38,9 @@ interface RetentionOverview {
     players_in_private: number;
     total_players: number;
     nights_considered: number;
+    active_private_leagues: number;
+    league_count_distribution: Record<string, number>;
+    league_count_distribution_pct: Record<string, number>;
   };
 }
 
@@ -47,6 +50,39 @@ function StatTile({ label, value, hint }: { label: string; value: string | numbe
       <div className="text-[14px] md:text-[16px] text-[#828282] mb-2">{label}</div>
       <div className="text-[22px] md:text-[26px] font-semibold text-gray-800">{value}</div>
       {hint && <div className="text-[12px] text-gray-400 mt-1">{hint}</div>}
+    </div>
+  );
+}
+
+const DISTRIBUTION_ORDER = ["0", "1", "2", "3+"];
+
+function PrivateLeagueDistributionTile({
+  distribution,
+  distributionPct,
+}: {
+  distribution: Record<string, number>;
+  distributionPct: Record<string, number>;
+}) {
+  return (
+    <div className="bg-white shadow rounded-2xl p-4 lg:px-6">
+      <div className="text-[14px] md:text-[16px] text-[#828282] mb-2">
+        Private Leagues per Player
+      </div>
+      <div className="flex flex-wrap gap-x-6 gap-y-1">
+        {DISTRIBUTION_ORDER.map((key) => (
+          <div key={key} className="text-gray-800">
+            <span className="text-[22px] md:text-[26px] font-semibold">
+              {Math.round((distributionPct[key] ?? 0) * 100)}%
+            </span>
+            <span className="text-[12px] text-gray-400 ml-1">
+              {key} league{key !== "1" ? "s" : ""} ({distribution[key] ?? 0})
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="text-[12px] text-gray-400 mt-2">
+        share of every registered account, by current private-league membership
+      </div>
     </div>
   );
 }
@@ -116,7 +152,19 @@ export default function RetentionOverview() {
         <StatTile
           label="Private League Players"
           value={`${private_league.players_in_private} / ${private_league.total_players}`}
-          hint={`over the last ${private_league.nights_considered} match-night(s)`}
+          hint={`of players who validated a lineup (any league) over the last ${private_league.nights_considered} match-night(s), this many did so in a private league`}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <StatTile
+          label="Active Private Leagues"
+          value={private_league.active_private_leagues}
+          hint="not completed or cancelled, right now"
+        />
+        <PrivateLeagueDistributionTile
+          distribution={private_league.league_count_distribution}
+          distributionPct={private_league.league_count_distribution_pct}
         />
       </div>
 

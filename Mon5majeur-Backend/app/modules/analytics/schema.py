@@ -66,9 +66,22 @@ class LineupVolumeResponse(BaseSchema):
 # ── Block 5 — Players in a private league ─────────────────────────────────────
 
 class PrivateLeaguePlayersResponse(BaseSchema):
+    # players_in_private / total_players (both over the last `nights_considered`
+    # match-nights): distinct users who validated >=1 lineup IN A PRIVATE LEAGUE,
+    # out of distinct users who validated >=1 lineup AT ALL (any league type,
+    # including Global/solo). Not exclusive membership - a player active in both
+    # a private and another league counts in both numbers.
     players_in_private: int = 0
     total_players: int = 0              # distinct players over the same window
     nights_considered: int = 0
+
+    # Snapshot figures (not windowed to nights_considered - "right now").
+    active_private_leagues: int = 0     # private leagues not completed/cancelled
+
+    # How many PRIVATE leagues each registered user belongs to, bucketed.
+    # Keys: "0", "1", "2", "3+". Values sum to total registered accounts.
+    league_count_distribution: dict[str, int] = {}
+    league_count_distribution_pct: dict[str, float] = {}  # same keys, 0..1
 
 
 # ── Everything at once (one call for the whole dashboard) ─────────────────────

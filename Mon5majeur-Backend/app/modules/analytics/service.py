@@ -33,8 +33,13 @@ from app.modules.analytics.schema import (
     RetentionOverviewResponse,
     TopBarCountersResponse,
 )
-from app.modules.leagues.constants import LEAGUE_TYPE_PRIVATE
-from app.modules.leagues.model import League
+from app.modules.leagues.constants import (
+    LEAGUE_STATUS_PLAYOFFS,
+    LEAGUE_STATUS_REGULAR,
+    LEAGUE_STATUS_WAITING,
+    LEAGUE_TYPE_PRIVATE,
+)
+from app.modules.leagues.model import League, LeagueMembership
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.model import NBAGame
 from app.modules.users.model import User
@@ -48,6 +53,9 @@ COHORT_DAY_OFFSETS = [1, 3, 7, 14, 30, 60, 90]
 DAU_ROLLING_NIGHTS = 7
 LINEUP_VOLUME_NIGHTS = 30
 PRIVATE_LEAGUE_NIGHTS = 30
+
+# A league still in play - not finished, not cancelled.
+ACTIVE_LEAGUE_STATUSES = [LEAGUE_STATUS_WAITING, LEAGUE_STATUS_REGULAR, LEAGUE_STATUS_PLAYOFFS]
 
 # A lineup counts only once it is a complete 5-player compo. Both submit
 # paths already reject anything else, so this is a belt-and-braces filter
@@ -285,17 +293,37 @@ class RetentionAnalyticsService:
     async def private_league_players(
         self, nights: int = PRIVATE_LEAGUE_NIGHTS
     ) -> PrivateLeaguePlayersResponse:
-        """Headcount of players active in ≥1 private league over the window.
+        """Headcount of players active in ≥1 private league over the window,
+        plus two "right now" snapshots: how many private leagues are still
+        in play, and how private-league membership is spread across every
+        registered account.
 
-        A count, not a percentage (spec). Solo and private are not
-        exclusive — a player in both is counted here and in the total.
+        players_in_private / total_players is a count, not a percentage
+        (spec) — and NOT "N of the app's total accounts". Both numbers are
+        distinct users who validated ≥1 lineup in the last `nights`
+        match-nights: the numerator restricts that to a private league, the
+        denominator is any league (incl. Global/solo). Solo and private are
+        not exclusive — a player in both is counted in both numbers.
         """
         recent = await self.match_nights(limit=nights)
+        private_ids = await self._private_league_ids()
+
+        active_private_leagues = await League.find(
+            League.type == LEAGUE_TYPE_PRIVATE,
+            {"status": {"$in": ACTIVE_LEAGUE_STATUSES}},
+        ).count()
+
+        distribution, distribution_pct = await self._private_league_distribution(private_ids)
+
         if not recent:
-            return PrivateLeaguePlayersResponse(nights_considered=0)
+            return PrivateLeaguePlayersResponse(
+                nights_considered=0,
+                active_private_leagues=active_private_leagues,
+                league_count_distribution=distribution,
+                league_count_distribution_pct=distribution_pct,
+            )
 
         night_filter = {"$in": [_as_datetime(d) for d in recent]}
-        private_ids = await self._private_league_ids()
 
         private_players = 0
         if private_ids:
@@ -326,7 +354,42 @@ class RetentionAnalyticsService:
             players_in_private=private_players,
             total_players=total_rows[0]["n"] if total_rows else 0,
             nights_considered=len(recent),
+            active_private_leagues=active_private_leagues,
+            league_count_distribution=distribution,
+            league_count_distribution_pct=distribution_pct,
         )
+
+    async def _private_league_distribution(
+        self, private_league_ids: list
+    ) -> tuple[dict[str, int], dict[str, float]]:
+        """Every registered account, bucketed by how many PRIVATE leagues it
+        currently belongs to (0 / 1 / 2 / 3+). Unlike players_in_private
+        above, this counts membership rows directly — it does not require
+        the user to have validated a lineup."""
+        total_users = await User.find_all().count()
+        counts_by_user: dict[object, int] = {}
+        if private_league_ids and total_users:
+            rows = await LeagueMembership.aggregate(
+                [
+                    {"$match": {"league_id": {"$in": private_league_ids}}},
+                    {"$group": {"_id": "$user_id", "n": {"$sum": 1}}},
+                ]
+            ).to_list()
+            counts_by_user = {r["_id"]: r["n"] for r in rows}
+
+        members = len(counts_by_user)
+        one = sum(1 for n in counts_by_user.values() if n == 1)
+        two = sum(1 for n in counts_by_user.values() if n == 2)
+        three_plus = sum(1 for n in counts_by_user.values() if n >= 3)
+        zero = max(total_users - members, 0)
+
+        distribution = {"0": zero, "1": one, "2": two, "3+": three_plus}
+        distribution_pct = (
+            {k: round(v / total_users, 4) for k, v in distribution.items()}
+            if total_users
+            else {"0": 0.0, "1": 0.0, "2": 0.0, "3+": 0.0}
+        )
+        return distribution, distribution_pct
 
     # ── everything at once ────────────────────────────────────────────────
 
