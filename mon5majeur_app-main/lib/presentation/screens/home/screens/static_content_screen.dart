@@ -1,5 +1,6 @@
 // lib/presentation/screens/home/screens/static_content_screen.dart
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -40,8 +41,9 @@ class _StaticContentScreenState extends State<StaticContentScreen> {
   Future<void> _fetchContent() async {
     try {
       final apiClient = ApiClient();
+      final lang = Get.locale?.languageCode == 'fr' ? 'fr' : 'en';
       final response = await apiClient.get(
-        url: '${ApiUrl.baseUrl}${widget.endpoint}',
+        url: '${ApiUrl.baseUrl}${widget.endpoint}?lang=$lang',
         showResult: true,
       );
 

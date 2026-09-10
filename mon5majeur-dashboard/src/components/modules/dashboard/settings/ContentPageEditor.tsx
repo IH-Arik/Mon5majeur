@@ -11,7 +11,11 @@ interface ContentPage {
   slug: string;
   title: string;
   body: string;
+  title_fr: string;
+  body_fr: string;
 }
+
+type Lang = "en" | "fr";
 
 export default function ContentPageEditor({
   slug,
@@ -20,8 +24,11 @@ export default function ContentPageEditor({
   slug: ContentSlug;
   heading: string;
 }) {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const [lang, setLang] = useState<Lang>("en");
+  const [titleEn, setTitleEn] = useState("");
+  const [bodyEn, setBodyEn] = useState("");
+  const [titleFr, setTitleFr] = useState("");
+  const [bodyFr, setBodyFr] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -32,8 +39,10 @@ export default function ContentPageEditor({
         const response = await baseApi.get<ContentPage[]>(ENDPOINTS.adminContentPages);
         const page = response.data.find((p) => p.slug === slug);
         if (page) {
-          setTitle(page.title);
-          setBody(page.body);
+          setTitleEn(page.title);
+          setBodyEn(page.body);
+          setTitleFr(page.title_fr);
+          setBodyFr(page.body_fr);
         }
       } catch (error) {
         console.error("Error fetching content page:", error);
@@ -49,8 +58,13 @@ export default function ContentPageEditor({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await baseApi.patch(ENDPOINTS.adminContentPageItem(slug), { title, body });
-      toast.success("Saved successfully!");
+      await baseApi.patch(ENDPOINTS.adminContentPageItem(slug), {
+        title: titleEn,
+        body: bodyEn,
+        title_fr: titleFr,
+        body_fr: bodyFr,
+      });
+      toast.success("Saved successfully! The app reads this live - no new build needed.");
     } catch (error) {
       console.error("Error saving content page:", error);
       toast.error("Failed to save");
@@ -63,9 +77,39 @@ export default function ContentPageEditor({
     return <p className="mt-10 text-gray-500">Loading...</p>;
   }
 
+  const isEn = lang === "en";
+  const title = isEn ? titleEn : titleFr;
+  const setTitle = isEn ? setTitleEn : setTitleFr;
+  const body = isEn ? bodyEn : bodyFr;
+  const setBody = isEn ? setBodyEn : setBodyFr;
+
   return (
     <div className="mt-10 max-w-3xl">
       <h1 className="text-[20px] font-semibold mb-4">{heading}</h1>
+
+      {/* The app shows whichever language the player has selected -
+          falling back to English if the French fields are still empty -
+          so both versions live on this one page, not on separate tabs. */}
+      <div className="flex gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setLang("en")}
+          className={`px-4 py-1.5 rounded-full text-[14px] font-medium ${
+            isEn ? "bg-[#E8632C] text-white" : "bg-gray-100 text-[#828282]"
+          }`}
+        >
+          English
+        </button>
+        <button
+          type="button"
+          onClick={() => setLang("fr")}
+          className={`px-4 py-1.5 rounded-full text-[14px] font-medium ${
+            !isEn ? "bg-[#E8632C] text-white" : "bg-gray-100 text-[#828282]"
+          }`}
+        >
+          Français{!titleFr && !bodyFr ? " (empty - falls back to English)" : ""}
+        </button>
+      </div>
 
       <label className="block text-[#828282] text-[16px] font-medium mb-1">Title</label>
       <input

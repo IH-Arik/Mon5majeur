@@ -24,11 +24,25 @@ class ContentPageResponse(BaseModel):
     slug: str
     title: str
     body: str
+    title_fr: str
+    body_fr: str
 
 
 class ContentPageUpdateRequest(BaseModel):
     title: str | None = None
     body: str | None = None
+    title_fr: str | None = None
+    body_fr: str | None = None
+
+
+def _to_page_response(page) -> ContentPageResponse:
+    return ContentPageResponse(
+        slug=page.slug,
+        title=page.title,
+        body=page.body,
+        title_fr=page.title_fr,
+        body_fr=page.body_fr,
+    )
 
 
 @router.get(
@@ -38,13 +52,13 @@ class ContentPageUpdateRequest(BaseModel):
 )
 async def list_pages() -> list[ContentPageResponse]:
     pages = await catalog.list_pages()
-    return [ContentPageResponse(slug=p.slug, title=p.title, body=p.body) for p in pages]
+    return [_to_page_response(p) for p in pages]
 
 
 @router.patch(
     "/pages/{slug}/",
     response_model=ContentPageResponse,
-    summary="Update a static page's title and/or body",
+    summary="Update a static page's EN and/or FR title/body",
 )
 async def update_page(slug: str, payload: ContentPageUpdateRequest) -> ContentPageResponse:
     page = await catalog.get_page(slug)
@@ -54,7 +68,7 @@ async def update_page(slug: str, payload: ContentPageUpdateRequest) -> ContentPa
     updates = payload.model_dump(exclude_none=True)
     if updates:
         await page.save_updated(**updates)
-    return ContentPageResponse(slug=page.slug, title=page.title, body=page.body)
+    return _to_page_response(page)
 
 
 # ── FAQ entries (free-form — can be created/removed, unlike the 4 pages) ────
