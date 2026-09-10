@@ -140,6 +140,41 @@ async def get_weekly_monthly_rank(
     return weekly_rank, monthly_rank
 
 
+def _month_start_n_ago(today: date, months_ago: int) -> date:
+    total = (today.year * 12 + (today.month - 1)) - months_ago
+    year, month0 = divmod(total, 12)
+    return date(year, month0 + 1, 1)
+
+
+async def get_leaderboard_for_period(
+    league: League, period: str, today: date, offset: int = 0
+) -> tuple[list[tuple[PydanticObjectId, float]], str]:
+    """Full ranked list for the Classement tab (Flutter: Global League ›
+    weekly/monthly leaderboard), reusing the exact same per-night archive
+    and ranking logic as get_weekly_monthly_rank/the reward jobs above —
+    there is only ever one ranking order, whether showing one user's rank
+    or everyone's.
+
+    `offset` browses previous periods (0 = current, 1 = the one before,
+    ...), matching the Classement tab's existing prev/next period arrows.
+    Returns (ranked [(user_id, total_score), ...], a display label like
+    "Week 3" / "September 2026").
+    """
+    offset = max(offset, 0)
+    if period == "monthly":
+        month_start = _month_start_n_ago(today, offset)
+        _, month_end = _month_bounds(month_start)
+        label = month_start.strftime("%B %Y")
+        ranked = await _ranked_totals_for_period(league, month_start, month_end)
+        return ranked, label
+
+    reference = today - timedelta(weeks=offset)
+    week_start, week_end = _week_bounds(reference)
+    label = f"Week {week_start.isocalendar().week}"
+    ranked = await _ranked_totals_for_period(league, week_start, week_end)
+    return ranked, label
+
+
 # ---------------------------------------------------------------------------
 # Rewards (spec §4.6.1): Top 8 weekly -> in-game bonus, monthly #1 -> jersey.
 # Called by the Monday/1st-of-month 09:00 Paris cron jobs, right after that

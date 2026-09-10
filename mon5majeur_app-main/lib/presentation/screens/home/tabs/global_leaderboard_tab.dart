@@ -3,6 +3,28 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../data/services/api_service.dart';
+import '../../../../data/services/api_url.dart';
+
+class _LeaderboardEntry {
+  final int rank;
+  final String teamName;
+  final int points;
+
+  const _LeaderboardEntry({
+    required this.rank,
+    required this.teamName,
+    required this.points,
+  });
+
+  factory _LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return _LeaderboardEntry(
+      rank: (json['rank'] as num?)?.toInt() ?? 0,
+      teamName: json['team_name'] as String? ?? '',
+      points: (json['points'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
 
 class LeaderboardTab extends StatefulWidget {
   const LeaderboardTab({super.key});
@@ -13,7 +35,84 @@ class LeaderboardTab extends StatefulWidget {
 
 class _LeaderboardTabState extends State<LeaderboardTab> {
   bool isWeekly = true; // true for Weekly, false for Monthly
-  int currentPeriod = 1; // Week 1 or Month 1
+  // 0 = the current week/month, 1 = the one before it, etc. — matches the
+  // backend's GET /global-leagues/leaderboard/?period=&offset= (real ranked
+  // GlobalLeagueDailyScore totals, not the sample data this tab used to show).
+  int offset = 0;
+  String searchQuery = '';
+
+  bool _isLoading = true;
+  String? _error;
+  String _periodLabel = '';
+  List<_LeaderboardEntry> _teams = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLeaderboard();
+  }
+
+  Future<void> _fetchLeaderboard() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final period = isWeekly ? 'weekly' : 'monthly';
+      final response = await ApiClient().get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.globalLeaderboard(period, offset)}',
+        showResult: true,
+      );
+      if (!mounted) return;
+
+      if (response.statusCode == 200 && response.body is Map<String, dynamic>) {
+        final body = response.body as Map<String, dynamic>;
+        final rawTeams = body['teams'] as List<dynamic>? ?? const [];
+        setState(() {
+          _periodLabel = body['period_label'] as String? ?? '';
+          _teams = rawTeams
+              .whereType<Map<String, dynamic>>()
+              .map(_LeaderboardEntry.fromJson)
+              .toList();
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _error = 'Failed to load standings (${response.statusCode}).';
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Failed to load standings: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _setWeekly(bool weekly) {
+    if (isWeekly == weekly) return;
+    setState(() {
+      isWeekly = weekly;
+      offset = 0;
+    });
+    _fetchLeaderboard();
+  }
+
+  void _changeOffset(int delta) {
+    final next = offset + delta;
+    if (next < 0) return;
+    setState(() => offset = next);
+    _fetchLeaderboard();
+  }
+
+  List<_LeaderboardEntry> get _filteredTeams {
+    if (searchQuery.isEmpty) return _teams;
+    final q = searchQuery.toLowerCase();
+    return _teams.where((t) => t.teamName.toLowerCase().contains(q)).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +136,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           SizedBox(height: 16.h),
           _buildSearchBar(),
           SizedBox(height: 16.h),
-          _buildStandingsList(),
+          _buildBody(),
         ],
       ),
     );
@@ -54,7 +153,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: () => setState(() => isWeekly = true),
+            onTap: () => _setWeekly(true),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
               decoration: BoxDecoration(
@@ -76,7 +175,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => isWeekly = false),
+            onTap: () => _setWeekly(false),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
               decoration: BoxDecoration(
@@ -107,16 +206,12 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
-          onPressed: currentPeriod > 1
-              ? () => setState(() => currentPeriod--)
-              : null,
+          onPressed: () => _changeOffset(1),
           icon: Icon(Icons.chevron_left, color: Colors.white54, size: 24.r),
         ),
         SizedBox(width: 16.w),
         Text(
-          isWeekly
-              ? '${AppString.week.tr} $currentPeriod'
-              : '${AppString.month.tr} $currentPeriod',
+          _isLoading && _periodLabel.isEmpty ? '…' : _periodLabel,
           style: TextStyle(
             color: Colors.white,
             fontSize: 16.sp,
@@ -125,7 +220,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
         ),
         SizedBox(width: 16.w),
         IconButton(
-          onPressed: () => setState(() => currentPeriod++),
+          onPressed: offset > 0 ? () => _changeOffset(-1) : null,
           icon: Icon(Icons.chevron_right, color: Colors.white54, size: 24.r),
         ),
       ],
@@ -140,6 +235,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: TextField(
+        onChanged: (value) => setState(() => searchQuery = value),
         style: TextStyle(color: Colors.white, fontSize: 14.sp),
         decoration: InputDecoration(
           hintText: AppString.searchTeamsByName.tr,
@@ -152,20 +248,42 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
     );
   }
 
-  Widget _buildStandingsList() {
-    // Sample data - replace with your actual data
-    final teams = List.generate(
-      20,
-      (index) => {'rank': index + 1, 'name': 'Paris FC', 'points': 300},
-    );
-
-    return Column(children: teams.map((team) => _buildTeamRow(team)).toList());
+  Widget _buildBody() {
+    if (_isLoading) {
+      return Padding(
+        padding: EdgeInsets.only(top: 40.h),
+        child: const Center(
+          child: CircularProgressIndicator(color: Color(0xFFFF6B3D)),
+        ),
+      );
+    }
+    if (_error != null) {
+      return Padding(
+        padding: EdgeInsets.only(top: 40.h),
+        child: Text(
+          _error!,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+        ),
+      );
+    }
+    final teams = _filteredTeams;
+    if (teams.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(top: 40.h),
+        child: Text(
+          AppString.noStandingsYet.tr,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white54, fontSize: 14.sp),
+        ),
+      );
+    }
+    return Column(children: teams.map(_buildTeamRow).toList());
   }
 
-  Widget _buildTeamRow(Map<String, dynamic> team) {
-    final int rank = team['rank'];
-    final bool isTopOne = rank == 1;
-    final bool isTopThree = rank <= 3;
+  Widget _buildTeamRow(_LeaderboardEntry team) {
+    final bool isTopOne = team.rank == 1;
+    final bool isTopThree = team.rank <= 3;
 
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
@@ -183,7 +301,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           SizedBox(
             width: 24.w,
             child: Text(
-              '$rank',
+              '${team.rank}',
               style: TextStyle(
                 color: isTopOne ? const Color(0xFFFF6B3D) : Colors.white,
                 fontSize: 14.sp,
@@ -192,7 +310,6 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
             ),
           ),
           SizedBox(width: 12.w),
-          // Fire icon for top ranks
           if (isTopThree)
             Padding(
               padding: EdgeInsets.only(right: 8.w),
@@ -202,7 +319,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           Container(
             width: 24.w,
             height: 24.h,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Color(0xFF3A3D4E),
               shape: BoxShape.circle,
             ),
@@ -213,7 +330,8 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           // Team name
           Expanded(
             child: Text(
-              team['name'],
+              team.teamName,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14.sp,
@@ -231,7 +349,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
             ),
           // Points
           Text(
-            '${team['points']}',
+            '${team.points}',
             style: TextStyle(
               color: Colors.white,
               fontSize: 14.sp,
@@ -243,7 +361,7 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: Color(0xFF3A3D4E),
+              color: const Color(0xFF3A3D4E),
               borderRadius: BorderRadius.circular(4.r),
             ),
             child: Text(

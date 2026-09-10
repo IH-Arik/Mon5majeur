@@ -8,7 +8,7 @@ Mounted at /api (no /v1 prefix).
 from datetime import date, datetime, timezone
 
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.auth.dependencies import get_current_user
@@ -19,7 +19,10 @@ from app.modules.leagues.constants import (
 )
 from app.modules.leagues.model import League, LeagueMembership
 from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
+from app.modules.leagues.global_score_service import get_leaderboard_for_period
 from app.modules.leagues.schema import (
+    GlobalLeaderboardEntry,
+    GlobalLeaderboardResponse,
     GlobalLeagueSelectionResponse,
     MatchResultCompatResponse,
     PlayersSelectionRequest,
@@ -464,3 +467,42 @@ async def get_global_match_result(
         pairs=[],
         created_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+@router.get(
+    "/leaderboard/",
+    response_model=GlobalLeaderboardResponse,
+    summary="Weekly/monthly ranking of all Global League members (Flutter: Classement tab)",
+)
+async def get_global_leaderboard(
+    period: str = Query("weekly", pattern="^(weekly|monthly)$"),
+    offset: int = Query(0, ge=0, le=52, description="0 = current period, 1 = the one before, ..."),
+    current_user: User = Depends(get_current_user),
+) -> GlobalLeaderboardResponse:
+    league = await _get_global_league()
+    today = await _nba_today()
+
+    ranked, label = await get_leaderboard_for_period(league, period, today, offset)
+    if not ranked:
+        return GlobalLeaderboardResponse(period=period, period_label=label, teams=[])
+
+    user_ids = [uid for uid, _ in ranked]
+    users = await User.find({"_id": {"$in": user_ids}}).to_list()
+    user_map = {u.id: u for u in users}
+
+    teams: list[GlobalLeaderboardEntry] = []
+    for rank, (user_id, total) in enumerate(ranked, start=1):
+        user = user_map.get(user_id)
+        display_name = (
+            (user.team_name or (user.email.split("@")[0] if user.email else "Unknown"))
+            if user
+            else "Unknown"
+        )
+        teams.append(GlobalLeaderboardEntry(
+            rank=rank,
+            user_id=user.auto_id or 0 if user else 0,
+            team_name=display_name,
+            points=int(round(total)),
+        ))
+
+    return GlobalLeaderboardResponse(period=period, period_label=label, teams=teams)

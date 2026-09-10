@@ -579,3 +579,18 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     # score archive. None until the user has at least joined the league.
     weekly_rank: int | None = None
     monthly_rank: int | None = None
+
+
+class GlobalLeaderboardEntry(BaseSchema):
+    rank: int
+    user_id: int = 0            # User.auto_id, matches the Flutter-facing id elsewhere
+    team_name: str
+    points: int
+
+
+class GlobalLeaderboardResponse(BaseSchema):
+    """GET /api/global-leagues/leaderboard/?period=weekly|monthly (Flutter:
+    Global League Classement tab)."""
+    period: str                 # "weekly" | "monthly"
+    period_label: str           # e.g. "Week 3" / "Month 9" for display
+    teams: list[GlobalLeaderboardEntry] = []
