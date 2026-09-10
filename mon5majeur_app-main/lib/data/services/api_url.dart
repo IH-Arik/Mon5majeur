@@ -33,6 +33,10 @@ class ApiUrl {
   // Push notifications
   static const registerFcmToken = "/api/v1/users/me/fcm-token";
 
+  // Language preference (dashboard QA #5: was never synced, so the admin
+  // panel's Language field just showed the User model's "en" default)
+  static const updateLanguage = "/api/v1/users/me/language";
+
   // Static content & GDPR (About Us / Legal Notices / Privacy Policy)
   static const aboutUs = "/api/aboutus/";
   static const legalNotices = "/api/legal-notices/";

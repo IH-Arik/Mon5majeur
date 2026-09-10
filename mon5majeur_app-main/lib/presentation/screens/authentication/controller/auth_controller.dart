@@ -9,6 +9,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/language/language_controller.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
@@ -138,6 +139,15 @@ class AuthController extends GetxController {
         AppConstants.userEmail,
         data['user']['email'] ?? '',
       );
+    }
+
+    // Dashboard QA #5: the onboarding language picker runs before login,
+    // so its choice never reached the backend User record until now — the
+    // token above only just started existing, so this is the first point
+    // a sync can succeed. Covers every path through this shared helper
+    // (email login, register+auto-login, Google, Apple).
+    if (Get.isRegistered<LanguageController>()) {
+      Get.find<LanguageController>().syncCurrentLanguageToBackend();
     }
   }
 

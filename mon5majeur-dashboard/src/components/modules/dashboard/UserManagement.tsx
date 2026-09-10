@@ -536,7 +536,10 @@ export default function UserManagement() {
                     <Avatar user={detailUser} size={16} />
                     <div>
                       <h3 className="text-lg font-semibold">
-                        {detailUser.full_name || "No name set"}
+                        {/* Team name is effectively the player's display
+                            name in-app - fall back to it before admitting
+                            no name is set at all (dashboard QA #5). */}
+                        {detailUser.full_name || detailUser.team_name || "No name set"}
                       </h3>
                       <p className="text-sm text-gray-500">{detailUser.email}</p>
                     </div>
