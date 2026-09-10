@@ -80,7 +80,7 @@ export default function AllBonus() {
       <div className="bg-white shadow rounded-lg overflow-hidden p-6">
         <h2 className="text-[22px] font-semibold">Manage Bonuses</h2>
         <p className="mb-6 text-[#828282]">
-          These 5 bonus types are built into the app — you can change their
+          These 4 bonus types are built into the app — you can change their
           token price or turn one off, but not add or remove a bonus type.
         </p>
 

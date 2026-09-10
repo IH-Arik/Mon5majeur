@@ -1,5 +1,5 @@
 """
-The admin-editable half of the bonus catalog: 5 fixed slugs, DB-backed price
+The admin-editable half of the bonus catalog: 4 fixed slugs, DB-backed price
 and active/inactive state. Replaces the old hardcoded BONUS_COSTS dict as the
 source of truth — that dict's values now live here only as seed defaults for
 first boot.
@@ -15,7 +15,6 @@ BONUS_DEFAULTS: dict[BonusSlug, tuple[str, int]] = {
     "sixth_man": ("6th Man", 170),
     "luxury_tax": ("Luxury Tax", 150),
     "live_scoring": ("Live Scoring", 200),
-    "stop_pub": ("Stop Pub", 450),
 }
 
 

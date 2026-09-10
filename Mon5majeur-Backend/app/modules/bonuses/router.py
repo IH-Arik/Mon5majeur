@@ -23,10 +23,10 @@ from app.modules.users.model import User
 
 router = APIRouter(prefix="/bonuses", tags=["Bonuses"])
 
-BonusSlug = Literal["chef_curry", "sixth_man", "luxury_tax", "live_scoring", "stop_pub"]
+BonusSlug = Literal["chef_curry", "sixth_man", "luxury_tax", "live_scoring"]
 
 _CHARGE_BONUSES = {"chef_curry", "sixth_man", "luxury_tax"}
-_SUBSCRIPTION_BONUSES = {"live_scoring", "stop_pub"}
+_SUBSCRIPTION_BONUSES = {"live_scoring"}
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -36,9 +36,7 @@ class InventoryResponse(BaseModel):
     chef_curry_charges: int
     luxury_tax_charges: int
     live_scoring_until: datetime | None
-    stop_pub_until: datetime | None
     live_scoring_active: bool
-    stop_pub_active: bool
 
 
 class PurchaseRequest(BaseModel):
@@ -72,15 +70,12 @@ def _aware(dt: datetime | None) -> datetime | None:
 def _to_response(inv: UserBonusInventory) -> InventoryResponse:
     now = datetime.now(timezone.utc)
     ls_active = inv.live_scoring_until is not None and _aware(inv.live_scoring_until) > now
-    sp_active = inv.stop_pub_until is not None and _aware(inv.stop_pub_until) > now
     return InventoryResponse(
         sixth_man_charges=inv.sixth_man_charges,
         chef_curry_charges=inv.chef_curry_charges,
         luxury_tax_charges=inv.luxury_tax_charges,
         live_scoring_until=inv.live_scoring_until,
-        stop_pub_until=inv.stop_pub_until,
         live_scoring_active=ls_active,
-        stop_pub_active=sp_active,
     )
 
 
@@ -139,10 +134,6 @@ async def purchase_bonus(
         # never actually unlock the live-score endpoint (403 forever).
         current_user.premium_until = inv.live_scoring_until
         await current_user.save()
-    elif payload.bonus == "stop_pub":
-        current_expiry = inv.stop_pub_until
-        base = current_expiry if current_expiry and current_expiry > now else now
-        inv.stop_pub_until = base + timedelta(days=365)
 
     await inv.save()
 

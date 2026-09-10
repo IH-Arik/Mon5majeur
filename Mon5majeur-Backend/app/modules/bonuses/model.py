@@ -6,7 +6,7 @@ from pymongo import ASCENDING, IndexModel
 
 from app.database.base import BaseDocument
 
-BonusSlug = Literal["chef_curry", "sixth_man", "luxury_tax", "live_scoring", "stop_pub"]
+BonusSlug = Literal["chef_curry", "sixth_man", "luxury_tax", "live_scoring"]
 
 
 class UserBonusQuota(BaseDocument):
@@ -53,7 +53,6 @@ class UserBonusInventory(BaseDocument):
 
     # Subscription-style bonuses (date = expiry; None = not active)
     live_scoring_until: datetime | None = None
-    stop_pub_until: datetime | None = None
 
     class Settings:
         name = "user_bonus_inventories"
@@ -64,11 +63,11 @@ class UserBonusInventory(BaseDocument):
 
 class BonusOffer(BaseDocument):
     """
-    Admin-editable catalog row for one of the 5 fixed bonus types.
+    Admin-editable catalog row for one of the 4 fixed bonus types.
 
-    The set of bonus types is fixed by the Flutter app (it hardcodes the 5
+    The set of bonus types is fixed by the Flutter app (it hardcodes the 4
     slugs and what each one does) — there is no "create a new bonus" here,
-    only price/availability control over the existing 5. See
+    only price/availability control over the existing 4. See
     bonuses.catalog for the seeding logic and defaults.
     """
     slug: BonusSlug

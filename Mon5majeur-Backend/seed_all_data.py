@@ -169,7 +169,6 @@ async def main():
             chef_curry_charges=5,
             luxury_tax_charges=5,
             live_scoring_until=datetime.now(timezone.utc) + timedelta(days=365),
-            stop_pub_until=datetime.now(timezone.utc) + timedelta(days=365)
         ))
 
     await TokenWallet.insert_many(wallets)

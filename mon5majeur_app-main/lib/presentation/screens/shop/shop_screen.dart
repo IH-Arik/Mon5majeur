@@ -46,11 +46,6 @@ class ShopScreen extends StatelessWidget {
     name: AppString.liveScoring,
     cost: 200,
   );
-  static const _stopPubOffer = _ShopOffer(
-    slug: 'stop_pub',
-    name: 'Stop-Pub',
-    cost: 450,
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -276,32 +271,6 @@ class ShopScreen extends StatelessWidget {
                     ),
 
                     SizedBox(height: 16.h),
-
-                    /// Stop-Pub (ads disabled for launch)
-                    if (kAdsEnabled) ...[
-                      _BonusCard(
-                        backgroundColor: const Color(0xFF2d1a1a),
-                        borderColor: const Color(0xFF6b2d2d),
-                        iconAsset: Assets.icons.livescoring,
-                        title: 'Stop-Pub',
-                        subtitle: 'Remove all ads',
-                        description:
-                            'Enjoy the app without any advertisements for a full year.',
-                        tokenAmount: '${_stopPubOffer.cost}',
-                        tokenSuffix: AppString.perYear.tr,
-                        buttonText: inv.stopPubActive
-                            ? 'Active ✓'
-                            : AppString.unlock.tr,
-                        buttonColor: inv.stopPubActive
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFEF4444),
-                        onUnlock: inv.stopPubActive
-                            ? null
-                            : () =>
-                                _confirmPurchase(context, c, _stopPubOffer),
-                      ),
-                      SizedBox(height: 16.h),
-                    ],
 
                     /// Jersey SALE — reserved for a future in-game jersey
                     /// store (QA 28/08/2026 #2). This card must stay a
