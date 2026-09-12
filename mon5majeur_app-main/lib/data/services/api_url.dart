@@ -143,6 +143,8 @@ class ApiUrl {
       "/api/global-leagues/matches/$matchDay/";
   static String globalLeaderboard(String period, int offset) =>
       "/api/global-leagues/leaderboard/?period=$period&offset=$offset";
+  static String globalLeaderboardTeamDetail(int userAutoId) =>
+      "/api/global-leagues/leaderboard/team/$userAutoId/";
   static const globalLeagueStatus = "/api/v1/leagues/global/status";
   static const globalLeagueJoin = "/api/v1/leagues/global/join";
 

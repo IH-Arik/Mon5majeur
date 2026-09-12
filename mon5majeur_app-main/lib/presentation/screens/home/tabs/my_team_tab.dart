@@ -13,6 +13,10 @@ class MyTeamTab extends StatefulWidget {
   final int? leagueId;
   final int? matchDay;
   final bool isPrivate; // ADD THIS
+  // QA5 #4: viewing another player's last-played squad (from the Global
+  // League leaderboard) isn't "today", so the default "My Team Points for
+  // today" header would be factually wrong there.
+  final String? headerText;
 
   const MyTeamTab({
     super.key,
@@ -21,6 +25,7 @@ class MyTeamTab extends StatefulWidget {
     this.leagueId,
     this.matchDay,
     this.isPrivate = false, // ADD THIS
+    this.headerText,
   });
 
   @override
@@ -146,7 +151,7 @@ class _MyTeamTabState extends State<MyTeamTab> {
         children: [
           SizedBox(height: 16.h),
           Text(
-            AppString.myTeamPointsForToday.tr,
+            widget.headerText ?? AppString.myTeamPointsForToday.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 16.sp,

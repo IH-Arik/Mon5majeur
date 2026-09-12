@@ -114,6 +114,8 @@ class EnglishTranslation {
     AppString.top4QualifyPlayoffs: 'Top 4 will qualify for the Playoffs',
     AppString.myTeamPointsForToday: 'My Team Points for today',
     AppString.viewDetails: 'View Details',
+    AppString.viewTeam: 'View Team',
+    AppString.noGamesPlayedYet: 'Hasn\'t played a night yet',
     AppString.leagueRules: 'League Rules',
     AppString.eliteBallers: 'Elite Ballers',
     AppString.privateLeague: 'Private League',

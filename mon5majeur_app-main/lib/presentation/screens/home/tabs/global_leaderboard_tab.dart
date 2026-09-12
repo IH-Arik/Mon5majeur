@@ -6,14 +6,17 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
+import '../screens/global_team_detail_screen.dart';
 
 class _LeaderboardEntry {
   final int rank;
+  final int userAutoId;
   final String teamName;
   final int points;
 
   const _LeaderboardEntry({
     required this.rank,
+    required this.userAutoId,
     required this.teamName,
     required this.points,
   });
@@ -21,6 +24,7 @@ class _LeaderboardEntry {
   factory _LeaderboardEntry.fromJson(Map<String, dynamic> json) {
     return _LeaderboardEntry(
       rank: (json['rank'] as num?)?.toInt() ?? 0,
+      userAutoId: (json['user_id'] as num?)?.toInt() ?? 0,
       teamName: json['team_name'] as String? ?? '',
       points: (json['points'] as num?)?.toInt() ?? 0,
     );
@@ -367,10 +371,32 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          // "View Details" used to sit here but had no onTap at all - dead,
-          // misleading UI. A weekly/monthly total has no single night's
-          // lineup to show as "details" in the first place, so removed
-          // rather than wired to a fake action.
+          SizedBox(width: 12.w),
+          // QA5 #4: restored, now wired to the player's actual last-played
+          // lineup + score (not a fake action like the removed version -
+          // see global_team_detail_screen.dart) rather than tonight's
+          // in-progress selection.
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => GlobalTeamDetailScreen(
+                  userAutoId: team.userAutoId,
+                  teamName: team.teamName,
+                ),
+              ),
+            ),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3A3D4E),
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+              child: Text(
+                AppString.viewTeam.tr,
+                style: TextStyle(color: Colors.white70, fontSize: 10.sp),
+              ),
+            ),
+          ),
           if (isTopOne) ...[
             SizedBox(width: 8.w),
             Text('🏆', style: TextStyle(fontSize: 16.sp)),

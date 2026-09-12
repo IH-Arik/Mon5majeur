@@ -603,3 +603,14 @@ class GlobalLeaderboardResponse(BaseSchema):
     month_number: int | None = None   # 1-12, set when period == "monthly"
     year: int = 0
     teams: list[GlobalLeaderboardEntry] = []
+
+
+class GlobalTeamDetailResponse(BaseSchema):
+    """GET /api/global-leagues/leaderboard/team/{user_auto_id}/ (Flutter:
+    Leaderboard row -> "Voir l'équipe" / "View Team", QA5 #4). The
+    selected player's most recently PLAYED night - not the lineup they are
+    currently composing for tonight."""
+    team_name: str
+    nba_date: str | None = None   # None if this player has never played a night yet
+    total_points: int = 0
+    selected_players: list[dict] = []

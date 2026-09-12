@@ -24,6 +24,7 @@ from app.modules.leagues.schema import (
     GlobalLeaderboardEntry,
     GlobalLeaderboardResponse,
     GlobalLeagueSelectionResponse,
+    GlobalTeamDetailResponse,
     MatchResultCompatResponse,
     PlayersSelectionRequest,
 )
@@ -147,27 +148,32 @@ async def _is_locked_today() -> bool:
     return now_utc >= tip_off
 
 
-async def _enrich_with_scores(selected_players: list[dict]) -> list[dict]:
-    """Attach each player's TODAY score to the stored selection dicts, as
-    last_two_scores (the Flutter Player model's expected key) - the
-    "My Team" screen's per-player badges are explicitly labelled
-    "Points for today", so this must be the same live/finalized score
-    live_scores/service.py computes for the Live Score screen, not a
+async def _enrich_with_scores(selected_players: list[dict], for_date: date | None = None) -> list[dict]:
+    """Attach each player's score ON `for_date` (defaults to today) to the
+    stored selection dicts, as last_two_scores (the Flutter Player model's
+    expected key) - the "My Team" screen's per-player badges are explicitly
+    labelled "Points for today", so this must be the same live/finalized
+    score live_scores/service.py computes for the Live Score screen, not a
     player's last PLAYED game (recent_two_scores) which can be stale
     from days ago and silently disagrees with Live Score once today's
     games are actually in progress. Before any game, this is 0 for
     everyone, exactly like Live Score shows pre-tip-off.
 
+    `for_date` lets the same enrichment serve a PAST night too (QA5 #4 -
+    a leaderboard row's "last played team" detail), where "today's score"
+    would be wrong - the game for that date has already finished, so this
+    returns its final score instead.
+
     The stored selection is a point-in-time snapshot (id/name/position/
     price) with no live score field, so without this the "My Team"
     screen's per-player points stay frozen at 0 forever, game or no
     game."""
-    today = await _nba_today()
+    target_date = for_date if for_date is not None else await _nba_today()
     enriched = []
     for p in selected_players:
         item = dict(p)
         raw_id = p.get("id")
-        today_score = 0.0
+        target_score = 0.0
         try:
             player_id = PydanticObjectId(str(raw_id)) if raw_id else None
         except Exception:
@@ -176,16 +182,16 @@ async def _enrich_with_scores(selected_players: list[dict]) -> list[dict]:
         if player_id:
             stat = await PlayerGameStats.find_one(
                 PlayerGameStats.player_id == player_id,
-                PlayerGameStats.nba_date == today,
+                PlayerGameStats.nba_date == target_date,
             )
             if stat:
-                today_score = stat.fantasy_score if stat.score_computed else compute_fantasy_score(stat)
-                today_score = today_score or 0.0
+                target_score = stat.fantasy_score if stat.score_computed else compute_fantasy_score(stat)
+                target_score = target_score or 0.0
             player_doc = await Player.get(player_id)
             if player_doc and player_doc.is_out:
-                today_score = 0.0  # OUT player live -> 0, spec §4.7
+                target_score = 0.0  # OUT player live -> 0, spec §4.7
 
-        item["last_two_scores"] = [None, round(today_score)]
+        item["last_two_scores"] = [None, round(target_score)]
         enriched.append(item)
     return enriched
 
@@ -513,4 +519,53 @@ async def get_global_leaderboard(
     return GlobalLeaderboardResponse(
         period=period, week_number=week_number, month_number=month_number,
         year=year, teams=teams,
+    )
+
+
+@router.get(
+    "/leaderboard/team/{user_auto_id}/",
+    response_model=GlobalTeamDetailResponse,
+    summary="A member's last-played Global League lineup + score (Flutter: Leaderboard 'Voir l'équipe', QA5 #4)",
+)
+async def get_global_leaderboard_team_detail(
+    user_auto_id: int,
+    _: User = Depends(get_current_user),
+) -> GlobalTeamDetailResponse:
+    league = await _get_global_league()
+    target_user = await User.find_one(User.auto_id == user_auto_id)
+    if not target_user:
+        raise NotFoundException("Player not found")
+
+    display_name = target_user.team_name or (
+        target_user.email.split("@")[0] if target_user.email else "Unknown"
+    )
+
+    # The most recent night GlobalLeagueDailyScore actually archived a score
+    # for this user - "last played", not whatever they are currently
+    # composing for tonight (that lineup may not even be finished yet).
+    last_score = await GlobalLeagueDailyScore.find(
+        GlobalLeagueDailyScore.user_id == target_user.id,
+        GlobalLeagueDailyScore.league_id == league.id,
+    ).sort(-GlobalLeagueDailyScore.nba_date).first_or_none()
+
+    if not last_score:
+        return GlobalTeamDetailResponse(team_name=display_name)
+
+    # FlutterPlayerSelection keeps one row per match_day (unique index on
+    # user_id/league_auto_id/match_day), each stamped with the nba_date it
+    # was played for - so the exact historical 5-player selection for that
+    # past night is still recoverable, not just its aggregate total.
+    selection_doc = await FlutterPlayerSelection.find_one(
+        FlutterPlayerSelection.user_id == target_user.id,
+        FlutterPlayerSelection.league_auto_id == league.auto_id,
+        FlutterPlayerSelection.nba_date == last_score.nba_date,
+    )
+    selected_players = selection_doc.selected_players if selection_doc else []
+    enriched = await _enrich_with_scores(selected_players, for_date=last_score.nba_date)
+
+    return GlobalTeamDetailResponse(
+        team_name=display_name,
+        nba_date=str(last_score.nba_date),
+        total_points=int(round(last_score.total_points)),
+        selected_players=enriched,
     )

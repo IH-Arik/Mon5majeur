@@ -120,6 +120,8 @@ class AppString {
       'Top 4 will qualify for the Playoffs';
   static const String myTeamPointsForToday = 'My Team Points for today';
   static const String viewDetails = 'View Details';
+  static const String viewTeam = 'View Team';
+  static const String noGamesPlayedYet = 'Hasn\'t played a night yet';
   static const String leagueRules = 'League Rules';
   static const String eliteBallers = 'Elite Ballers';
   static const String privateLeague = 'Private League';

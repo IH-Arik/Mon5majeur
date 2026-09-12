@@ -116,6 +116,8 @@ class FrenchTranslation {
         'Les 4 premiers se qualifient pour les Playoffs',
     AppString.myTeamPointsForToday: 'Points de mon équipe aujourd\'hui',
     AppString.viewDetails: 'Voir les détails',
+    AppString.viewTeam: 'Voir l\'équipe',
+    AppString.noGamesPlayedYet: 'N\'a pas encore joué de soirée',
     AppString.leagueRules: 'Règles de la ligue',
     AppString.eliteBallers: 'Elite Ballers',
     AppString.privateLeague: 'Ligue privée',
