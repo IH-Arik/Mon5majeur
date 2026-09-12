@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 from beanie import PydanticObjectId
 
 from app.core.logging import get_logger
-from app.exceptions.errors import ForbiddenException, NotFoundException
+from app.exceptions.errors import BadRequestException, ForbiddenException, NotFoundException
 from app.modules.bonuses.service import BonusService
 from app.modules.leagues.model import League, LeagueMembership
 from app.modules.lineups.constants import (
@@ -39,7 +39,13 @@ class LineupService:
     # ------------------------------------------------------------------
 
     async def submit_lineup(self, user: User, payload: SubmitLineupRequest) -> LineupSubmissionResponse:
-        league_id = PydanticObjectId(payload.league_id)
+        # A malformed league_id (not a 24-char hex ObjectId) used to reach
+        # PydanticObjectId() unguarded and blow up as an unhandled 500 -
+        # found while smoke-testing every endpoint.
+        try:
+            league_id = PydanticObjectId(payload.league_id)
+        except Exception:
+            raise BadRequestException(f"Invalid league_id: {payload.league_id!r}")
         nba_date = payload.nba_date
 
         # 1. Verify league membership

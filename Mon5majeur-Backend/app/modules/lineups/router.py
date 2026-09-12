@@ -3,6 +3,7 @@ from datetime import date
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
+from app.exceptions.errors import BadRequestException
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
 from app.modules.lineups.dependencies import get_lineup_service
 from app.modules.lineups.schema import (
@@ -14,6 +15,17 @@ from app.modules.lineups.service import LineupService
 from app.modules.users.model import User
 
 router = APIRouter(prefix="/lineups", tags=["Lineups"])
+
+
+def _parse_league_id(league_id: str) -> PydanticObjectId:
+    """A malformed league_id (not a 24-char hex ObjectId) used to reach
+    PydanticObjectId() unguarded and blow up as an unhandled 500 - found
+    while smoke-testing every endpoint. Bad input should be a clean 400,
+    never a server error."""
+    try:
+        return PydanticObjectId(league_id)
+    except Exception:
+        raise BadRequestException(f"Invalid league_id: {league_id!r}")
 
 
 @router.post("", response_model=LineupSubmissionResponse, summary="Submit or update lineup")
@@ -36,7 +48,7 @@ async def my_lineup(
     user: User = Depends(get_current_user),
     service: LineupService = Depends(get_lineup_service),
 ) -> MyLineupTodayResponse:
-    return await service.get_my_lineup(user, PydanticObjectId(league_id), nba_date)
+    return await service.get_my_lineup(user, _parse_league_id(league_id), nba_date)
 
 
 @router.get(
@@ -48,7 +60,7 @@ async def bonus_status(
     user: User = Depends(get_current_user),
     service: LineupService = Depends(get_lineup_service),
 ) -> dict:
-    return await service.bonuses.get_status(user.id, PydanticObjectId(league_id))
+    return await service.bonuses.get_status(user.id, _parse_league_id(league_id))
 
 
 # Admin endpoints -------------------------------------------------------

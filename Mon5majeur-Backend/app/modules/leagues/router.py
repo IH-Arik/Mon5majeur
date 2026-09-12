@@ -3,6 +3,7 @@ from datetime import date
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query, status
 
+from app.exceptions.errors import BadRequestException
 from app.modules.auth.dependencies import get_current_superuser, get_current_user
 from app.modules.leagues.dependencies import get_league_service
 from app.modules.leagues.schema import (
@@ -211,7 +212,14 @@ async def kick_member(
     current_user: User = Depends(get_current_user),
     service: LeagueService = Depends(get_league_service),
 ) -> dict:
-    return await service.kick_member(league_id, PydanticObjectId(target_user_id), current_user)
+    # A malformed target_user_id (not a 24-char hex ObjectId) used to reach
+    # PydanticObjectId() unguarded and blow up as an unhandled 500 - found
+    # while smoke-testing every endpoint.
+    try:
+        target_oid = PydanticObjectId(target_user_id)
+    except Exception:
+        raise BadRequestException(f"Invalid target_user_id: {target_user_id!r}")
+    return await service.kick_member(league_id, target_oid, current_user)
 
 
 @router.post(

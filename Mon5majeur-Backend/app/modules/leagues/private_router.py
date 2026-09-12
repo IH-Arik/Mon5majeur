@@ -16,8 +16,10 @@ leauge_description, team_budget, max_team_number, teams, join_code, is_ready, et
 
 from fastapi import APIRouter, Depends, status
 
+from app.exceptions.errors import NotFoundException
 from app.modules.auth.dependencies import get_current_user
 from app.modules.leagues.dependencies import get_league_service
+from app.modules.leagues.model import League, LeagueMembership
 from app.modules.leagues.schema import (
     CreatePublicLeagueRequest,
     JoinPrivateLeagueRequest,
@@ -39,6 +41,27 @@ from app.modules.leagues.service import LeagueService
 from app.modules.users.model import User
 
 router = APIRouter(prefix="/private-leagues", tags=["Private Leagues (Flutter compat)"])
+
+
+async def _ensure_private_member(league_auto_id: int, user: User) -> None:
+    """Standings/playoffs/bonus-status expose the full member roster and
+    every team's record - found (via an API smoke test) reachable by ANY
+    authenticated user who just guesses/enumerates a league_id, not only
+    that league's invited members. "Private" leagues must not leak this.
+    404 (not 403) to match get_private_league_by_auto_id's existing
+    convention of not confirming a private league's existence to
+    non-members."""
+    if user.is_superuser:
+        return
+    league = await League.find_one(League.auto_id == league_auto_id)
+    if not league:
+        raise NotFoundException("League not found")
+    membership = await LeagueMembership.find_one(
+        LeagueMembership.league_id == league.id,
+        LeagueMembership.user_id == user.id,
+    )
+    if not membership:
+        raise NotFoundException("League not found")
 
 
 # Static paths MUST be declared before the /{league_id} wildcard.
@@ -75,8 +98,9 @@ async def my_matches_today(
 async def get_private_match_result(
     league_id: int,
     match_day: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> MatchResultCompatResponse:
+    await _ensure_private_member(league_id, current_user)
     data = await selection_service.get_match_result(league_id, match_day)
     return MatchResultCompatResponse(**data)
 
@@ -176,6 +200,7 @@ async def get_private_bonus_status(
     league_id: int,
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    await _ensure_private_member(league_id, current_user)
     return await selection_service.get_bonus_availability(league_id, current_user)
 
 
@@ -186,8 +211,9 @@ async def get_private_bonus_status(
 )
 async def get_private_standings(
     league_id: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StandingsResponse:
+    await _ensure_private_member(league_id, current_user)
     return await leaderboard_service.get_standings(league_id)
 
 
@@ -198,8 +224,9 @@ async def get_private_standings(
 )
 async def get_private_playoffs(
     league_id: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> PlayoffBracketResponse:
+    await _ensure_private_member(league_id, current_user)
     return await leaderboard_service.get_playoff_bracket(league_id)
 
 
