@@ -227,6 +227,18 @@ class FrenchTranslation {
     AppString.openForAnyoneToJoin: 'Ouvert à tous',
     AppString.weekly: 'Hebdomadaire',
     AppString.monthly: 'Mensuel',
+    AppString.january: 'Janvier',
+    AppString.february: 'Février',
+    AppString.march: 'Mars',
+    AppString.april: 'Avril',
+    AppString.may: 'Mai',
+    AppString.june: 'Juin',
+    AppString.july: 'Juillet',
+    AppString.august: 'Août',
+    AppString.september: 'Septembre',
+    AppString.october: 'Octobre',
+    AppString.november: 'Novembre',
+    AppString.december: 'Décembre',
     AppString.top8WeeklyReward:
         'Le Top 8 gagne un bonus gratuit chaque semaine',
     AppString.monthlyWinnerReward:

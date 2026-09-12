@@ -148,7 +148,7 @@ def _month_start_n_ago(today: date, months_ago: int) -> date:
 
 async def get_leaderboard_for_period(
     league: League, period: str, today: date, offset: int = 0
-) -> tuple[list[tuple[PydanticObjectId, float]], str]:
+) -> tuple[list[tuple[PydanticObjectId, float]], int | None, int | None, int]:
     """Full ranked list for the Classement tab (Flutter: Global League ›
     weekly/monthly leaderboard), reusing the exact same per-night archive
     and ranking logic as get_weekly_monthly_rank/the reward jobs above —
@@ -157,22 +157,26 @@ async def get_leaderboard_for_period(
 
     `offset` browses previous periods (0 = current, 1 = the one before,
     ...), matching the Classement tab's existing prev/next period arrows.
-    Returns (ranked [(user_id, total_score), ...], a display label like
-    "Week 3" / "September 2026").
+
+    Returns (ranked [(user_id, total_score), ...], week_number, month_number,
+    year) - QA5 #3: no more a pre-formatted English label ("Week 3",
+    "September 2026") baked in here; the Flutter side localises the raw
+    numbers itself, the same way it already handles every other date/time
+    label in the app. Exactly one of week_number/month_number is set,
+    matching `period`.
     """
     offset = max(offset, 0)
     if period == "monthly":
         month_start = _month_start_n_ago(today, offset)
         _, month_end = _month_bounds(month_start)
-        label = month_start.strftime("%B %Y")
         ranked = await _ranked_totals_for_period(league, month_start, month_end)
-        return ranked, label
+        return ranked, None, month_start.month, month_start.year
 
     reference = today - timedelta(weeks=offset)
     week_start, week_end = _week_bounds(reference)
-    label = f"Week {week_start.isocalendar().week}"
     ranked = await _ranked_totals_for_period(league, week_start, week_end)
-    return ranked, label
+    iso = week_start.isocalendar()
+    return ranked, iso.week, None, iso.year
 
 
 # ---------------------------------------------------------------------------

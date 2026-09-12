@@ -482,9 +482,14 @@ async def get_global_leaderboard(
     league = await _get_global_league()
     today = await _nba_today()
 
-    ranked, label = await get_leaderboard_for_period(league, period, today, offset)
+    ranked, week_number, month_number, year = await get_leaderboard_for_period(
+        league, period, today, offset
+    )
     if not ranked:
-        return GlobalLeaderboardResponse(period=period, period_label=label, teams=[])
+        return GlobalLeaderboardResponse(
+            period=period, week_number=week_number, month_number=month_number,
+            year=year, teams=[],
+        )
 
     user_ids = [uid for uid, _ in ranked]
     users = await User.find({"_id": {"$in": user_ids}}).to_list()
@@ -505,4 +510,7 @@ async def get_global_leaderboard(
             points=int(round(total)),
         ))
 
-    return GlobalLeaderboardResponse(period=period, period_label=label, teams=teams)
+    return GlobalLeaderboardResponse(
+        period=period, week_number=week_number, month_number=month_number,
+        year=year, teams=teams,
+    )

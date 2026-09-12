@@ -9,7 +9,6 @@ class MyMatchController extends GetxController {
 
   final isLoading = true.obs;
   final todaysGames = <Game>[].obs;
-  final gamesHistory = <Game>[].obs;
   final playerScores = <PlayerTodayScore>[].obs;
   final error = ''.obs;
 
@@ -24,7 +23,6 @@ class MyMatchController extends GetxController {
     error.value = '';
     await Future.wait([
       _fetchTodaysGames(),
-      _fetchGamesHistory(),
       _fetchPlayerScores(),
     ]);
     isLoading.value = false;
@@ -35,19 +33,6 @@ class MyMatchController extends GetxController {
       final resp = await _api.get(url: ApiUrl.baseUrl + ApiUrl.gamesToday);
       if (resp.statusCode == 200 && resp.body is List) {
         todaysGames.value = (resp.body as List)
-            .map((e) => Game.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _fetchGamesHistory() async {
-    try {
-      final resp = await _api.get(
-        url: '${ApiUrl.baseUrl}${ApiUrl.gamesHistory}?days=7',
-      );
-      if (resp.statusCode == 200 && resp.body is List) {
-        gamesHistory.value = (resp.body as List)
             .map((e) => Game.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 
@@ -43,8 +44,16 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
 
   bool _isLoading = true;
   String? _error;
-  String _periodLabel = '';
+  int? _weekNumber;
+  int? _monthNumber;
+  int _year = 0;
   List<_LeaderboardEntry> _teams = const [];
+
+  String get _periodLabel {
+    if (_weekNumber != null) return formatWeekLabel(_weekNumber!);
+    if (_monthNumber != null) return formatMonthLabel(_monthNumber!, _year);
+    return '';
+  }
 
   @override
   void initState() {
@@ -69,7 +78,9 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
         final body = response.body as Map<String, dynamic>;
         final rawTeams = body['teams'] as List<dynamic>? ?? const [];
         setState(() {
-          _periodLabel = body['period_label'] as String? ?? '';
+          _weekNumber = (body['week_number'] as num?)?.toInt();
+          _monthNumber = (body['month_number'] as num?)?.toInt();
+          _year = (body['year'] as num?)?.toInt() ?? 0;
           _teams = rawTeams
               .whereType<Map<String, dynamic>>()
               .map(_LeaderboardEntry.fromJson)

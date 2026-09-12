@@ -135,12 +135,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 1500),
               curve: Curves.easeOut,
               builder: (context, scale, child) {
+                // QA5 #1 (regression): was Opacity(0.15) - nearly invisible,
+                // unlike every other screen's court background
+                // (build_your_team_tab/my_team_tab/result_tab), which all
+                // render at full opacity.
                 return Transform.scale(
                   scale: scale,
-                  child: Opacity(
-                    opacity: 0.15,
-                    child: Assets.images.homebg.image(fit: BoxFit.cover),
-                  ),
+                  child: Assets.images.homebg.image(fit: BoxFit.cover),
                 );
               },
             ),

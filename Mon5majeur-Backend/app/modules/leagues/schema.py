@@ -590,7 +590,16 @@ class GlobalLeaderboardEntry(BaseSchema):
 
 class GlobalLeaderboardResponse(BaseSchema):
     """GET /api/global-leagues/leaderboard/?period=weekly|monthly (Flutter:
-    Global League Classement tab)."""
+    Global League Classement tab).
+
+    QA5 #3: period_label used to be pre-formatted English text ("Week 3",
+    "September 2026") baked in on the backend, which could never be
+    translated client-side. Replaced with raw numbers - the Flutter side
+    builds the FR/EN display string itself, the same way it already
+    handles every other date/time label in the app.
+    """
     period: str                 # "weekly" | "monthly"
-    period_label: str           # e.g. "Week 3" / "Month 9" for display
+    week_number: int | None = None    # ISO week number, set when period == "weekly"
+    month_number: int | None = None   # 1-12, set when period == "monthly"
+    year: int = 0
     teams: list[GlobalLeaderboardEntry] = []

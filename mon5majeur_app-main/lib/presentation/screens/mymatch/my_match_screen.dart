@@ -68,17 +68,6 @@ class MyMatchScreen extends StatelessWidget {
                             .toList(),
                 ),
                 SizedBox(height: 20.h),
-                _Section(
-                  title: AppString.last7DaysNbaResults.tr,
-                  icon: Assets.icons.basketBall,
-                  initiallyExpanded: true,
-                  children: ctrl.gamesHistory.isEmpty
-                      ? [_emptyState(AppString.noRecentGames.tr)]
-                      : ctrl.gamesHistory
-                            .map((g) => _GameResultCard(game: g, showDate: true))
-                            .toList(),
-                ),
-                SizedBox(height: 20.h),
               ],
             ),
           ),
@@ -174,9 +163,8 @@ class _SectionState extends State<_Section> {
 
 class _GameResultCard extends StatelessWidget {
   final Game game;
-  final bool showDate;
 
-  const _GameResultCard({required this.game, this.showDate = false});
+  const _GameResultCard({required this.game});
 
   Color _statusColor() {
     switch (game.status) {
@@ -218,14 +206,6 @@ class _GameResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showDate && game.datetimeUtc.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(bottom: 6.h),
-              child: Text(
-                _formatDate(game.datetimeUtc),
-                style: TextStyle(color: Colors.white38, fontSize: 11.sp),
-              ),
-            ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -321,29 +301,6 @@ class _GameResultCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(String iso) {
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      const months = [
-        '',
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      return '${months[dt.month]} ${dt.day}, ${dt.year}';
-    } catch (_) {
-      return '';
-    }
-  }
 }
 
 class _PlayerScoreCard extends StatelessWidget {
