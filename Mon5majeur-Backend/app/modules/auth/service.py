@@ -14,11 +14,13 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.database.counters import next_seq
 from app.exceptions.errors import BadRequestException, NotFoundException, UnauthorizedException
 from app.modules.auth.constants import GOOGLE_TOKEN_INFO_URL, SUPPORTED_LANGUAGES
 from app.modules.auth.model import OTPToken
 from app.modules.auth.schema import (
     AppleOAuthRequest,
+    AuthUserInfo,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleOAuthRequest,
@@ -36,10 +38,25 @@ from app.utils.email import send_otp_email
 logger = get_logger(__name__)
 
 
-def _make_tokens(user_id: str) -> TokenResponse:
+def _make_tokens(user_id: str, user: User | None = None) -> TokenResponse:
+    access = create_access_token(user_id)
+    refresh = create_refresh_token(user_id)
+    user_info = None
+    if user:
+        user_info = AuthUserInfo(
+            id=getattr(user, "auto_id", None),
+            email=getattr(user, "email", ""),
+            full_name=getattr(user, "full_name", None),
+            avatar_url=getattr(user, "avatar_url", None),
+            is_profile_complete=getattr(user, "is_profile_complete", False),
+        )
     return TokenResponse(
-        access_token=create_access_token(user_id),
-        refresh_token=create_refresh_token(user_id),
+        access_token=access,
+        refresh_token=refresh,
+        token_type="bearer",
+        access=access,
+        refresh=refresh,
+        user=user_info,
     )
 
 
@@ -69,17 +86,19 @@ class AuthService:
         # Send email verification OTP
         await self._create_and_send_otp(user, "verify_email")
 
-        return _make_tokens(str(user.id))
+        return _make_tokens(str(user.id), user)
 
     # ── Login ─────────────────────────────────────────────────────────────────
 
     async def login(self, payload: LoginRequest) -> TokenResponse:
         user = await self.user_repo.get_by_email(payload.email)
-        if not user or not verify_password(payload.password, user.hashed_password or ""):
+        if not user or not verify_password(payload.password, getattr(user, "hashed_password", "") or ""):
             raise UnauthorizedException("Invalid email or password")
-        if not user.is_active:
+        if getattr(user, "is_banned", False):
+            raise UnauthorizedException("This account has been banned")
+        if not getattr(user, "is_active", True):
             raise UnauthorizedException("Account is inactive")
-        return _make_tokens(str(user.id))
+        return _make_tokens(str(user.id), user)
 
     # ── Refresh ───────────────────────────────────────────────────────────────
 
@@ -95,7 +114,9 @@ class AuthService:
         user = await self.user_repo.get(PydanticObjectId(user_id))
         if not user or not user.is_active:
             raise UnauthorizedException("User not found or inactive")
-        return _make_tokens(user_id)
+        if user.is_banned:
+            raise UnauthorizedException("This account has been banned")
+        return _make_tokens(user_id, user)
 
     # ── Email verification ────────────────────────────────────────────────────
 
@@ -163,35 +184,108 @@ class AuthService:
     # ── Google OAuth ──────────────────────────────────────────────────────────
 
     async def google_oauth(self, payload: GoogleOAuthRequest) -> TokenResponse:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(GOOGLE_TOKEN_INFO_URL, params={"id_token": payload.id_token})
+        id_token = payload.id_token
+        if not id_token:
+            raise BadRequestException("Google ID token is required")
+
+        # 1. Fetch tokeninfo from Google
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(GOOGLE_TOKEN_INFO_URL, params={"id_token": id_token})
+        except httpx.RequestError as exc:
+            logger.error("Failed to connect to Google OAuth service: %s", exc)
+            raise UnauthorizedException("Could not connect to Google authentication service")
 
         if resp.status_code != 200:
-            raise UnauthorizedException("Invalid Google token")
+            logger.warning("Google token validation failed: status=%s, body=%s", resp.status_code, resp.text)
+            raise UnauthorizedException("Invalid or expired Google token")
 
-        data = resp.json()
-        if data.get("aud") != settings.SOCIAL_AUTH_GOOGLE_CLIENT_ID:
-            raise UnauthorizedException("Google token audience mismatch")
+        try:
+            data = resp.json()
+        except Exception:
+            raise UnauthorizedException("Invalid response from Google verification service")
 
+        # 2. Check token issuer
+        iss = data.get("iss", "")
+        if iss not in ("accounts.google.com", "https://accounts.google.com"):
+            logger.warning("Google token issuer mismatch: %s", iss)
+            raise UnauthorizedException("Invalid Google token issuer")
+
+        # 3. Audience & Authorized Party check
+        allowed_ids = settings.allowed_google_client_ids
+        token_aud = data.get("aud")
+        token_azp = data.get("azp")
+        if allowed_ids:
+            if token_aud not in allowed_ids and token_azp not in allowed_ids:
+                logger.warning(
+                    "Google token audience mismatch. aud=%s, azp=%s, allowed=%s",
+                    token_aud,
+                    token_azp,
+                    allowed_ids,
+                )
+                raise UnauthorizedException("Google token audience mismatch")
+
+        # 4. Email verification
         email = data.get("email")
         if not email:
-            raise UnauthorizedException("Google token missing email")
+            raise UnauthorizedException("Google account has no email")
 
-        user = await self.user_repo.get_by_email(email)
+        email_verified = data.get("email_verified")
+        if email_verified not in (True, "true", "True", 1, "1"):
+            raise UnauthorizedException("Google email address is not verified")
+
+        email = email.lower().strip()
+        google_id = data.get("sub")
+        full_name = data.get("name") or (f"{data.get('given_name', '')} {data.get('family_name', '')}".strip() or None)
+        avatar_url = data.get("picture")
+
+        # 5. User lookup & linking: first by google_id, then by email
+        user: User | None = None
+        if google_id:
+            user = await self.user_repo.get_by_google_id(google_id)
         if not user:
+            user = await self.user_repo.get_by_email(email)
+
+        if user:
+            # Check account active / banned status
+            if getattr(user, "is_banned", False):
+                raise UnauthorizedException("This account has been banned")
+            if not getattr(user, "is_active", True):
+                raise UnauthorizedException("Account is inactive")
+
+            updates: dict = {}
+            if not getattr(user, "google_id", None) and google_id:
+                updates["google_id"] = google_id
+            if getattr(user, "auth_provider", None) != "google" and not getattr(user, "hashed_password", None):
+                updates["auth_provider"] = "google"
+            if not getattr(user, "is_verified", False):
+                updates["is_verified"] = True
+            if not getattr(user, "full_name", None) and full_name:
+                updates["full_name"] = full_name
+            if not getattr(user, "avatar_url", None) and avatar_url:
+                updates["avatar_url"] = avatar_url
+            if getattr(user, "auto_id", None) is None:
+                user.auto_id = await next_seq("users")
+                updates["auto_id"] = user.auto_id
+
+            if updates:
+                await user.save_updated(**updates)
+        else:
+            locale = data.get("locale", "en")
+            lang = "fr" if str(locale).lower().startswith("fr") else "en"
             user = await self.user_repo.create(
                 email=email,
                 hashed_password=None,
-                full_name=data.get("name"),
-                avatar_url=data.get("picture"),
+                full_name=full_name,
+                avatar_url=avatar_url,
+                language=lang,
                 is_verified=True,
                 auth_provider="google",
-                google_id=data.get("sub"),
+                google_id=google_id,
             )
-        elif not user.google_id:
-            await user.save_updated(google_id=data.get("sub"), auth_provider="google", is_verified=True)
 
-        return _make_tokens(str(user.id))
+        logger.info("Google login successful | user_id=%s | email=%s", user.id, user.email)
+        return _make_tokens(str(user.id), user)
 
     # ── Apple OAuth ───────────────────────────────────────────────────────────
 
@@ -218,7 +312,7 @@ class AuthService:
                 auth_provider="apple",
                 apple_id=apple_user_id,
             )
-        return _make_tokens(str(user.id))
+        return _make_tokens(str(user.id), user)
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 

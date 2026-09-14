@@ -9,9 +9,11 @@ Mounted at /api (no /v1 prefix) to match Flutter's hardcoded URLs in api_url.dar
   POST /api/auth/verify-forgot-password-otp/   → validate reset OTP (non-consuming)
   POST /api/auth/change-password/               → reset password (no auth — post OTP flow)
 """
+from typing import Any
+
 import httpx
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 from app.core.config import settings
 from app.core.security import (
@@ -22,6 +24,7 @@ from app.core.security import (
 )
 from app.exceptions.errors import BadRequestException, UnauthorizedException
 from app.modules.auth.model import OTPToken
+from app.modules.auth.schema import GoogleOAuthRequest
 from app.modules.auth.service import AuthService, _generate_otp
 from app.modules.auth.dependencies import get_auth_service, get_current_user
 from app.modules.users.model import User
@@ -80,17 +83,34 @@ class FlutterChangePasswordAuthRequest(BaseModel):
 
 class FlutterGoogleAuthRequest(BaseModel):
     """POST /api/auth/google/ — Flutter sends id_token from google_sign_in package."""
-    id_token: str
+    id_token: str | None = None
+    token: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_token(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            tok = values.get("id_token") or values.get("token")
+            if not tok or not str(tok).strip():
+                raise ValueError("id_token is required")
+            values["id_token"] = str(tok).strip()
+        return values
 
 
 class LoginUserInfo(BaseModel):
     id: int | None = None
     email: str = ""
+    full_name: str | None = None
+    avatar_url: str | None = None
+    is_profile_complete: bool = False
 
 
 class FlutterLoginResponse(BaseModel):
     access: str
     refresh: str
+    access_token: str | None = None
+    refresh_token: str | None = None
+    token_type: str = "bearer"
     user: LoginUserInfo
 
 
@@ -296,47 +316,31 @@ async def flutter_change_password_auth(
     response_model=FlutterLoginResponse,
     summary="Google Sign-In (Flutter: AuthController.loginWithGoogle)",
 )
+@router.post(
+    "/google",
+    response_model=FlutterLoginResponse,
+    include_in_schema=False,
+)
 async def flutter_google_auth(
     payload: FlutterGoogleAuthRequest,
     service: AuthService = Depends(get_auth_service),
 ) -> FlutterLoginResponse:
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            "https://www.googleapis.com/oauth2/v3/tokeninfo",
-            params={"id_token": payload.id_token},
+    google_req = GoogleOAuthRequest(id_token=payload.id_token)
+    token_resp = await service.google_oauth(google_req)
+    user_info = LoginUserInfo()
+    if token_resp.user:
+        user_info = LoginUserInfo(
+            id=token_resp.user.id,
+            email=token_resp.user.email,
+            full_name=token_resp.user.full_name,
+            avatar_url=token_resp.user.avatar_url,
+            is_profile_complete=token_resp.user.is_profile_complete,
         )
-
-    if resp.status_code != 200:
-        raise UnauthorizedException("Invalid Google token")
-
-    data = resp.json()
-
-    # Validate audience — must match our web client ID
-    if data.get("aud") != settings.SOCIAL_AUTH_GOOGLE_CLIENT_ID:
-        raise UnauthorizedException("Google token audience mismatch")
-
-    email = data.get("email")
-    if not email:
-        raise UnauthorizedException("Google account has no email")
-
-    user = await service.user_repo.get_by_email(email)
-    if not user:
-        user = await service.user_repo.create(
-            email=email,
-            hashed_password=None,
-            is_verified=True,
-            auth_provider="google",
-            google_id=data.get("sub"),
-        )
-    elif not user.google_id:
-        await user.save_updated(
-            google_id=data.get("sub"),
-            auth_provider="google",
-            is_verified=True,
-        )
-
     return FlutterLoginResponse(
-        access=create_access_token(str(user.id)),
-        refresh=create_refresh_token(str(user.id)),
-        user=LoginUserInfo(id=user.auto_id, email=user.email),
+        access=token_resp.access or token_resp.access_token,
+        refresh=token_resp.refresh or token_resp.refresh_token,
+        access_token=token_resp.access_token,
+        refresh_token=token_resp.refresh_token,
+        token_type=token_resp.token_type,
+        user=user_info,
     )

@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def init_sentry() -> None:
-    if not settings.SENTRY_DSN:
+    dsn = (settings.SENTRY_DSN or "").strip()
+    if not dsn or dsn.startswith("#") or not (dsn.startswith("http://") or dsn.startswith("https://")):
         logger.info("Sentry disabled (SENTRY_DSN not set)")
         return
 

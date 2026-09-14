@@ -139,6 +139,11 @@ async def change_password(
     summary="Login or register with Google",
     description="Pass the `id_token` returned by Google Sign-In SDK.",
 )
+@router.post(
+    "/google/",
+    response_model=TokenResponse,
+    include_in_schema=False,
+)
 async def google_oauth(
     payload: GoogleOAuthRequest,
     service: AuthService = Depends(get_auth_service),

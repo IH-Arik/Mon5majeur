@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── CORS ─────────────────────────────────────────────────────────────────
-    BACKEND_CORS_ORIGINS: list[str] = []
+    BACKEND_CORS_ORIGINS: list[str] | str = []
 
     @field_validator("DEBUG", mode="before")
     @classmethod
@@ -70,8 +70,16 @@ class Settings(BaseSettings):
     AWS_S3_SIGNATURE_VERSION: str = "s3v4"
 
     # ── Google OAuth ──────────────────────────────────────────────────────────
-    SOCIAL_AUTH_GOOGLE_CLIENT_ID: str = ""
+    SOCIAL_AUTH_GOOGLE_CLIENT_ID: str = (
+        "144976760248-ncr727numc3pgi5nlq1fqp6t0k28gitv.apps.googleusercontent.com"
+    )
     SOCIAL_AUTH_GOOGLE_SECRET: str = ""
+    # Allowed Google Client IDs for Web, Android, and iOS clients
+    GOOGLE_CLIENT_IDS: list[str] | str = [
+        "144976760248-ncr727numc3pgi5nlq1fqp6t0k28gitv.apps.googleusercontent.com",  # Web / Server
+        "144976760248-t1l00leat9g0jvace3f6chksju0nlc2n.apps.googleusercontent.com",  # Android
+        "144976760248-m1k483v6kbi0o8i28l96b2pra777ppfk.apps.googleusercontent.com",  # iOS
+    ]
 
     # ── Apple OAuth ───────────────────────────────────────────────────────────
     APPLE_CLIENT_ID: str = ""
@@ -104,7 +112,7 @@ class Settings(BaseSettings):
     # ── File Upload ───────────────────────────────────────────────────────────
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
-    ALLOWED_UPLOAD_EXTENSIONS: list[str] = ["jpg", "jpeg", "png", "pdf", "docx"]
+    ALLOWED_UPLOAD_EXTENSIONS: list[str] | str = ["jpg", "jpeg", "png", "pdf", "docx"]
     # Absolute origin (e.g. "https://api.mon5majeur.com") the /static/... path
     # returned by an upload is prefixed with. The dashboard and mobile app are
     # served from a different origin than the API, so a bare "/static/..."
@@ -133,6 +141,33 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")]
         return v
+
+    @field_validator("GOOGLE_CLIENT_IDS", mode="before")
+    @classmethod
+    def split_google_client_ids(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v
+
+    @property
+    def allowed_google_client_ids(self) -> set[str]:
+        ids: set[str] = set()
+        if self.SOCIAL_AUTH_GOOGLE_CLIENT_ID:
+            for cid in self.SOCIAL_AUTH_GOOGLE_CLIENT_ID.split(","):
+                c = cid.strip()
+                if c:
+                    ids.add(c)
+        if isinstance(self.GOOGLE_CLIENT_IDS, list):
+            for cid in self.GOOGLE_CLIENT_IDS:
+                c = str(cid).strip()
+                if c:
+                    ids.add(c)
+        elif isinstance(self.GOOGLE_CLIENT_IDS, str):
+            for cid in self.GOOGLE_CLIENT_IDS.split(","):
+                c = cid.strip()
+                if c:
+                    ids.add(c)
+        return ids
 
     # ── Pagination ────────────────────────────────────────────────────────────
     DEFAULT_PAGE_SIZE: int = 20

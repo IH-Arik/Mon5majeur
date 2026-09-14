@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import EmailStr, StringConstraints, field_validator
+from pydantic import EmailStr, StringConstraints, field_validator, model_validator
 
 from app.shared.base_schema import BaseSchema
 
@@ -31,12 +31,23 @@ class LoginRequest(BaseSchema):
     password: str
 
 
-# ── Tokens ────────────────────────────────────────────────────────────────────
+# ── User info & Tokens ────────────────────────────────────────────────────────
+
+class AuthUserInfo(BaseSchema):
+    id: int | None = None
+    email: str = ""
+    full_name: str | None = None
+    avatar_url: str | None = None
+    is_profile_complete: bool = False
+
 
 class TokenResponse(BaseSchema):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    access: str | None = None
+    refresh: str | None = None
+    user: AuthUserInfo | None = None
 
 
 class RefreshRequest(BaseSchema):
@@ -46,7 +57,18 @@ class RefreshRequest(BaseSchema):
 # ── OAuth ─────────────────────────────────────────────────────────────────────
 
 class GoogleOAuthRequest(BaseSchema):
-    id_token: str
+    id_token: str | None = None
+    token: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_token_present(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            id_token = values.get("id_token") or values.get("token")
+            if not id_token or not str(id_token).strip():
+                raise ValueError("Either 'id_token' or 'token' must be provided.")
+            values["id_token"] = str(id_token).strip()
+        return values
 
 
 class AppleOAuthRequest(BaseSchema):
