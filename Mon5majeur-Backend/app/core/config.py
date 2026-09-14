@@ -82,11 +82,13 @@ class Settings(BaseSettings):
     ]
 
     # ── Apple OAuth ───────────────────────────────────────────────────────────
-    APPLE_CLIENT_ID: str = ""
+    APPLE_CLIENT_ID: str = "com.mon5majeur.app"
+    APPLE_SERVICE_ID: str = "com.mon5majeur.app.service"
     APPLE_KEY_ID: str = ""
     APPLE_TEAM_ID: str = ""
     APPLE_CERTIFICATE_KEY: str = ""
     APPLE_CLIENT_SECRET: str = ""
+    ANDROID_PACKAGE_NAME: str = "com.mon5majeur.app"
 
     # ── Goalserve ─────────────────────────────────────────────────────────────
     GOALSERVE_API_KEY: str = ""
@@ -167,6 +169,14 @@ class Settings(BaseSettings):
                 c = cid.strip()
                 if c:
                     ids.add(c)
+        return ids
+
+    @property
+    def allowed_apple_client_ids(self) -> set[str]:
+        ids: set[str] = set()
+        for cid in (self.APPLE_CLIENT_ID, self.APPLE_SERVICE_ID, "com.mon5majeur.app", "com.mon5majeur.app.service"):
+            if cid and cid.strip():
+                ids.add(cid.strip())
         return ids
 
     # ── Pagination ────────────────────────────────────────────────────────────

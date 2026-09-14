@@ -12,7 +12,8 @@ Mounted at /api (no /v1 prefix) to match Flutter's hardcoded URLs in api_url.dar
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr, model_validator
 
 from app.core.config import settings
@@ -24,7 +25,7 @@ from app.core.security import (
 )
 from app.exceptions.errors import BadRequestException, UnauthorizedException
 from app.modules.auth.model import OTPToken
-from app.modules.auth.schema import GoogleOAuthRequest
+from app.modules.auth.schema import AppleOAuthRequest, GoogleOAuthRequest
 from app.modules.auth.service import AuthService, _generate_otp
 from app.modules.auth.dependencies import get_auth_service, get_current_user
 from app.modules.users.model import User
@@ -95,6 +96,13 @@ class FlutterGoogleAuthRequest(BaseModel):
                 raise ValueError("id_token is required")
             values["id_token"] = str(tok).strip()
         return values
+
+
+class FlutterAppleAuthRequest(BaseModel):
+    """POST /api/auth/apple/ — Flutter sends identity_token from sign_in_with_apple."""
+    identity_token: str
+    full_name: str | None = None
+    email: str | None = None
 
 
 class LoginUserInfo(BaseModel):
@@ -344,3 +352,83 @@ async def flutter_google_auth(
         token_type=token_resp.token_type,
         user=user_info,
     )
+
+
+# ── Apple OAuth (Flutter compat) ──────────────────────────────────────────────
+
+@router.post(
+    "/apple/",
+    response_model=FlutterLoginResponse,
+    summary="Apple Sign-In (Flutter: AuthController.loginWithApple)",
+)
+@router.post(
+    "/apple",
+    response_model=FlutterLoginResponse,
+    include_in_schema=False,
+)
+async def flutter_apple_auth(
+    payload: FlutterAppleAuthRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> FlutterLoginResponse:
+    apple_req = AppleOAuthRequest(
+        identity_token=payload.identity_token,
+        full_name=payload.full_name,
+        email=payload.email,
+    )
+    token_resp = await service.apple_oauth(apple_req)
+    user_info = LoginUserInfo()
+    if token_resp.user:
+        user_info = LoginUserInfo(
+            id=token_resp.user.id,
+            email=token_resp.user.email,
+            full_name=token_resp.user.full_name,
+            avatar_url=token_resp.user.avatar_url,
+            is_profile_complete=token_resp.user.is_profile_complete,
+        )
+    return FlutterLoginResponse(
+        access=token_resp.access or token_resp.access_token,
+        refresh=token_resp.refresh or token_resp.refresh_token,
+        access_token=token_resp.access_token,
+        refresh_token=token_resp.refresh_token,
+        token_type=token_resp.token_type,
+        user=user_info,
+    )
+
+
+@router.post("/apple/callbacks", response_class=HTMLResponse, include_in_schema=False)
+@router.post("/apple/callbacks/", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/apple/callbacks", response_class=HTMLResponse, include_in_schema=False)
+@router.get("/apple/callbacks/", response_class=HTMLResponse, include_in_schema=False)
+async def apple_callbacks(request: Request) -> HTMLResponse:
+    """Handles Apple OAuth redirect on Android and redirects back to the app using custom intent scheme."""
+    import urllib.parse
+
+    params: dict = {}
+    if request.method == "POST":
+        try:
+            form = await request.form()
+            params = dict(form)
+        except Exception:
+            pass
+    else:
+        params = dict(request.query_params)
+
+    query_string = urllib.parse.urlencode(params)
+    package_name = settings.ANDROID_PACKAGE_NAME or "com.mon5majeur.app"
+    intent_url = f"intent://callback?{query_string}#Intent;package={package_name};scheme=signinwithapple;end"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0;url={intent_url}">
+    <title>Apple Sign-In Redirect</title>
+</head>
+<body>
+    <p>Redirecting to app...</p>
+    <script>
+        window.location.href = "{intent_url}";
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)

@@ -263,3 +263,205 @@ async def test_google_oauth_invalid_token(mock_user_repo):
         with pytest.raises(UnauthorizedException) as exc_info:
             await service.google_oauth(GoogleOAuthRequest(id_token="bad-token"))
         assert "invalid" in str(exc_info.value.detail).lower()
+
+
+# ── Apple OAuth Tests ─────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_apple_oauth_new_user_with_email(mock_user_repo):
+    from unittest.mock import patch
+    from app.modules.auth.schema import AppleOAuthRequest
+
+    mock_user_repo.get_by_apple_id.return_value = None
+    mock_user_repo.get_by_email.return_value = None
+
+    new_user = MagicMock(spec=User)
+    new_user.id = "00000000-0000-0000-0000-000000000010"
+    new_user.email = "appleuser@privaterelay.apple.com"
+    new_user.auto_id = 100
+    new_user.full_name = "Apple Tester"
+    new_user.avatar_url = None
+    new_user.is_profile_complete = False
+    mock_user_repo.create.return_value = new_user
+
+    claims = {
+        "iss": "https://appleid.apple.com",
+        "sub": "apple-sub-001",
+        "email": "appleuser@privaterelay.apple.com",
+    }
+
+    with patch("jose.jwt.get_unverified_claims", return_value=claims):
+        service = AuthService(mock_user_repo)
+        result = await service.apple_oauth(
+            AppleOAuthRequest(
+                identity_token="valid-apple-token",
+                full_name="Apple Tester",
+                email="appleuser@privaterelay.apple.com",
+            )
+        )
+
+        assert result.access_token
+        assert result.refresh_token
+        assert result.user.id == 100
+        assert result.user.email == "appleuser@privaterelay.apple.com"
+        mock_user_repo.create.assert_called_once()
+        create_kwargs = mock_user_repo.create.call_args.kwargs
+        assert create_kwargs["email"] == "appleuser@privaterelay.apple.com"
+        assert create_kwargs["apple_id"] == "apple-sub-001"
+        assert create_kwargs["auth_provider"] == "apple"
+
+
+@pytest.mark.asyncio
+async def test_apple_oauth_returning_user_without_email(mock_user_repo):
+    from unittest.mock import patch
+    from app.modules.auth.schema import AppleOAuthRequest
+
+    existing_user = MagicMock(spec=User)
+    existing_user.id = "00000000-0000-0000-0000-000000000011"
+    existing_user.email = "returning@privaterelay.apple.com"
+    existing_user.apple_id = "apple-sub-returning"
+    existing_user.auto_id = 101
+    existing_user.is_active = True
+    existing_user.is_banned = False
+    existing_user.full_name = "Returning User"
+    existing_user.avatar_url = None
+    existing_user.is_profile_complete = True
+    existing_user.save_updated = AsyncMock()
+
+    mock_user_repo.get_by_apple_id.return_value = existing_user
+
+    # Apple does NOT send email on subsequent logins!
+    claims = {
+        "iss": "https://appleid.apple.com",
+        "sub": "apple-sub-returning",
+    }
+
+    with patch("jose.jwt.get_unverified_claims", return_value=claims):
+        service = AuthService(mock_user_repo)
+        result = await service.apple_oauth(
+            AppleOAuthRequest(
+                identity_token="subsequent-apple-token",
+                full_name=None,
+                email=None,
+            )
+        )
+
+        assert result.access_token
+        assert result.user.id == 101
+        assert result.user.email == "returning@privaterelay.apple.com"
+        mock_user_repo.create.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_apple_oauth_new_user_null_email_fallback(mock_user_repo):
+    from unittest.mock import patch
+    from app.modules.auth.schema import AppleOAuthRequest
+
+    mock_user_repo.get_by_apple_id.return_value = None
+    mock_user_repo.get_by_email.return_value = None
+
+    new_user = MagicMock(spec=User)
+    new_user.id = "00000000-0000-0000-0000-000000000012"
+    new_user.email = "apple_01234567890123456789@privaterelay.apple.com"
+    new_user.auto_id = 102
+    new_user.full_name = "Apple User"
+    new_user.avatar_url = None
+    new_user.is_profile_complete = False
+    mock_user_repo.create.return_value = new_user
+
+    claims = {
+        "iss": "https://appleid.apple.com",
+        "sub": "01234567890123456789extra_chars",
+    }
+
+    with patch("jose.jwt.get_unverified_claims", return_value=claims):
+        service = AuthService(mock_user_repo)
+        result = await service.apple_oauth(
+            AppleOAuthRequest(
+                identity_token="no-email-token",
+                full_name=None,
+                email=None,
+            )
+        )
+
+        assert result.access_token
+        mock_user_repo.create.assert_called_once()
+        create_kwargs = mock_user_repo.create.call_args.kwargs
+        assert "privaterelay.apple.com" in create_kwargs["email"]
+        assert create_kwargs["apple_id"] == "01234567890123456789extra_chars"
+
+
+@pytest.mark.asyncio
+async def test_apple_oauth_account_linking(mock_user_repo):
+    from unittest.mock import patch
+    from app.modules.auth.schema import AppleOAuthRequest
+
+    mock_user_repo.get_by_apple_id.return_value = None
+
+    existing_email_user = MagicMock(spec=User)
+    existing_email_user.id = "00000000-0000-0000-0000-000000000013"
+    existing_email_user.email = "existing@example.com"
+    existing_email_user.apple_id = None
+    existing_email_user.auto_id = 103
+    existing_email_user.is_active = True
+    existing_email_user.is_banned = False
+    existing_email_user.is_verified = False
+    existing_email_user.full_name = None
+    existing_email_user.avatar_url = None
+    existing_email_user.auth_provider = "email"
+    existing_email_user.hashed_password = "hashed"
+    existing_email_user.save_updated = AsyncMock()
+
+    mock_user_repo.get_by_email.return_value = existing_email_user
+
+    claims = {
+        "iss": "https://appleid.apple.com",
+        "sub": "apple-sub-link",
+        "email": "existing@example.com",
+    }
+
+    with patch("jose.jwt.get_unverified_claims", return_value=claims):
+        service = AuthService(mock_user_repo)
+        result = await service.apple_oauth(
+            AppleOAuthRequest(
+                identity_token="link-apple-token",
+                full_name="Linked Apple User",
+                email="existing@example.com",
+            )
+        )
+
+        assert result.access_token
+        existing_email_user.save_updated.assert_called_once()
+        call_kwargs = existing_email_user.save_updated.call_args.kwargs
+        assert call_kwargs.get("apple_id") == "apple-sub-link"
+        assert call_kwargs.get("is_verified") is True
+        assert call_kwargs.get("full_name") == "Linked Apple User"
+
+
+@pytest.mark.asyncio
+async def test_apple_oauth_banned_user(mock_user_repo):
+    from unittest.mock import patch
+    from app.modules.auth.schema import AppleOAuthRequest
+
+    banned_user = MagicMock(spec=User)
+    banned_user.id = "00000000-0000-0000-0000-000000000014"
+    banned_user.email = "banned@example.com"
+    banned_user.apple_id = "apple-sub-banned"
+    banned_user.is_active = True
+    banned_user.is_banned = True
+
+    mock_user_repo.get_by_apple_id.return_value = banned_user
+
+    claims = {
+        "iss": "https://appleid.apple.com",
+        "sub": "apple-sub-banned",
+    }
+
+    with patch("jose.jwt.get_unverified_claims", return_value=claims):
+        service = AuthService(mock_user_repo)
+        with pytest.raises(UnauthorizedException) as exc_info:
+            await service.apple_oauth(
+                AppleOAuthRequest(identity_token="token-banned")
+            )
+        assert "banned" in str(exc_info.value.detail).lower()
+

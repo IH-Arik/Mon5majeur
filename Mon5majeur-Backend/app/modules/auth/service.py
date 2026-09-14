@@ -290,28 +290,75 @@ class AuthService:
     # ── Apple OAuth ───────────────────────────────────────────────────────────
 
     async def apple_oauth(self, payload: AppleOAuthRequest) -> TokenResponse:
+        identity_token = (payload.identity_token or "").strip()
+        if not identity_token:
+            raise BadRequestException("Apple identity token is required")
+
         try:
-            unverified = jwt.get_unverified_claims(payload.identity_token)
-            apple_user_id = unverified.get("sub")
-            email = unverified.get("email")
-        except JWTError:
+            unverified = jwt.get_unverified_claims(identity_token)
+        except Exception:
             raise UnauthorizedException("Invalid Apple identity token")
 
+        apple_user_id = unverified.get("sub")
         if not apple_user_id:
             raise UnauthorizedException("Apple token missing subject")
 
-        user = await self.user_repo.get_by_apple_id(apple_user_id)
-        if not user:
-            if not email:
-                raise UnauthorizedException("Apple token missing email — required for first login")
+        # Check issuer if present
+        iss = unverified.get("iss")
+        if iss and iss != "https://appleid.apple.com":
+            raise UnauthorizedException("Invalid Apple token issuer")
+
+        # Resolve email: token claims > payload.email
+        email = unverified.get("email") or payload.email
+        if email:
+            email = str(email).lower().strip()
+
+        full_name = payload.full_name
+
+        # 1. First, look up user by apple_id
+        user: User | None = await self.user_repo.get_by_apple_id(apple_user_id)
+
+        # 2. If not found by apple_id, look up by email (if email is known)
+        if not user and email:
+            user = await self.user_repo.get_by_email(email)
+
+        if user:
+            # Check account active / banned status
+            if getattr(user, "is_banned", False):
+                raise UnauthorizedException("This account has been banned")
+            if not getattr(user, "is_active", True):
+                raise UnauthorizedException("Account is inactive")
+
+            updates: dict = {}
+            if not getattr(user, "apple_id", None):
+                updates["apple_id"] = apple_user_id
+            if getattr(user, "auth_provider", None) != "apple" and not getattr(user, "hashed_password", None):
+                updates["auth_provider"] = "apple"
+            if not getattr(user, "is_verified", False):
+                updates["is_verified"] = True
+            if not getattr(user, "full_name", None) and full_name:
+                updates["full_name"] = full_name
+            if getattr(user, "auto_id", None) is None:
+                user.auto_id = await next_seq("users")
+                updates["auto_id"] = user.auto_id
+
+            if updates:
+                await user.save_updated(**updates)
+        else:
+            # 3. New user registration:
+            # If email is null or not provided (subsequent login or hidden by Apple relay),
+            # generate deterministic private relay email so registration succeeds gracefully.
+            resolved_email = email or f"apple_{apple_user_id[:20]}@privaterelay.apple.com"
             user = await self.user_repo.create(
-                email=email,
+                email=resolved_email,
                 hashed_password=None,
-                full_name=payload.full_name,
+                full_name=full_name or "Apple User",
                 is_verified=True,
                 auth_provider="apple",
                 apple_id=apple_user_id,
             )
+
+        logger.info("Apple login successful | user_id=%s | email=%s", user.id, user.email)
         return _make_tokens(str(user.id), user)
 
     # ── Internal helpers ──────────────────────────────────────────────────────
