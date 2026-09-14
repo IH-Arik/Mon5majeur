@@ -74,6 +74,7 @@ class GoogleOAuthRequest(BaseSchema):
 class AppleOAuthRequest(BaseSchema):
     identity_token: str
     full_name: str | None = None
+    email: str | None = None
 
 
 # ── Password management ───────────────────────────────────────────────────────

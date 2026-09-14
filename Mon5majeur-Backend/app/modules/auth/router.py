@@ -157,6 +157,11 @@ async def google_oauth(
     summary="Login or register with Apple",
     description="Pass the `identityToken` returned by Sign in with Apple SDK.",
 )
+@router.post(
+    "/apple/",
+    response_model=TokenResponse,
+    include_in_schema=False,
+)
 async def apple_oauth(
     payload: AppleOAuthRequest,
     service: AuthService = Depends(get_auth_service),

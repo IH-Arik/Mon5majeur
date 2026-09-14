@@ -1,5 +1,6 @@
 // lib/controllers/auth_controller.dart - Complete implementation
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -990,11 +991,20 @@ class AuthController extends GetxController {
         return;
       }
 
+      WebAuthenticationOptions? webAuthenticationOptions;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        webAuthenticationOptions = WebAuthenticationOptions(
+          clientId: 'com.mon5majeur.app.service',
+          redirectUri: Uri.parse('${ApiUrl.baseUrl}/api/auth/apple/callbacks'),
+        );
+      }
+
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        webAuthenticationOptions: webAuthenticationOptions,
       );
 
       final identityToken = credential.identityToken;
@@ -1016,6 +1026,8 @@ class AuthController extends GetxController {
       final body = {
         "identity_token": identityToken,
         if (fullNameParts.isNotEmpty) "full_name": fullNameParts.join(' '),
+        if (credential.email != null && credential.email!.isNotEmpty)
+          "email": credential.email,
       };
 
       logger.i("Apple identity token obtained, sending to backend");
@@ -1058,11 +1070,14 @@ class AuthController extends GetxController {
           }
         });
       } else {
+        logger.e("Apple auth failed: status=${response.statusCode}, body=${response.body}");
         if (!context.mounted) return;
         final error =
-            response.body['detail'] ??
-            response.body['message'] ??
-            "Apple login failed";
+            response.body is Map
+                ? (response.body['detail'] ??
+                    response.body['message'] ??
+                    "Apple login failed")
+                : "Apple login failed: ${response.body}";
         showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
       }
     } on SignInWithAppleAuthorizationException catch (e) {
