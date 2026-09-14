@@ -884,7 +884,7 @@ class AuthController extends GetxController {
     try {
       final googleSignIn = GoogleSignIn(
         serverClientId:
-            '814440155142-nk7uuemujlkr6jlbs2fa378kjcidn9d9.apps.googleusercontent.com',
+            '144976760248-ncr727numc3pgi5nlq1fqp6t0k28gitv.apps.googleusercontent.com',
       );
 
       // Sign out first to force account picker on every tap

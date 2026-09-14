@@ -12,7 +12,20 @@
           "package_name": "com.mon5majeur.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "144976760248-t1l00leat9g0jvace3f6chksju0nlc2n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mon5majeur.app",
+            "certificate_hash": "47655b48992c2221a7ed0b654b99d47aa0fa2653"
+          }
+        },
+        {
+          "client_id": "144976760248-ncr727numc3pgi5nlq1fqp6t0k28gitv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCo6P2P_D65tB8YEYWslcSmdyLXNnm4VCY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "144976760248-ncr727numc3pgi5nlq1fqp6t0k28gitv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "144976760248-m1k483v6kbi0o8i28l96b2pra777ppfk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mon5majeur.app"
+              }
+            }
+          ]
         }
       }
     }
