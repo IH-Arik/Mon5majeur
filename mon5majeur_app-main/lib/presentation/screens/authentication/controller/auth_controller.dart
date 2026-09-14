@@ -950,11 +950,14 @@ class AuthController extends GetxController {
           }
         });
       } else {
+        logger.e("Google auth failed: status=${response.statusCode}, body=${response.body}");
         if (!context.mounted) return;
         final error =
-            response.body['detail'] ??
-            response.body['message'] ??
-            "Google login failed";
+            response.body is Map
+                ? (response.body['detail'] ??
+                    response.body['message'] ??
+                    "Google login failed")
+                : "Google login failed: ${response.body}";
         showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
       }
     } catch (e) {
