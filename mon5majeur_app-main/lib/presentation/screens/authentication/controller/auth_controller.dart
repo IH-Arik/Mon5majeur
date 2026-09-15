@@ -884,12 +884,21 @@ class AuthController extends GetxController {
 
     try {
       final googleSignIn = GoogleSignIn(
+        clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+            ? '144976760248-m1k483v6kbi0o8i28l96b2pra777ppfk.apps.googleusercontent.com'
+            : null,
         serverClientId:
             '144976760248-ncr727numc3pgi5nlq1fqp6t0k28gitv.apps.googleusercontent.com',
+        scopes: ['email', 'profile'],
       );
 
-      // Sign out first to force account picker on every tap
-      await googleSignIn.signOut();
+      // Sign out first to force account picker on every tap (safe if not signed in)
+      try {
+        await googleSignIn.signOut();
+      } catch (e) {
+        logger.w("Google sign-out before sign-in ignored: $e");
+      }
+
       final account = await googleSignIn.signIn();
 
       if (account == null) {
@@ -902,6 +911,7 @@ class AuthController extends GetxController {
       final idToken = auth.idToken;
 
       if (idToken == null) {
+        if (!context.mounted) return;
         showSnackbar(
           context,
           "Error",
@@ -914,12 +924,26 @@ class AuthController extends GetxController {
       logger.i("Google id_token obtained, sending to backend");
 
       final apiClient = ApiClient();
-      final response = await apiClient.post(
+      var response = await apiClient.post(
         url: ApiUrl.baseUrl + ApiUrl.googleAuth,
         isBasic: true,
         body: {"id_token": idToken},
         showResult: true,
       );
+
+      // Fallback if configured endpoint returns 404
+      if (response.statusCode == 404) {
+        final fallbackEndpoint = ApiUrl.googleAuth.contains('/v1/')
+            ? '/api/auth/google/'
+            : '/api/v1/auth/google';
+        logger.w("Google auth 404 at ${ApiUrl.googleAuth}, trying fallback: $fallbackEndpoint");
+        response = await apiClient.post(
+          url: ApiUrl.baseUrl + fallbackEndpoint,
+          isBasic: true,
+          body: {"id_token": idToken},
+          showResult: true,
+        );
+      }
 
       logger.i("Google auth response: ${response.statusCode}");
 
@@ -1033,12 +1057,26 @@ class AuthController extends GetxController {
       logger.i("Apple identity token obtained, sending to backend");
 
       final apiClient = ApiClient();
-      final response = await apiClient.post(
+      var response = await apiClient.post(
         url: ApiUrl.baseUrl + ApiUrl.appleAuth,
         isBasic: true,
         body: body,
         showResult: true,
       );
+
+      // Fallback if configured endpoint returns 404
+      if (response.statusCode == 404) {
+        final fallbackEndpoint = ApiUrl.appleAuth.contains('/v1/')
+            ? '/api/auth/apple/'
+            : '/api/v1/auth/apple';
+        logger.w("Apple auth 404 at ${ApiUrl.appleAuth}, trying fallback: $fallbackEndpoint");
+        response = await apiClient.post(
+          url: ApiUrl.baseUrl + fallbackEndpoint,
+          isBasic: true,
+          body: body,
+          showResult: true,
+        );
+      }
 
       logger.i("Apple auth response: ${response.statusCode}");
 

@@ -22,7 +22,7 @@ class ApiUrl {
 
   // Social auth
   static const googleAuth = "/api/auth/google/";
-  static const appleAuth = "/api/auth/apple/";
+  static const appleAuth = "/api/v1/auth/apple";
 
   // Profile endpoints
   static const userProfiles = "/api/UserProfiles/";
