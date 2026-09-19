@@ -117,6 +117,17 @@ async def viewer_memberships(
     return copies
 
 
+async def league_fully_released(league_id: PydanticObjectId, viewer) -> bool:
+    """True once every match of the league is visible to `viewer`. A league
+    flips to "completed" the moment its final ends, so its trophies (winner /
+    last place) would reveal the final's outcome before 09:00 Paris; they are
+    only shown once the last match's scores have been released."""
+    if viewer is None:
+        return True
+    matches = await LeagueMatch.find({"league_id": league_id}).to_list()
+    return all(_match_visible(viewer, m) for m in matches)
+
+
 async def viewer_rank(league_id: PydanticObjectId, user_id, viewer) -> int | None:
     """`user_id`'s standing as `viewer` may see it (see viewer_memberships)."""
     ms = await viewer_memberships(league_id, viewer)

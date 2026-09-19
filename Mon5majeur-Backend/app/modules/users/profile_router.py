@@ -177,6 +177,7 @@ async def get_profile_stats(
 
     # ── Aggregate W/L/points from ALL memberships (duel leagues only —
     # Global League memberships never accrue wins/losses/points here) ──────
+    from app.modules.leagues.leaderboard_service import league_fully_released
     from app.modules.leagues.score_visibility import has_live_access, scores_hidden
 
     if has_live_access(current_user):
@@ -241,6 +242,12 @@ async def get_profile_stats(
         if not league or league.type == LEAGUE_TYPE_GLOBAL:
             continue
         if league.status != LEAGUE_STATUS_COMPLETED or m.rank is None:
+            continue
+        # Score paywall: hold the trophy back until the final's result is
+        # released to this viewer (QA 15/09/2026 item 4).
+        if not has_live_access(current_user) and not await league_fully_released(
+            league.id, current_user
+        ):
             continue
         if m.rank == 1:
             trophy_gold += 1

@@ -165,3 +165,22 @@ def test_subscriber_gets_the_stored_totals(monkeypatch):
     ls = _patch_league(monkeypatch, members, [])
     out = asyncio.run(ls.viewer_memberships("L", _premium()))
     assert out[0].wins == 5 and out[0].points_for == 999.0
+
+
+def test_trophy_held_back_until_the_final_is_released(monkeypatch):
+    """A league whose last match is still behind the paywall must not count as
+    finished for a non-subscriber (its trophy would reveal the result)."""
+    from unittest import mock
+
+    old = _match("a", "b", date(2026, 8, 1), 100.0, 90.0, "a")
+    final = _match("a", "b", NIGHT, 100.0, 90.0, "a")
+    ls = _patch_league(monkeypatch, [], [old, final])
+
+    def check(viewer, hour):
+        with mock.patch("app.modules.leagues.score_visibility.datetime", wraps=datetime) as dt:
+            dt.now.return_value = _at(hour, 0)
+            return asyncio.run(ls.league_fully_released("L", viewer))
+
+    assert check(_free(), 5) is False      # 07:00 Paris: final still hidden
+    assert check(_free(), 8) is True       # after 09:00 Paris: released
+    assert check(_premium(), 5) is True    # subscribers see it immediately
