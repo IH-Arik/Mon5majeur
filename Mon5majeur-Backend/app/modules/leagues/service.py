@@ -259,11 +259,14 @@ class LeagueService:
         users = await UserModel.find({"_id": {"$in": list(user_ids)}}).to_list()
         user_map = {u.id: u for u in users}
 
+        from app.modules.leagues.score_visibility import scores_hidden
+
         result = []
         for match in matches:
             league = league_map.get(match.league_id)
             home_u = user_map.get(match.home_user_id)
             away_u = user_map.get(match.away_user_id)
+            hidden = scores_hidden(user, status=match.status, nba_date=match.nba_date)
 
             result.append(LeagueMatchResponse(
                 id=match.id,
@@ -282,8 +285,8 @@ class LeagueService:
                     team_name=away_u.team_name if away_u else None,
                     team_logo=away_u.team_logo if away_u else None,
                 ),
-                home_score=match.home_score,
-                away_score=match.away_score,
+                home_score=None if hidden else match.home_score,
+                away_score=None if hidden else match.away_score,
             ))
 
         return result
@@ -623,16 +626,21 @@ class LeagueService:
         return result
 
     async def get_my_matches_today_compat(self, user: User) -> list[MyMatchTodayCompatResponse]:
-        from app.modules.live_scores.service import _is_premium
+        from app.modules.leagues.score_visibility import (
+            has_live_access as _has_live_access,
+            release_iso,
+            scores_hidden,
+        )
         from app.modules.users.model import User as UserModel
 
         today = date.today()
-        has_live_access = _is_premium(user)
+        has_live_access = _has_live_access(user)
 
         matches = await self.match_repo.get_user_matches_today(user.id, today)
-        # A live match this user can't watch live doesn't count as "today's
-        # result" per spec — fall back to the last completed match instead.
-        displayable = [m for m in matches if not (m.status == "live" and not has_live_access)]
+        # QA 15/09/2026 item 4: before tonight's match starts, keep showing
+        # the previous result; once it is live or over, show it to everyone
+        # (non-subscribers just get their scores paywalled below).
+        displayable = [m for m in matches if m.status in ("live", "completed")]
         if not displayable:
             fallback = await self.match_repo.get_latest_completed_match(user.id)
             if fallback:
@@ -657,13 +665,14 @@ class LeagueService:
             league = league_map.get(match.league_id)
             home_u = user_map.get(match.home_user_id)
             away_u = user_map.get(match.away_user_id)
+            hidden = scores_hidden(user, status=match.status, nba_date=match.nba_date)
             pair = MatchPairCompatResponse(
                 player_a_id=home_u.auto_id if home_u else None,
                 player_a_name=home_u.team_name if home_u else None,
                 player_b_id=away_u.auto_id if away_u else None,
                 player_b_name=away_u.team_name if away_u else None,
-                score_a=match.home_score or 0,
-                score_b=match.away_score or 0,
+                score_a=0 if hidden else (match.home_score or 0),
+                score_b=0 if hidden else (match.away_score or 0),
                 match_object_id=str(match.id),
             )
             is_live_for_user = match.status == "live" and has_live_access
@@ -679,7 +688,9 @@ class LeagueService:
                 pairs=[pair],
                 created_at=match.created_at.isoformat(),
                 is_live_for_user=is_live_for_user,
-                result_available=match.status in ("live", "completed"),
+                result_available=match.status in ("live", "completed") and not hidden,
+                scores_hidden=hidden,
+                scores_release_at=release_iso(match.nba_date) if hidden else None,
             ))
         return result
 

@@ -109,8 +109,124 @@ class PlayerService:
     # played at least once.
     # ------------------------------------------------------------------
 
+    async def sync_from_espn(self, league: str = "nba") -> int:
+        """Full roster sync from ESPN's public API (QA 15/09/2026 item 2).
+
+        Updates every rostered player's team / position / jersey / bio,
+        creates new signees and rookies, and — only when the fetch clearly
+        covered the whole league — deactivates players no longer on any NBA
+        roster (waived, retired, overseas) so they drop out of the picker.
+        Returns the number of players touched; 0 means "nothing usable".
+        """
+        from app.modules.players.espn_roster import fetch_rosters, normalize_name
+        from app.modules.players.team_trigrams import trigram_for_team_name
+
+        try:
+            roster = await fetch_rosters()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("ESPN roster fetch failed: %s", exc)
+            return 0
+
+        teams_seen = {r["team_name"] for r in roster}
+        if len(teams_seen) < 25 or len(roster) < 300:
+            # A partial answer is more likely an outage than a real league
+            # state — don't write anything from it.
+            logger.error(
+                "ESPN roster looks incomplete (%d teams, %d players) — sync aborted",
+                len(teams_seen), len(roster),
+            )
+            return 0
+
+        # trigram -> the real Goalserve team id, learnt from the schedule we
+        # already sync (team_goalserve_id is what "players today" filters on).
+        gs_team_id: dict[str, str] = {}
+        for side in ("home", "away"):
+            rows = await NBAGame.aggregate(
+                [{"$group": {"_id": {"id": f"${side}_team_id", "name": f"${side}_team_name"}}}]
+            ).to_list()
+            for r in rows:
+                tri = trigram_for_team_name(r["_id"].get("name"))
+                if tri and r["_id"].get("id"):
+                    gs_team_id[tri] = r["_id"]["id"]
+
+        existing = await Player.find(Player.league == league).to_list()
+        by_key: dict[str, Player] = {}
+        for p in existing:
+            by_key.setdefault(normalize_name(p.full_name), p)
+
+        seen_ids: set = set()
+        created = updated = 0
+        for r in roster:
+            tri = trigram_for_team_name(r["team_name"])
+            gs_id = gs_team_id.get(tri) if tri else None
+            key = normalize_name(r["full_name"])
+            try:
+                player = by_key.get(key)
+                if player:
+                    changes = {
+                        "team_name": r["team_name"],
+                        "is_active": True,
+                        "league": league,
+                    }
+                    if gs_id:
+                        changes["team_goalserve_id"] = gs_id
+                    # Box-score data is the reference for positions once a
+                    # player has played; ESPN only fills the blanks.
+                    if not player.position and r["position"]:
+                        changes["position"] = r["position"]
+                    if r["jersey_number"]:
+                        changes["jersey_number"] = r["jersey_number"]
+                    if r["height"] and not player.height:
+                        changes["height"] = r["height"]
+                    if r["weight"] and not player.weight:
+                        changes["weight"] = r["weight"]
+                    await player.save_updated(**changes)
+                    updated += 1
+                else:
+                    player = await Player(
+                        goalserve_id=f"espn:{r['espn_id']}",
+                        first_name=r["first_name"],
+                        last_name=r["last_name"],
+                        full_name=r["full_name"],
+                        position=r["position"] or None,
+                        team_name=r["team_name"],
+                        team_goalserve_id=gs_id,
+                        jersey_number=r["jersey_number"] or None,
+                        height=r["height"] or None,
+                        weight=r["weight"] or None,
+                        league=league,
+                        is_active=True,
+                    ).insert()
+                    by_key[key] = player
+                    created += 1
+                seen_ids.add(player.id)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("ESPN roster upsert failed for %s: %s", r["full_name"], exc)
+
+        deactivated = 0
+        for p in existing:
+            if p.is_active and p.id not in seen_ids:
+                try:
+                    await p.save_updated(is_active=False)
+                    deactivated += 1
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not deactivate %s: %s", p.full_name, exc)
+
+        logger.info(
+            "ESPN roster sync: %d updated, %d created, %d deactivated (%d teams)",
+            updated, created, deactivated, len(teams_seen),
+        )
+        return updated + created
+
     async def sync_from_goalserve(self, league: str = "nba") -> int:
-        """Fetch current NBA roster from NBA CDN playerIndex (best-effort)."""
+        """Roster sync entry point (cron + admin). Tries ESPN first — the
+        NBA CDN blocks cloud hosts with a 403 — then falls back to the NBA CDN
+        playerIndex (best-effort)."""
+        if league == "nba":
+            done = await self.sync_from_espn(league)
+            if done:
+                return done
+            logger.warning("ESPN roster sync produced nothing — falling back to NBA CDN")
         try:
             players_data = await fetch_player_index()
         except Exception as exc:

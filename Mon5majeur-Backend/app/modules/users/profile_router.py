@@ -59,6 +59,7 @@ class UserProfileCompatResponse(BaseModel):
     date_of_birth: str = ""
     accept_terms_conditions: bool = False
     recived_notifications: bool = False  # typo intentional — matches Flutter
+    usage_stats_enabled: bool = True
     created_at: str | None = None
     updated_at: str | None = None
     user: int | None = None              # same as id
@@ -80,6 +81,7 @@ class UserProfileUpdateRequest(BaseModel):
     date_of_birth: str | None = None
     accept_terms_conditions: bool | None = None
     recived_notifications: bool | None = None
+    usage_stats_enabled: bool | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -95,6 +97,7 @@ def _to_profile_response(user: User) -> UserProfileCompatResponse:
         date_of_birth=dob,
         accept_terms_conditions=user.terms_accepted,
         recived_notifications=user.push_notifications_enabled,
+        usage_stats_enabled=user.usage_stats_enabled,
         created_at=created,
         updated_at=created,
         user=user.auto_id,
@@ -315,6 +318,8 @@ async def update_user_profile(
         updates["terms_accepted"] = payload.accept_terms_conditions
     if payload.recived_notifications is not None:
         updates["push_notifications_enabled"] = payload.recived_notifications
+    if payload.usage_stats_enabled is not None:
+        updates["usage_stats_enabled"] = payload.usage_stats_enabled
 
     if updates:
         updates["is_profile_complete"] = True

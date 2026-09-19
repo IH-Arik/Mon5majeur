@@ -51,6 +51,11 @@ class User(BaseDocument):
     notification_types: list[str] = []     # e.g. ["team_reminder", "results"]
     is_profile_complete: bool = False
 
+    # Usage-statistics opt-out (QA 15/09/2026 item 3 — CNIL audience-
+    # measurement exemption). True (default) = counted in the admin
+    # dashboard; False = excluded from every analytics figure.
+    usage_stats_enabled: bool = True
+
     # Token economy
     token_balance: int = 0                   # in-app tokens earned/spent
     last_daily_video_claim: datetime | None = None  # UTC; daily ad-reward throttle

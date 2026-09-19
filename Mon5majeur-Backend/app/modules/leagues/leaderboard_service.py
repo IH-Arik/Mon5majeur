@@ -173,7 +173,10 @@ async def get_standings(league_auto_id: int) -> StandingsResponse:
 
 # ── Playoff Bracket ───────────────────────────────────────────────────────────
 
-async def get_playoff_bracket(league_auto_id: int) -> PlayoffBracketResponse:
+async def get_playoff_bracket(league_auto_id: int, viewer=None) -> PlayoffBracketResponse:
+    from app.modules.leagues.model import LeagueMatch
+    from app.modules.leagues.score_visibility import release_iso, scores_hidden
+
     league = await _league_or_404(league_auto_id)
 
     all_series = await PlayoffSeries.find(
@@ -189,22 +192,58 @@ async def get_playoff_bracket(league_auto_id: int) -> PlayoffBracketResponse:
     })
     umap = await _user_map(all_user_ids)
 
+    # The duel behind each playoff game — gives the app a match_day to open
+    # the match detail with, and the status the score paywall depends on.
+    series_ids = [s.id for s in all_series]
+    playoff_matches = (
+        await LeagueMatch.find({"playoff_series_id": {"$in": series_ids}}).to_list()
+        if series_ids
+        else []
+    )
+    match_by_game = {
+        (m.playoff_series_id, m.playoff_game_number): m for m in playoff_matches
+    }
+
     def _series_to_response(s: PlayoffSeries) -> PlayoffSeriesResponse:
         user_a = umap.get(s.team_a_id)
         user_b = umap.get(s.team_b_id)
-        winner = umap.get(s.winner_id) if s.winner_id else None
 
-        games = [
-            PlayoffGameResponse(
-                game_number=g.game_number,
-                score_a=int(g.score_a),
-                score_b=int(g.score_b),
-                winner_team=_display_name(
-                    user_a if g.winner_id == s.team_a_id else user_b
-                ) if g.winner_id else "",
+        games = []
+        wins_a = wins_b = 0
+        any_hidden = False
+        for g in s.games:
+            m = match_by_game.get((s.id, g.game_number))
+            status = m.status if m else ("completed" if g.winner_id else "upcoming")
+            hidden = viewer is not None and scores_hidden(
+                viewer, status=status, nba_date=(m.nba_date if m else g.nba_date)
             )
-            for g in s.games
-        ]
+            any_hidden = any_hidden or hidden
+            if not hidden and g.winner_id == s.team_a_id:
+                wins_a += 1
+            elif not hidden and g.winner_id == s.team_b_id:
+                wins_b += 1
+            games.append(
+                PlayoffGameResponse(
+                    game_number=g.game_number,
+                    score_a=0 if hidden else int(g.score_a),
+                    score_b=0 if hidden else int(g.score_b),
+                    winner_team=(
+                        _display_name(user_a if g.winner_id == s.team_a_id else user_b)
+                        if g.winner_id and not hidden
+                        else ""
+                    ),
+                    match_day=m.match_day if m else None,
+                    match_status=status,
+                    scores_hidden=hidden,
+                    scores_release_at=(
+                        release_iso(m.nba_date if m else g.nba_date) if hidden else None
+                    ),
+                )
+            )
+
+        # A series result would leak a paywalled game's outcome, so it is
+        # only reported once every game in it has been revealed.
+        winner = umap.get(s.winner_id) if (s.winner_id and not any_hidden) else None
 
         return PlayoffSeriesResponse(
             series_index=s.series_index,
@@ -213,12 +252,13 @@ async def get_playoff_bracket(league_auto_id: int) -> PlayoffBracketResponse:
             team_a_name=_display_name(user_a),
             team_b_id=user_b.auto_id or 0 if user_b else 0,
             team_b_name=_display_name(user_b),
-            wins_a=s.wins_a,
-            wins_b=s.wins_b,
+            wins_a=wins_a if viewer is not None else s.wins_a,
+            wins_b=wins_b if viewer is not None else s.wins_b,
             games=games,
             winner_id=winner.auto_id if winner else None,
             winner_name=_display_name(winner) if winner else None,
-            is_complete=s.is_complete,
+            is_complete=s.is_complete and not any_hidden,
+            has_hidden_scores=any_hidden,
         )
 
     rounds: list[PlayoffRoundResponse] = []
