@@ -75,14 +75,14 @@ class ShopController extends GetxController {
         return true;
       }
       final detail =
-          (response.body?['detail'] as String?) ?? 'Purchase failed';
-      Get.snackbar('Error', detail,
+          (response.body?['detail'] as String?) ?? 'Purchase failed'.tr;
+      Get.snackbar('Error'.tr, detail,
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);
       return false;
     } catch (_) {
-      Get.snackbar('Error', 'Network error. Please try again.',
+      Get.snackbar('Error'.tr, 'Network error. Please try again.'.tr,
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);
@@ -111,14 +111,14 @@ class ShopController extends GetxController {
             (response.body['balance'] as num?)?.toInt() ?? tokenBalance.value;
         return true;
       }
-      final detail = (response.body?['detail'] as String?) ?? 'Purchase failed';
-      Get.snackbar('Error', detail,
+      final detail = (response.body?['detail'] as String?) ?? 'Purchase failed'.tr;
+      Get.snackbar('Error'.tr, detail,
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);
       return false;
     } catch (_) {
-      Get.snackbar('Error', 'Network error. Please try again.',
+      Get.snackbar('Error'.tr, 'Network error. Please try again.'.tr,
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);
@@ -138,20 +138,20 @@ class ShopController extends GetxController {
       if (response.statusCode == 200 && response.body != null) {
         tokenBalance.value =
             (response.body['balance'] as num?)?.toInt() ?? tokenBalance.value;
-        Get.snackbar('Tokens earned!', '+6 tokens added to your wallet',
+        Get.snackbar('Tokens earned!'.tr, '+6 tokens added to your wallet'.tr,
             backgroundColor: const Color(0xFF1a3d1a),
             colorText: Colors.white,
             snackPosition: SnackPosition.BOTTOM);
       } else {
         final detail =
-            (response.body?['detail'] as String?) ?? 'Could not earn tokens';
-        Get.snackbar('Not available', detail,
+            (response.body?['detail'] as String?) ?? 'Could not earn tokens'.tr;
+        Get.snackbar('Not available'.tr, detail,
             backgroundColor: const Color(0xFF2a2a2a),
             colorText: Colors.white,
             snackPosition: SnackPosition.BOTTOM);
       }
     } catch (_) {
-      Get.snackbar('Error', 'Network error.',
+      Get.snackbar('Error'.tr, 'Network error.'.tr,
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);

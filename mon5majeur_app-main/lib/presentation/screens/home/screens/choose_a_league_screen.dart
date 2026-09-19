@@ -316,7 +316,7 @@ class _ChooseALeagueScreenState extends State<ChooseALeagueScreen> {
                                 return Padding(
                                   padding: EdgeInsets.all(20.w),
                                   child: Text(
-                                    'No active public leagues available',
+                                    'No active public leagues available'.tr,
                                     style: TextStyle(
                                       color: Color(0xFF6B6E82),
                                       fontSize: 14.sp,
@@ -552,7 +552,7 @@ class _ChooseALeagueScreenState extends State<ChooseALeagueScreen> {
                                           ),
                                           SizedBox(width: 6.w),
                                           Text(
-                                            '$teamsCount/$maxTeams Teams',
+                                            '@n/@m Teams'.trParams({'n': '$teamsCount', 'm': '$maxTeams'}),
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 12.sp,
@@ -748,12 +748,10 @@ class _ChooseALeagueScreenState extends State<ChooseALeagueScreen> {
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      '$teamsCount/$maxTeams Teams',
+                      '@n/@m Teams'.trParams({'n': '$teamsCount', 'm': '$maxTeams'}),
                       style: TextStyle(
                         color: Color(0xFF6B6E82),
                         fontSize: 14.sp,

@@ -201,14 +201,14 @@ class GlobalLeagueController extends GetxController {
         _initializeEmptySelection();
       } else {
         hasError.value = true;
-        errorMessage.value = 'Failed to load global league data';
+        errorMessage.value = 'Failed to load global league data'.tr;
         logger.e(
           'Failed to load global league selection: ${response.statusCode}',
         );
       }
     } catch (e) {
       hasError.value = true;
-      errorMessage.value = 'Error loading global league: $e';
+      errorMessage.value = 'Error loading global league: @e'.trParams({'e': '$e'});
       logger.e('Error fetching global league selection: $e');
     } finally {
       isLoading.value = false;
@@ -252,24 +252,24 @@ class GlobalLeagueController extends GetxController {
         return true;
       } else if (response.statusCode == 401) {
         hasError.value = true;
-        errorMessage.value = 'Session expired. Please log in again.';
+        errorMessage.value = 'Session expired. Please log in again.'.tr;
         logger.e('401 unauthorized submitting player selection');
         return false;
       } else if (response.statusCode == 404) {
         hasError.value = true;
-        errorMessage.value = 'Global league not found. Please try again later.';
+        errorMessage.value = 'Global league not found. Please try again later.'.tr;
         logger.e('404 global league not found');
         return false;
       } else {
         hasError.value = true;
-        final detail = response.body?['detail'] as String? ?? 'Unknown error';
-        errorMessage.value = 'Failed to save team (${response.statusCode}): $detail';
+        final detail = response.body?['detail'] as String? ?? 'Unknown error'.tr;
+        errorMessage.value = 'Failed to save team (@code): @detail'.trParams({'code': '${response.statusCode}', 'detail': detail});
         logger.e('Failed to submit player selection: ${response.statusCode} - $detail');
         return false;
       }
     } catch (e) {
       hasError.value = true;
-      errorMessage.value = 'Network error: $e';
+      errorMessage.value = 'Network error: @e'.trParams({'e': '$e'});
       logger.e('Error submitting player selection: $e');
       return false;
     } finally {

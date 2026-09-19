@@ -194,8 +194,8 @@ class _EditLeagueScreenState extends State<EditLeagueScreen> {
     if (widget.leagueId == null) {
       _controller.showSnackbar(
         context,
-        "Error",
-        "League ID is missing",
+        "Error".tr,
+        "League ID is missing".tr,
         isError: true,
       );
       return;
@@ -205,8 +205,8 @@ class _EditLeagueScreenState extends State<EditLeagueScreen> {
         _controller.leagueNameController.text.trim().isEmpty) {
       _controller.showSnackbar(
         context,
-        "Validation Error",
-        "Please fill in all required fields",
+        "Validation Error".tr,
+        "Please fill in all required fields".tr,
         isError: true,
       );
       return;

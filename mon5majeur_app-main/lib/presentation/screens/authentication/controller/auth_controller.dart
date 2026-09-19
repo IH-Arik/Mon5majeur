@@ -202,19 +202,19 @@ class AuthController extends GetxController {
   // Validation functions
   String? validateEmail(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return "Email is required";
+      return "Email is required".tr;
     }
     // Simple email regex
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(value.trim())) {
-      return "Enter a valid email";
+      return "Enter a valid email".tr;
     }
     return null;
   }
 
   String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return "Password is required";
+      return "Password is required".tr;
     }
     if (value.length < 6) {
       return "Password must be at least 6 characters";
@@ -224,10 +224,10 @@ class AuthController extends GetxController {
 
   String? validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return "Confirm password is required";
+      return "Confirm password is required".tr;
     }
     if (value != passwordController.text) {
-      return "Passwords do not match";
+      return "Passwords do not match".tr;
     }
     return null;
   }
@@ -269,8 +269,8 @@ class AuthController extends GetxController {
     if (!signUpFormKey.currentState!.validate()) {
       showSnackbar(
         context,
-        "Validation Error",
-        "Please fix the errors",
+        "Validation Error".tr,
+        "Please fix the errors".tr,
         isError: true,
       );
       return;
@@ -326,15 +326,15 @@ class AuthController extends GetxController {
             response.body['message'] ??
             response.body['email']?.toString() ??
             response.body['error']?.toString() ??
-            "Registration failed";
+            "Registration failed".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Sign Up Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "Failed to create account. Please try again.",
+        "Error".tr,
+        "Failed to create account. Please try again.".tr,
         isError: true,
       );
     } finally {
@@ -485,7 +485,7 @@ class AuthController extends GetxController {
         // Restart the timer
         startOtpTimer();
       } else {
-        final errorMessage = response.body['message'] ?? "Failed to resend OTP";
+        final errorMessage = response.body['message'] ?? "Failed to resend OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
@@ -508,7 +508,7 @@ class AuthController extends GetxController {
       showSnackbar(
         context,
         "Warning",
-        "Please enter your email",
+        "Please enter your email".tr,
         isError: true,
       );
       return;
@@ -517,7 +517,7 @@ class AuthController extends GetxController {
       showSnackbar(
         context,
         "Warning",
-        "Please enter your password",
+        "Please enter your password".tr,
         isError: true,
       );
       return;
@@ -581,7 +581,7 @@ class AuthController extends GetxController {
             response.body?['detail']?.toString() ??
             response.body?['error']?.toString() ??
             (response.statusCode == null
-                ? "Connection failed. Check your internet."
+                ? "Connection failed. Check your internet.".tr
                 : "Invalid credentials (${response.statusCode})");
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
@@ -589,8 +589,8 @@ class AuthController extends GetxController {
       logger.e("Login Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "Connection error. Make sure you have internet.",
+        "Error".tr,
+        "Connection error. Make sure you have internet.".tr,
         isError: true,
       );
     } finally {
@@ -648,15 +648,15 @@ class AuthController extends GetxController {
         final errorMessage =
             response.body['message'] ??
             response.body['email']?.toString() ??
-            "Failed to send OTP";
+            "Failed to send OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Forgot Password Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "Failed to send OTP. Please try again.",
+        "Error".tr,
+        "Failed to send OTP. Please try again.".tr,
         isError: true,
       );
     } finally {
@@ -718,14 +718,14 @@ class AuthController extends GetxController {
             response.body['message'] ??
             response.body['otp']?.toString() ??
             response.body['error']?.toString() ??
-            "Invalid OTP";
+            "Invalid OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Verify Forgot Password OTP Error: $e");
       showSnackbar(
         context,
-        "Error",
+        "Error".tr,
         "OTP verification failed. Please try again.",
         isError: true,
       );
@@ -754,7 +754,7 @@ class AuthController extends GetxController {
     // if (newPassword.length < 6) {
     //   showSnackbar(
     //     context,
-    //     "Error",
+    //     "Error".tr,
     //     "Password must be at least 6 characters",
     //     isError: true,
     //   );
@@ -791,7 +791,7 @@ class AuthController extends GetxController {
         showSnackbar(
           context,
           "Success",
-          data['message'] ?? "Password changed successfully.",
+          data['message'] ?? "Password changed successfully.".tr,
         );
 
         // Clear stored email
@@ -808,15 +808,15 @@ class AuthController extends GetxController {
             response.body['message'] ??
             response.body['new_password']?.toString() ??
             response.body['error']?.toString() ??
-            "Failed to change password";
+            "Failed to change password".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Change Password Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "Failed to change password. Please try again.",
+        "Error".tr,
+        "Failed to change password. Please try again.".tr,
         isError: true,
       );
     } finally {
@@ -860,15 +860,15 @@ class AuthController extends GetxController {
         // Restart the timer
         startOtpTimer();
       } else {
-        final errorMessage = response.body['message'] ?? "Failed to resend OTP";
+        final errorMessage = response.body['message'] ?? "Failed to resend OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Resend Forgot Password OTP Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "Failed to resend OTP. Please try again.",
+        "Error".tr,
+        "Failed to resend OTP. Please try again.".tr,
         isError: true,
       );
     } finally {
@@ -914,8 +914,8 @@ class AuthController extends GetxController {
         if (!context.mounted) return;
         showSnackbar(
           context,
-          "Error",
-          "Failed to get Google token",
+          "Error".tr,
+          "Failed to get Google token".tr,
           isError: true,
         );
         return;
@@ -981,7 +981,7 @@ class AuthController extends GetxController {
             response.body is Map
                 ? (response.body['detail'] ??
                     response.body['message'] ??
-                    "Google login failed")
+                    "Google login failed".tr)
                 : "Google login failed: ${response.body}";
         showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
       }
@@ -990,7 +990,7 @@ class AuthController extends GetxController {
       if (!context.mounted) return;
       showSnackbar(
         context,
-        "Error",
+        "Error".tr,
         "Google sign-in failed: $e",
         isError: true,
       );
@@ -1008,7 +1008,7 @@ class AuthController extends GetxController {
       if (!isAvailable) {
         showSnackbar(
           context,
-          "Error",
+          "Error".tr,
           "Apple Sign-In is not available on this device.",
           isError: true,
         );
@@ -1035,8 +1035,8 @@ class AuthController extends GetxController {
       if (identityToken == null || identityToken.isEmpty) {
         showSnackbar(
           context,
-          "Error",
-          "Failed to get Apple identity token",
+          "Error".tr,
+          "Failed to get Apple identity token".tr,
           isError: true,
         );
         return;
@@ -1114,7 +1114,7 @@ class AuthController extends GetxController {
             response.body is Map
                 ? (response.body['detail'] ??
                     response.body['message'] ??
-                    "Apple login failed")
+                    "Apple login failed".tr)
                 : "Apple login failed: ${response.body}";
         showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
       }
@@ -1126,7 +1126,7 @@ class AuthController extends GetxController {
       }
       showSnackbar(
         context,
-        "Error",
+        "Error".tr,
         e.message,
         isError: true,
       );
@@ -1135,7 +1135,7 @@ class AuthController extends GetxController {
       if (!context.mounted) return;
       showSnackbar(
         context,
-        "Error",
+        "Error".tr,
         "Apple sign-in failed: $e",
         isError: true,
       );

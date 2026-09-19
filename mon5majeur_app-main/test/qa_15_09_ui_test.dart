@@ -196,4 +196,27 @@ void main() {
     expect(AppString.fourHoursLeft.tr, '4 heures restantes');
     expect(AppString.changeJersey.tr.replaceAll('\n', ' '), 'Changer de maillot');
   });
+
+  test('literal-keyed messages translate in FR and fall back to English', () {
+    Get.addTranslations(Language().keys);
+    Get.locale = const Locale('fr', 'FR');
+    expect('Network error'.tr, 'Erreur réseau');
+    expect('Please enter your email'.tr, 'Entre ton e-mail');
+    expect(
+      'Available: @n / @m players'.trParams({'n': '3', 'm': '10'}),
+      'Disponibles : 3 / 10 joueurs',
+    );
+    expect('@n/@m Teams'.trParams({'n': '4', 'm': '10'}), '4/10 équipes');
+    expect(
+      'Buy @name for @cost tokens?\n\nYour balance: @bal tokens.'
+          .trParams({'name': 'Pack', 'cost': '5', 'bal': '9'}),
+      'Acheter Pack pour 5 jetons ?\n\nTon solde : 9 jetons.',
+    );
+    Get.locale = const Locale('en', 'US');
+    expect('Network error'.tr, 'Network error');
+    expect(
+      'Available: @n / @m players'.trParams({'n': '3', 'm': '10'}),
+      'Available: 3 / 10 players',
+    );
+  });
 }

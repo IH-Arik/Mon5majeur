@@ -152,13 +152,13 @@ class _DataScreenState extends State<DataScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = 'Failed to load players. Please try again.';
+          _errorMessage = 'Failed to load players. Please try again.'.tr;
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error loading players: ${e.toString()}';
+        _errorMessage = 'Error loading players: @e'.trParams({'e': e.toString()});
         _isLoading = false;
       });
       debugPrint('Error fetching players: $e');
@@ -365,7 +365,7 @@ class _DataScreenState extends State<DataScreen> {
                   child: Row(
                     children: [
                       Text(
-                        'Loaded: ${_allPlayers.length} / $_totalPlayers players',
+                        'Loaded: @n / @m players'.trParams({'n': '${_allPlayers.length}', 'm': '$_totalPlayers'}),
                         style: TextStyle(
                           color: Colors.grey,
                           fontSize: 12.sp,
@@ -373,7 +373,7 @@ class _DataScreenState extends State<DataScreen> {
                       ),
                       if (_hasMorePages)
                         Text(
-                          ' • Scroll for more',
+                          ' • Scroll for more'.tr,
                           style: TextStyle(
                             color: Color(0xFFFF6B35),
                             fontSize: 12.sp,
@@ -505,7 +505,7 @@ class _DataScreenState extends State<DataScreen> {
                             ),
                             SizedBox(height: 16.h),
                             Text(
-                              'Loading players...',
+                              'Loading players...'.tr,
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontSize: 14.sp,
@@ -547,7 +547,7 @@ class _DataScreenState extends State<DataScreen> {
                                 ),
                               ),
                               child: Text(
-                                'Retry',
+                                'Retry'.tr,
                                 style: TextStyle(fontSize: 14.sp),
                               ),
                             ),
@@ -601,7 +601,7 @@ class _DataScreenState extends State<DataScreen> {
                                   child: TextButton(
                                     onPressed: _loadMorePlayers,
                                     child: Text(
-                                      'Load More',
+                                      'Load More'.tr,
                                       style: TextStyle(
                                         color: Color(0xFFFF6B35),
                                         fontSize: 14.sp,

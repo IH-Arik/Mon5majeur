@@ -74,11 +74,11 @@ class LiveScoreController extends GetxController {
       } else {
         errorMessage.value =
             (response.body is Map ? response.body['detail'] : null) ??
-            'Could not load live scores';
+            'Could not load live scores'.tr;
       }
     } catch (e) {
       _logger.e('Live score fetch failed: $e');
-      errorMessage.value = 'Could not load live scores';
+      errorMessage.value = 'Could not load live scores'.tr;
     } finally {
       isLoading.value = false;
     }

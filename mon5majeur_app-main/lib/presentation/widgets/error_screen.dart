@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ErrorPage extends StatelessWidget {
@@ -9,7 +10,7 @@ class ErrorPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Error Page",
+          "Error Page".tr,
           style: TextStyle(fontSize: 20.sp),
         ),
         toolbarHeight: 56.h,

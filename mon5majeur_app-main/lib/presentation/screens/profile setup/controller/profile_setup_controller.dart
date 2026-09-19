@@ -137,8 +137,8 @@ class ProfileSetupController extends GetxController {
     if (teamNameController.text.trim().isEmpty) {
       showSnackbar(
         context,
-        'Validation Error',
-        'Please enter a team name',
+        'Validation Error'.tr,
+        'Please enter a team name'.tr,
         isError: true,
       );
       return false;
@@ -147,7 +147,7 @@ class ProfileSetupController extends GetxController {
     // if (selectedFavoriteTeam.value.isEmpty) {
     //   showSnackbar(
     //     context,
-    //     'Validation Error',
+    //     'Validation Error'.tr,
     //     'Please select your favorite team',
     //     isError: true,
     //   );
@@ -157,8 +157,8 @@ class ProfileSetupController extends GetxController {
     if (selectedDate.value == null) {
       showSnackbar(
         context,
-        'Validation Error',
-        'Please select your date of birth',
+        'Validation Error'.tr,
+        'Please select your date of birth'.tr,
         isError: true,
       );
       return false;
@@ -167,8 +167,8 @@ class ProfileSetupController extends GetxController {
     if (!termsAccepted.value) {
       showSnackbar(
         context,
-        'Validation Error',
-        'Please accept the terms and conditions',
+        'Validation Error'.tr,
+        'Please accept the terms and conditions'.tr,
         isError: true,
       );
       return false;
@@ -283,7 +283,7 @@ class ProfileSetupController extends GetxController {
         showSnackbar(
           context,
           'Success',
-          'Profile setup completed successfully!',
+          'Profile setup completed successfully!'.tr,
         );
 
         // Navigate to home screen
@@ -295,7 +295,7 @@ class ProfileSetupController extends GetxController {
       } else if (response.statusCode == 400) {
         // Handle validation errors
         final errorBody = response.body;
-        String errorMsg = 'Please check your input and try again.';
+        String errorMsg = 'Please check your input and try again.'.tr;
 
         if (errorBody is Map) {
           if (errorBody['team_name'] != null) {
@@ -309,20 +309,20 @@ class ProfileSetupController extends GetxController {
           }
         }
 
-        showSnackbar(context, "Error", errorMsg, isError: true);
+        showSnackbar(context, "Error".tr, errorMsg, isError: true);
       } else if (response.statusCode == 500) {
         // Handle server errors specifically
         showSnackbar(
           context,
-          "Server Error",
-          "The server encountered an error. Please try again or contact support.",
+          "Server Error".tr,
+          "The server encountered an error. Please try again or contact support.".tr,
           isError: true,
         );
       } else {
         showSnackbar(
           context,
-          "Error",
-          "Failed to save profile. Please try again.",
+          "Error".tr,
+          "Failed to save profile. Please try again.".tr,
           isError: true,
         );
       }
@@ -331,8 +331,8 @@ class ProfileSetupController extends GetxController {
       if (!context.mounted) return;
       showSnackbar(
         context,
-        'Error',
-        'Failed to save profile. Please try again.',
+        'Error'.tr,
+        'Failed to save profile. Please try again.'.tr,
         isError: true,
       );
     } finally {

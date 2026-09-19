@@ -254,18 +254,19 @@ class MatchLineupsField extends StatelessWidget {
             left: 5.w,
             top: 66.h,
             right: 5.w,
-            child: Text(
-              player.name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFFFECD56),
-                fontSize: 9.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w600,
-                height: 1.5,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                player.name,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFFFECD56),
+                  fontSize: 9.sp,
+                  fontFamily: 'Roboto',
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           Positioned(

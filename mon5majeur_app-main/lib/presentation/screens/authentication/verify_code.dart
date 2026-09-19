@@ -167,7 +167,7 @@ class _VerifyRegistrationState extends State<VerifyRegistration> {
                     if (_authController.otpCountdown.value > 0)
                       Center(
                         child: Text(
-                          'Time remaining: ${_authController.formattedCountdown}',
+                          'Time remaining: @t'.trParams({'t': '${_authController.formattedCountdown}'}),
                           style: TextStyle(
                             fontFamily: 'Roboto',
                             fontWeight: FontWeight.w400,

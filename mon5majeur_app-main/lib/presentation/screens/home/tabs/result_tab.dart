@@ -196,7 +196,6 @@ class _ResultTabState extends State<ResultTab> {
                               fontSize: 15.sp,
                               fontWeight: FontWeight.w700,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                           SizedBox(height: 4.h),
                           Text(
@@ -205,7 +204,6 @@ class _ResultTabState extends State<ResultTab> {
                               color: Colors.white54,
                               fontSize: 11.sp,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -382,7 +380,6 @@ class _ResultTabState extends State<ResultTab> {
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
                               ),
-                              overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.right,
                             ),
                           ),

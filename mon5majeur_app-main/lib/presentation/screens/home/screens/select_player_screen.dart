@@ -243,7 +243,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           if (widget.maxPrice != null) ...[
             SizedBox(height: 4.h),
             Text(
-              '6th Man pick must cost ≤ ${widget.maxPrice!.toInt()}M',
+              '6th Man pick must cost ≤ @nM'.trParams({'n': '${widget.maxPrice!.toInt()}'}),
               style: TextStyle(color: Colors.white38, fontSize: 11.sp),
             ),
           ],
@@ -356,7 +356,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                           ),
                           SizedBox(height: 8.h),
                           Text(
-                            'Loading more players...',
+                            'Loading more players...'.tr,
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 12.sp,
@@ -502,7 +502,6 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (player.form == 'HOT' || player.form == 'COLD') ...[

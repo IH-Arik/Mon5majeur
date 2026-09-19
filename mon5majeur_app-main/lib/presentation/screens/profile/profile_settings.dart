@@ -121,7 +121,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _saveProfile() async {
     if (_profileId == null) {
-      _showSnack('Profile not loaded yet', isError: true);
+      _showSnack('Profile not loaded yet'.tr, isError: true);
       return;
     }
     setState(() => _isSaving = true);
@@ -138,7 +138,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         },
       );
       if (response.statusCode == 200) {
-        _showSnack('Profile saved');
+        _showSnack('Profile saved'.tr);
         // Refresh HomeController so other screens reflect the change
         try {
           await Get.find<HomeController>().fetchUserProfile();
@@ -148,12 +148,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           setState(() {});
         }
       } else {
-        final msg = response.body?['detail'] ?? 'Failed to save profile';
+        final msg = response.body?['detail'] ?? 'Failed to save profile'.tr;
         _showSnack(msg.toString(), isError: true);
       }
     } catch (e) {
       _log.e('Save profile error: $e');
-      _showSnack('Network error', isError: true);
+      _showSnack('Network error'.tr, isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -189,7 +189,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       await _clearTokens();
       if (mounted) context.go(RoutePath.signInScreen.addBasePath);
     } else {
-      if (mounted) _showSnack('Failed to delete account', isError: true);
+      if (mounted) _showSnack('Failed to delete account'.tr, isError: true);
     }
   }
 
@@ -428,7 +428,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Delete your account? This cannot be undone.',
+                'Delete your account? This cannot be undone.'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -759,7 +759,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         ),
                         SizedBox(width: 8.w),
                         Text(
-                          'Saving...',
+                          'Saving...'.tr,
                           style: TextStyle(
                             color: const Color(0xFFB0B0B0),
                             fontSize: 13.sp,
@@ -889,7 +889,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         Navigator.pop(context);
       } else {
         final body = response.body;
-        String errorMsg = 'Failed to update password';
+        String errorMsg = 'Failed to update password'.tr;
         if (body is Map) {
           errorMsg = body['detail']?.toString() ??
               body['old_password']?.toString() ??
@@ -907,7 +907,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Network error: $e'),
+            content: Text('Network error: @e'.trParams({'e': '$e'})),
             backgroundColor: const Color(0xFFD32F2F),
           ),
         );

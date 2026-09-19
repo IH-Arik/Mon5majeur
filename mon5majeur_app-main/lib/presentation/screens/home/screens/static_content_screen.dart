@@ -54,13 +54,13 @@ class _StaticContentScreenState extends State<StaticContentScreen> {
         });
       } else {
         setState(() {
-          _error = 'Failed to load content (${response.statusCode}).';
+          _error = 'Failed to load content (@code).'.trParams({'code': '${response.statusCode}'});
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _error = 'Failed to load content: $e';
+        _error = 'Failed to load content: @e'.trParams({'e': '$e'});
         _isLoading = false;
       });
     }

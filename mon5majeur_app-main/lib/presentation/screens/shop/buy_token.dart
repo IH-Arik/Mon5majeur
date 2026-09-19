@@ -292,13 +292,13 @@ class BuyTokenScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(title, style: TextStyle(color: Colors.white, fontSize: 16.sp)),
         content: Text(
-          'Get $tokens for this pack?',
+          'Get @tokens for this pack?'.trParams({'tokens': '$tokens'}),
           style: TextStyle(color: Colors.grey, fontSize: 13.sp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel',
+            child: Text('Cancel'.tr,
                 style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
           ),
           ElevatedButton(
@@ -312,7 +312,7 @@ class BuyTokenScreen extends StatelessWidget {
               final ok = await c.purchaseTokenPack(pack);
               if (ok) {
                 Get.snackbar(
-                  'Tokens added!',
+                  'Tokens added!'.tr,
                   '$tokens added to your wallet',
                   backgroundColor: const Color(0xFF1a3d1a),
                   colorText: Colors.white,
@@ -320,7 +320,7 @@ class BuyTokenScreen extends StatelessWidget {
                 );
               }
             },
-            child: Text('Buy',
+            child: Text('Buy'.tr,
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 13.sp,
