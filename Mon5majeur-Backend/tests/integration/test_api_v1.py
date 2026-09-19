@@ -1,3 +1,6 @@
+"""API smoke tests that need no database (the ASGI app runs without its
+lifespan - see tests/conftest.py). Registration/login flows against real data
+were removed: they targeted a Postgres-era API that no longer exists."""
 import pytest
 from httpx import AsyncClient
 
@@ -10,39 +13,19 @@ async def test_health(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_register_user(client: AsyncClient):
-    payload = {"email": "integration@example.com", "password": "password123"}
-    response = await client.post("/api/v1/users", json=payload)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["email"] == payload["email"]
-    assert "id" in data
-
-
-@pytest.mark.asyncio
-async def test_login(client: AsyncClient):
-    # Register first
-    await client.post("/api/v1/users", json={"email": "login_test@example.com", "password": "password123"})
-
-    response = await client.post("/api/v1/auth/login", json={"email": "login_test@example.com", "password": "password123"})
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert "refresh_token" in data
-
-
-@pytest.mark.asyncio
 async def test_get_me_unauthorized(client: AsyncClient):
     response = await client.get("/api/v1/users/me")
     assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_get_me_authorized(client: AsyncClient):
-    await client.post("/api/v1/users", json={"email": "me_test@example.com", "password": "password123"})
-    login = await client.post("/api/v1/auth/login", json={"email": "me_test@example.com", "password": "password123"})
-    token = login.json()["access_token"]
-
-    response = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 200
-    assert response.json()["email"] == "me_test@example.com"
+async def test_score_endpoints_require_auth(client: AsyncClient):
+    """The paywalled match endpoints must never answer an anonymous caller."""
+    for path in (
+        "/api/private-leagues/matches/my-matches-today/",
+        "/api/private-leagues/matches/1/1/",
+        "/api/public-leagues/matches/1/1/",
+        "/api/private-leagues/1/playoffs/",
+    ):
+        r = await client.get(path)
+        assert r.status_code in (401, 403), (path, r.status_code)
