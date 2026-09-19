@@ -57,28 +57,21 @@ class PlayerService:
         """Return all active players whose team plays today, enriched with game time."""
         today = nba_date or datetime.now(timezone.utc).date()
 
+        from app.modules.players.teams_playing import TeamsPlaying
+
         games = await NBAGame.find(NBAGame.nba_date == today).to_list()
-        if not games:
+        teams = TeamsPlaying(games)
+        if not teams:
             return []
 
-        team_ids_playing: set[str] = set()
-        game_by_team: dict[str, NBAGame] = {}
-        for g in games:
-            team_ids_playing.add(g.home_team_id)
-            team_ids_playing.add(g.away_team_id)
-            game_by_team[g.home_team_id] = g
-            game_by_team[g.away_team_id] = g
-
-        players = await Player.find(
-            {"team_goalserve_id": {"$in": list(team_ids_playing)}, "is_active": True}
-        ).sort(+Player.daily_price).to_list()
+        players = await Player.find(teams.mongo_filter()).sort(+Player.daily_price).to_list()
 
         result: list[PlayerTodayItem] = []
         for p in players:
-            game = game_by_team.get(p.team_goalserve_id or "")
+            game = teams.game_for(p.team_name, p.team_goalserve_id)
             opponent = None
             if game:
-                if p.team_goalserve_id == game.home_team_id:
+                if teams.is_home(game, p.team_name, p.team_goalserve_id):
                     opponent = game.away_team_name
                 else:
                     opponent = game.home_team_name
@@ -137,19 +130,43 @@ class PlayerService:
             )
             return 0
 
-        # trigram -> the real Goalserve team id, learnt from the schedule we
-        # already sync (team_goalserve_id is what "players today" filters on).
-        gs_team_id: dict[str, str] = {}
+        existing = await Player.find(Player.league == league).to_list()
+
+        # trigram -> the Goalserve team id to store. nba_games carries several
+        # ids per team (LOS/LAL, numeric NBA ids...), so take the one the most
+        # RECENT game used, and fall back to what the team's other players
+        # already carry. "Players today" no longer depends on this value (it
+        # matches by team name, see teams_playing.py) — it is kept as a
+        # best-effort fallback and for the API's team_id field.
+        latest: dict[str, tuple] = {}
         for side in ("home", "away"):
             rows = await NBAGame.aggregate(
-                [{"$group": {"_id": {"id": f"${side}_team_id", "name": f"${side}_team_name"}}}]
+                [
+                    {
+                        "$group": {
+                            "_id": {"id": f"${side}_team_id", "name": f"${side}_team_name"},
+                            "last": {"$max": "$nba_date"},
+                        }
+                    }
+                ]
             ).to_list()
             for r in rows:
                 tri = trigram_for_team_name(r["_id"].get("name"))
-                if tri and r["_id"].get("id"):
-                    gs_team_id[tri] = r["_id"]["id"]
+                tid = r["_id"].get("id")
+                if tri and tid and (tri not in latest or r["last"] > latest[tri][0]):
+                    latest[tri] = (r["last"], tid)
+        gs_team_id: dict[str, str] = {tri: tid for tri, (_, tid) in latest.items()}
 
-        existing = await Player.find(Player.league == league).to_list()
+        from collections import Counter
+
+        carried: dict[str, Counter] = {}
+        for p in existing:
+            tri = trigram_for_team_name(p.team_name)
+            if tri and p.team_goalserve_id and not p.goalserve_id.startswith("espn:"):
+                carried.setdefault(tri, Counter())[p.team_goalserve_id] += 1
+        for tri, counts in carried.items():
+            gs_team_id.setdefault(tri, counts.most_common(1)[0][0])
+
         by_key: dict[str, Player] = {}
         for p in existing:
             by_key.setdefault(normalize_name(p.full_name), p)

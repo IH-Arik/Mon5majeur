@@ -177,12 +177,13 @@ async def _validate_selection(selected_players: list[dict], nba_date: date | Non
         )
 
     if nba_date is not None:
+        from app.modules.players.teams_playing import TeamsPlaying
+
         games_tonight = await NBAGame.find(NBAGame.nba_date == nba_date).to_list()
-        team_ids_playing = {g.home_team_id for g in games_tonight} | {
-            g.away_team_id for g in games_tonight
-        }
+        teams_tonight = TeamsPlaying(games_tonight)
         for p in players:
-            if p.team_goalserve_id not in team_ids_playing:
+            # By team, not by the drifting team-id scheme (see teams_playing.py).
+            if not teams_tonight.plays(p.team_name, p.team_goalserve_id):
                 raise ForbiddenException(f"{p.full_name} does not play tonight")
             if p.is_out:
                 raise ForbiddenException(f"{p.full_name} is OUT and cannot be selected")

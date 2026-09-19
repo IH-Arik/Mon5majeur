@@ -54,3 +54,13 @@ def trigram_for_team_name(team_name: str | None) -> str | None:
     if not team_name:
         return None
     return _TEAM_NAME_TO_TRIGRAM.get(team_name.strip())
+
+
+# Every team-name spelling we know, and the reverse lookup — used to express
+# "team X plays tonight" as a name filter (see teams_playing.py).
+KNOWN_TEAM_NAMES: list[str] = sorted(_TEAM_NAME_TO_TRIGRAM)
+
+
+def names_for_trigrams(trigrams) -> list[str]:
+    wanted = set(trigrams)
+    return sorted(n for n, t in _TEAM_NAME_TO_TRIGRAM.items() if t in wanted)
