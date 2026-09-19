@@ -13,6 +13,9 @@ class MyMatchTodayModel {
   // Backend-gated Night's Results state (spec: only LIVE or FINAL are shown).
   final bool isLiveForUser;
   final bool resultAvailable;
+  // Score paywall (QA 15/09/2026 item 4) — enforced by the API, which sends
+  // zeros while true; the UI must show "Score dispo à 9h" instead.
+  final bool scoresHidden;
 
   MyMatchTodayModel({
     required this.id,
@@ -27,6 +30,7 @@ class MyMatchTodayModel {
     required this.createdAt,
     this.isLiveForUser = false,
     this.resultAvailable = false,
+    this.scoresHidden = false,
   });
 
   factory MyMatchTodayModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +51,7 @@ class MyMatchTodayModel {
       createdAt: json['created_at'] ?? '',
       isLiveForUser: json['is_live_for_user'] ?? false,
       resultAvailable: json['result_available'] ?? false,
+      scoresHidden: json['scores_hidden'] ?? false,
     );
   }
 
@@ -64,6 +69,7 @@ class MyMatchTodayModel {
       'created_at': createdAt,
       'is_live_for_user': isLiveForUser,
       'result_available': resultAvailable,
+      'scores_hidden': scoresHidden,
     };
   }
 

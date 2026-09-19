@@ -11,6 +11,7 @@ import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
 import '../../../data/models/my_league_model.dart';
+import '../../widgets/match_widgets.dart';
 import '../../widgets/navigation.dart';
 import '../tutorial/tutorial_controller.dart';
 import '../tutorial/tutorial_skip_button.dart';
@@ -814,341 +815,63 @@ class _AnimatedActionCardState extends State<_AnimatedActionCard> {
   }
 }
 
-/// Animated Match Card
-/// Animated Match Card - Shows first match from API
+/// Home "Résultats de la nuit" card — shows the user's first duel with the
+/// SAME component as the "all my matches" screen (QA 15/09/2026 items 4-5).
+/// Status, score visibility (Live Scoring vs "Score dispo à 9h") and the
+/// tap-through to the match detail all live in [NightMatchCard]; the backend
+/// decides which match to show (previous result until tonight's tips off).
 class _AnimatedMatchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final homeController = Get.find<HomeController>();
 
     return Obx(() {
-      // Loading state
       if (homeController.matchesLoading.value) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeOut,
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Container(
-                padding: EdgeInsets.all(16.r),
-                height: 150.h,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1a1a1a),
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: const Color(0xFF333333)),
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFFF6B35)),
-                ),
-              ),
-            );
-          },
+        return Container(
+          padding: EdgeInsets.all(16.r),
+          height: 150.h,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1a1a),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: const Color(0xFF333333)),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(color: Color(0xFFFF6B35)),
+          ),
         );
       }
 
-      // No matches state
       if (homeController.todayMatches.isEmpty) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeOut,
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Container(
-                padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1a1a1a),
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: const Color(0xFF333333)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      AppString.noMatchesToday.tr,
-                      style: TextStyle(color: Colors.grey, fontSize: 14.sp),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(16.r),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1a1a1a),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(color: const Color(0xFF333333)),
+          ),
+          child: Text(
+            AppString.noMatchesToday.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+          ),
         );
       }
-
-      // Get first match
-      final match = homeController.todayMatches.first;
-      final mainPair = match.pairs.isNotEmpty ? match.pairs.first : null;
 
       return TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),
         duration: const Duration(milliseconds: 700),
         curve: Curves.easeOut,
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, 30.h * (1 - value)),
-              child: Container(
-                padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1a1a1a),
-                  borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: const Color(0xFF333333)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.withValues(alpha: 0.1),
-                      blurRadius: 15.r,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Assets.icons.basketBall.image(
-                          width: 20.r,
-                          height: 20.r,
-                        ),
-                        SizedBox(width: 8.w),
-                        Expanded(
-                          child: Text(
-                            match.leagueName,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16.sp,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        // Only two states now: LIVE or FINAL.
-                        // Backend gates LIVE on the user's premium live-access flag.
-                        _statusBadge(match.isLiveForUser),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    if (mainPair != null)
-                      Builder(
-                        builder: (context) {
-                          final bool hasResult = match.resultAvailable;
-                          return Row(
-                            children: [
-                              _teamLogo(Assets.icons.logo1),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  mainPair.playerAName ?? 'TBD',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14.sp,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              _scoreText(
-                                hasResult
-                                    ? '${mainPair.scoreA}'
-                                    : AppString.noResultPlaceholder.tr,
-                                const Color(0xFF22C55E),
-                              ),
-                              SizedBox(width: 12.w),
-                              _AnimatedVsText(),
-                              SizedBox(width: 12.w),
-                              _scoreText(
-                                hasResult
-                                    ? '${mainPair.scoreB}'
-                                    : AppString.noResultPlaceholder.tr,
-                                const Color(0xFFEF4444),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  mainPair.playerBName ?? 'TBD',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14.sp,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              SizedBox(width: 8.w),
-                              _teamLogo(
-                                mainPair.hasPlayerB
-                                    ? Assets.icons.logo2
-                                    : null,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    if (match.isLiveForUser && mainPair?.matchObjectId != null) ...[
-                      SizedBox(height: 12.h),
-                      GestureDetector(
-                        onTap: () {
-                          context.push(
-                            '${RoutePath.liveScoreScreen.addBasePath}?matchId=${mainPair!.matchObjectId}',
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          decoration: ShapeDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE8632C), Color(0xFFFF8A50)],
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.bolt, color: Colors.white, size: 14.r),
-                              SizedBox(width: 6.w),
-                              Text(
-                                AppString.watchLive.tr,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    });
-  }
-
-  static Widget _statusBadge(bool isLive) {
-    final color = isLive ? const Color(0xFFEF4444) : const Color(0xFF22C55E);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        isLive
-            ? Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-                child: Icon(
-                  Icons.fiber_manual_record,
-                  color: Colors.white,
-                  size: 10.r,
-                ),
-              )
-            : Icon(Icons.check_circle, color: color, size: 20.r),
-        SizedBox(height: 2.h),
-        Text(
-          isLive ? AppString.liveLabel.tr : AppString.finalLabel.tr,
-          style: TextStyle(
-            color: color,
-            fontSize: 8.sp,
-            fontWeight: FontWeight.w700,
+        builder: (context, value, child) => Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 30.h * (1 - value)),
+            child: child,
           ),
         ),
-      ],
-    );
-  }
-
-  static Widget _scoreText(String value, Color color) {
-    return Text(
-      value,
-      style: TextStyle(
-        color: color,
-        fontSize: 18.sp,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  static Widget _teamLogo(dynamic logo) {
-    return Container(
-      width: 36.w,
-      height: 36.w,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFF2a2a2a),
-      ),
-      child: Center(
-        child: logo != null
-            ? logo.image(width: 22.r, height: 22.r, fit: BoxFit.contain)
-            : Icon(Icons.question_mark, color: Colors.grey[600], size: 18.r),
-      ),
-    );
-  }
-}
-
-/// Animated VS Text
-class _AnimatedVsText extends StatefulWidget {
-  @override
-  State<_AnimatedVsText> createState() => _AnimatedVsTextState();
-}
-
-class _AnimatedVsTextState extends State<_AnimatedVsText>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _scale = Tween<double>(
-      begin: 1.0,
-      end: 1.3,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scale,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scale.value,
-          child: ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Color(0xFFFF6B35), Color(0xFFFFD93D)],
-            ).createShader(bounds),
-            child: Text(
-              AppString.vs.tr,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        );
-      },
-    );
+        child: NightMatchCard(match: homeController.todayMatches.first),
+      );
+    });
   }
 }
 
@@ -1266,21 +989,23 @@ class _AnimatedLeagueCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Assets.icons.basketBall.image(
                                   width: 20.r,
                                   height: 20.r,
                                 ),
                                 SizedBox(width: 8.w),
+                                // Full name, wrapped onto as many lines as it needs
+                                // — never cut with "..." (QA 15/09/2026 item 4).
                                 Expanded(
                                   child: Text(
                                     league.leagueName,
+                                    softWrap: true,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16.sp,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 SizedBox(width: 8.w),

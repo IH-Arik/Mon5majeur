@@ -10,6 +10,8 @@ class MatchResultModel {
   final List<PlayerScore> playerScores;
   final List<MatchPair> pairs;
   final String createdAt;
+  // Score paywall — the API sends zeros while true (see MyMatchTodayModel).
+  final bool scoresHidden;
 
   MatchResultModel({
     required this.id,
@@ -22,6 +24,7 @@ class MatchResultModel {
     required this.playerScores,
     required this.pairs,
     required this.createdAt,
+    this.scoresHidden = false,
   });
 
   factory MatchResultModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +47,7 @@ class MatchResultModel {
               .toList() ??
           [],
       createdAt: json['created_at'] ?? '',
+      scoresHidden: json['scores_hidden'] ?? false,
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../../../data/models/player.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../screens/select_player_screen.dart';
+import '../widgets/position_label.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
 
@@ -35,7 +36,14 @@ class BuildYourTeamTab extends StatefulWidget {
 }
 
 class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
-  final double totalBudget = 100.0;
+  // Budget cap = the league's own budget (+ playoff seed bonus) as reported
+  // by the server, plus the Luxury Tax bonus while that bonus is active -
+  // QA 15/09/2026 item 6: the cap and progress bar used to stay at 100M
+  // even with "Bonus Luxury Tax activated".
+  double _baseBudget = 100.0;
+  double _luxuryTaxBonus = 5.0;
+  double get totalBudget =>
+      _baseBudget + (luxuryTaxActivated ? _luxuryTaxBonus : 0.0);
   List<Player?> selectedPlayers = List.filled(5, null);
   Player? sixthManPlayer;
 
@@ -615,9 +623,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '$errorMessage\n\nLeague ID: ${widget.leagueId}, Match Day: ${widget.matchDay}',
-              ),
+              content: Text(errorMessage),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 4),
             ),
@@ -685,6 +691,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
         setState(() {
           lockInSeconds = data['lock_in_seconds'];
+          _baseBudget = (data['base_budget'] as num?)?.toDouble() ?? _baseBudget;
+          _luxuryTaxBonus =
+              (data['luxury_tax_bonus'] as num?)?.toDouble() ?? _luxuryTaxBonus;
           // Restore whichever bonus was saved server-side (only one is ever
           // active at a time from this screen's own UI).
           if (data['luxury_tax'] == true) {
@@ -887,7 +896,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
               ),
             ),
             Text(
-              'Matchday ${widget.matchDay ?? 1}',
+              formatMatchdayLabel(widget.matchDay ?? 1),
               style: TextStyle(
                 color: Color(0xFFB1B1B1),
                 fontSize: 16.sp,
@@ -904,15 +913,6 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             ),
           ],
         ),
-        if (widget.leagueId != null)
-          Text(
-            'League ID: ${widget.leagueId}',
-            style: TextStyle(
-              color: Color(0xFF666666),
-              fontSize: 10.sp,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
       ],
     );
   }
@@ -1201,8 +1201,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         children: [
           SizedBox(
             width: 114.w,
-            height: 96.h,
+            height: 104.h,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Positioned(
                   left: 0,
@@ -1219,55 +1220,24 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                   ),
                 ),
                 Positioned(
-                  left: 41.w,
-                  top: 85.h,
-                  child: Container(
-                    width: 28.w,
-                    height: 11.h,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFF777777),
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 0.50.r,
-                          color: Color(0xFFFFFFFF),
-                        ),
-                        borderRadius: BorderRadius.circular(3.r),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 44.w,
-                  top: 86.h,
-                  child: SizedBox(
-                    width: 22.w,
-                    height: 9.h,
-                    child: Text(
-                      position,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 6.7.sp,
-                        fontFamily: 'Lato',
-                        fontWeight: FontWeight.w500,
-                        height: 1.0,
-                      ),
-                    ),
-                  ),
+                  left: 0,
+                  right: 0,
+                  top: 84.h,
+                  child: Center(child: PositionLabel(position)),
                 ),
                 if (player == null)
                   Positioned(
                     left: 48.w,
-                    top: 57.h,
+                    top: 62.h,
                     child: SizedBox(
                       width: 17.w,
-                      height: 21.h,
+                      height: 18.h,
                       child: Text(
                         AppString.plus,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Color(0xFFAAAAAA),
-                          fontSize: 20.sp,
+                          fontSize: 16.sp,
                           fontFamily: 'Lato',
                           fontWeight: FontWeight.w300,
                           height: 1.10,
@@ -1328,8 +1298,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         children: [
           SizedBox(
             width: 114.w,
-            height: 96.h,
+            height: 104.h,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Positioned(
                   left: 0,
@@ -1346,41 +1317,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                   ),
                 ),
                 Positioned(
-                  left: 39.w,
-                  top: 85.h,
-                  child: Container(
-                    width: 36.w,
-                    height: 11.h,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFF777777),
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 0.50.r,
-                          color: Color(0xFFFFFFFF),
-                        ),
-                        borderRadius: BorderRadius.circular(3.r),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 44.w,
-                  top: 86.h,
-                  child: SizedBox(
-                    width: 28.w,
-                    height: 9.h,
-                    child: Text(
-                      AppString.sixthMan.tr,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10.sp,
-                        fontFamily: 'Lato',
-                        fontWeight: FontWeight.w500,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
+                  left: 0,
+                  right: 0,
+                  top: 84.h,
+                  child: Center(child: PositionLabel(AppString.sixthMan.tr)),
                 ),
                 if (player == null)
                   Positioned(
@@ -1548,7 +1488,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Text(
-              'No games scheduled for today',
+              AppString.noGamesToday.tr,
               style: TextStyle(color: Colors.white70, fontSize: 12.sp),
             ),
           )
@@ -1633,12 +1573,17 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   }
 
   Widget _buildTimeLeft() {
+    // Nothing to show until the lock data has loaded — never a placeholder
+    // figure (QA 15/09/2026 item 6).
+    if (lockInSeconds == null && isLoadingGames) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
         children: [
-          Icon(Icons.access_time, color: Colors.white70, size: 20.r),
-          SizedBox(width: 8.w),
+          if (lockInSeconds != null) ...[
+            Icon(Icons.access_time, color: Colors.white70, size: 20.r),
+            SizedBox(width: 8.w),
+          ],
           Text(
             formatTimeLeft(lockInSeconds),
             style: TextStyle(

@@ -226,8 +226,9 @@ class AppString {
   // it via .trParams so the count survives translation instead of always
   // reading in English (QA 28/08/2026 #4).
   static const String youNeedMorePlayersTemplate = 'You need @n more players.';
-  static String youNeedMorePlayers(int n) =>
-      youNeedMorePlayersTemplate.trParams({'n': '$n'});
+  static String youNeedMorePlayers(int n) => n == 1
+      ? youNeedOnePlayer.tr
+      : youNeedMorePlayersTemplate.trParams({'n': '$n'});
   static const String lineupLocked = 'Locked — night has started';
   static const String todaysGames = "Today's Games";
   static const String lalVsGsw = 'LAL Vs GSW';
@@ -656,6 +657,27 @@ class AppString {
 
   // Part 1 — Player Selection Row Redesign
   static const String lastScores = 'lastScores';
+
+  // QA 15/09/2026
+  static const String scoreAvailableAt9 = 'scoreAvailableAt9';
+  static const String hoursMinutesTemplate = 'hoursMinutesTemplate';
+  static const String minutesTemplate = 'minutesTemplate';
+  static const String matchdayNumberTemplate = 'matchdayNumberTemplate';
+  static const String youNeedOnePlayer = 'youNeedOnePlayer';
+  static const String teamsNotReady = 'teamsNotReady';
+  static const String teamsNotReadyDesc = 'teamsNotReadyDesc';
+  static const String teamNotReadyTemplate = 'teamNotReadyTemplate';
+  static const String viewSeries = 'viewSeries';
+  static const String semifinalGameTemplate = 'semifinalGameTemplate';
+  static const String finalGameTemplate = 'finalGameTemplate';
+  static const String seriesScoreTemplate = 'seriesScoreTemplate';
+  static const String seriesAdvances = 'seriesAdvances';
+  static const String seriesChampion = 'seriesChampion';
+  static const String noGamesInSeriesYet = 'noGamesInSeriesYet';
+  static const String matchDetailTitle = 'matchDetailTitle';
+  static const String liveTabLabel = 'liveTabLabel';
+  static const String semifinalRound = 'semifinalRound';
+  static const String finalRound = 'finalRound';
 
   // See youNeedMorePlayersTemplate above — same @n-placeholder pattern so
   // the amount survives translation (QA 28/08/2026 #4).

@@ -18,6 +18,7 @@ import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
 import '../../tutorial/tutorial_skip_button.dart';
 import '../screens/select_player_screen.dart';
+import '../widgets/position_label.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
 
@@ -684,28 +685,28 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                 Positioned(
                   top: 150.h,
                   left: 40.w,
-                  child: _buildPlayerSlot(0, 'SF'),
+                  child: _buildPlayerSlot(0, AppString.sfPf),
                 ),
                 Positioned(
                   top: 120.h,
                   left: 0,
                   right: 0,
-                  child: Center(child: _buildPlayerSlot(1, 'C')),
+                  child: Center(child: _buildPlayerSlot(1, AppString.c)),
                 ),
                 Positioned(
                   top: 150.h,
                   right: 40.w,
-                  child: _buildPlayerSlot(2, 'SF'),
+                  child: _buildPlayerSlot(2, AppString.sfPf),
                 ),
                 Positioned(
                   top: 320.h,
                   left: 60.w,
-                  child: _buildPlayerSlot(3, 'PG'),
+                  child: _buildPlayerSlot(3, AppString.pgSg),
                 ),
                 Positioned(
                   top: 320.h,
                   right: 60.w,
-                  child: _buildPlayerSlot(4, 'PG'),
+                  child: _buildPlayerSlot(4, AppString.pgSg),
                 ),
               ],
             ),
@@ -773,8 +774,9 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
         children: [
           SizedBox(
             width: 114.w,
-            height: 96.h,
+            height: 104.h,
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Positioned(
                   left: 0,
@@ -791,52 +793,23 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                   ),
                 ),
                 Positioned(
-                  left: 35.w,
-                  top: 85.h,
-                  child: Container(
-                    width: 40.w,
-                    height: 14.h,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFF1A1A1A),
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 0.50.r,
-                          color: const Color(0xFF1A1A1A),
-                        ),
-                        borderRadius: BorderRadius.circular(3.r),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 38.w,
-                  top: 87.h,
-                  child: SizedBox(
-                    width: 34.w,
-                    height: 10.h,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        position,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9.sp,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w500,
-                          height: 1,
-                        ),
-                      ),
+                  left: 0,
+                  right: 0,
+                  top: 84.h,
+                  child: Center(
+                    child: PositionLabel(
+                      position,
+                      background: const Color(0xFF1A1A1A),
                     ),
                   ),
                 ),
                 if (player == null)
                   Positioned(
-                    left: 45.w,
-                    top: 35.h,
+                    left: 47.w,
+                    top: 58.h,
                     child: Container(
-                      width: 20.w,
-                      height: 20.h,
+                      width: 18.w,
+                      height: 18.h,
                       decoration: const ShapeDecoration(
                         color: Color(0xFFFF8C42),
                         shape: OvalBorder(),
@@ -844,7 +817,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
                       child: Icon(
                         Icons.add,
                         color: Colors.white,
-                        size: 16.r,
+                        size: 13.r,
                       ),
                     ),
                   ),
@@ -992,14 +965,20 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   }
 
   Widget _buildTimeLeft() {
+    final lock = _controller.globalLeagueSelection.value?.lockInSeconds;
+    // Same rule as the private league: no placeholder while loading, and
+    // "Aucun match aujourd'hui" (no clock icon) when there are no games.
+    if (lock == null && isLoadingGames) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
         children: [
-          Icon(Icons.access_time, color: Colors.white70, size: 20.r),
-          SizedBox(width: 8.w),
+          if (lock != null) ...[
+            Icon(Icons.access_time, color: Colors.white70, size: 20.r),
+            SizedBox(width: 8.w),
+          ],
           Text(
-            formatTimeLeft(_controller.globalLeagueSelection.value?.lockInSeconds),
+            formatTimeLeft(lock),
             style: TextStyle(
               color: Colors.white70,
               fontSize: 16.sp,
