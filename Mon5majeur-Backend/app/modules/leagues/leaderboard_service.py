@@ -51,8 +51,90 @@ def _display_name(user: User | None) -> str:
     return user.team_name or (user.email.split("@")[0] if user.email else "Unknown")
 
 
+def _match_visible(viewer, match) -> bool:
+    """False when `viewer` must not yet see this match's outcome (score
+    paywall, QA 15/09/2026 item 4). No viewer = internal/system use = all."""
+    if viewer is None:
+        return True
+    from app.modules.leagues.score_visibility import scores_hidden
+
+    return not scores_hidden(viewer, status=match.status, nba_date=match.nba_date)
+
+
+def tally_matches(member_map: dict, matches: list) -> None:
+    """Add each completed match's points and win/loss to the members in
+    `member_map` ({user_id: membership-like}). The one place the W/L/PF/PA
+    arithmetic lives: engine.update_standings (stored totals) and the
+    viewer-filtered standings both call it, so they can never disagree."""
+    for match in matches:
+        home = member_map.get(match.home_user_id)
+        away = member_map.get(match.away_user_id)
+        if home:
+            home.points_for += match.home_score or 0.0
+            home.points_against += match.away_score or 0.0
+            if match.winner_id == match.home_user_id:
+                home.wins += 1
+            elif match.winner_id == match.away_user_id:
+                home.losses += 1
+        if away:
+            away.points_for += match.away_score or 0.0
+            away.points_against += match.home_score or 0.0
+            if match.winner_id == match.away_user_id:
+                away.wins += 1
+            elif match.winner_id == match.home_user_id:
+                away.losses += 1
+
+
+async def viewer_memberships(
+    league_id: PydanticObjectId, viewer
+) -> list[LeagueMembership]:
+    """The league's memberships as `viewer` is allowed to see them.
+
+    Live Scoring subscribers (and system callers) get the stored totals. For
+    everyone else the totals are rebuilt from only the matches whose scores
+    are already released (09:00 Paris the morning after the night) — otherwise
+    W/L/points/rank would reveal a result the paywall is hiding. Returns
+    in-memory copies; nothing is saved."""
+    from app.modules.leagues.score_visibility import has_live_access
+
+    memberships = await LeagueMembership.find({"league_id": league_id}).to_list()
+    if viewer is None or has_live_access(viewer):
+        return memberships
+
+    copies = [m.model_copy() for m in memberships]
+    for m in copies:
+        m.wins = 0
+        m.losses = 0
+        m.points_for = 0.0
+        m.points_against = 0.0
+    completed = await LeagueMatch.find(
+        {"league_id": league_id, "status": MATCH_STATUS_COMPLETED}
+    ).to_list()
+    tally_matches(
+        {m.user_id: m for m in copies},
+        [m for m in completed if _match_visible(viewer, m)],
+    )
+    return copies
+
+
+async def viewer_rank(league_id: PydanticObjectId, user_id, viewer) -> int | None:
+    """`user_id`'s standing as `viewer` may see it (see viewer_memberships)."""
+    ms = await viewer_memberships(league_id, viewer)
+    if not ms:
+        return None
+    umap = await _user_map([m.user_id for m in ms])
+    ranked = await ranked_memberships(league_id, umap, ms, viewer=viewer)
+    for rank, m in enumerate(ranked, start=1):
+        if m.user_id == user_id:
+            return rank
+    return None
+
+
 async def _head_to_head_winner(
-    league_id: PydanticObjectId, user_a: PydanticObjectId, user_b: PydanticObjectId
+    league_id: PydanticObjectId,
+    user_a: PydanticObjectId,
+    user_b: PydanticObjectId,
+    viewer=None,
 ) -> PydanticObjectId | None:
     """Who won more of the regular-season meetings between these two
     (spec §4.6.2 tie-break step 3). None if never played or perfectly split —
@@ -66,6 +148,7 @@ async def _head_to_head_winner(
             {"home_user_id": user_b, "away_user_id": user_a},
         ]},
     ).to_list()
+    matches = [m for m in matches if _match_visible(viewer, m)]
 
     wins_a = sum(1 for m in matches if m.winner_id == user_a)
     wins_b = sum(1 for m in matches if m.winner_id == user_b)
@@ -78,6 +161,7 @@ async def ranked_memberships(
     league_id: PydanticObjectId,
     umap: dict,
     memberships: list[LeagueMembership] | None = None,
+    viewer=None,
 ) -> list[LeagueMembership]:
     """Full standings order (spec §4.6.2): wins → differential → points_for →
     head-to-head → alphabetical pseudo (deterministic last resort). Shared by
@@ -99,7 +183,7 @@ async def ranked_memberships(
         if a.points_for != b.points_for:
             return -1 if a.points_for > b.points_for else 1
 
-        h2h = await _head_to_head_winner(league_id, a.user_id, b.user_id)
+        h2h = await _head_to_head_winner(league_id, a.user_id, b.user_id, viewer)
         if h2h is not None:
             return -1 if h2h == a.user_id else 1
 
@@ -126,12 +210,11 @@ async def ranked_memberships(
 
 # ── Standings ─────────────────────────────────────────────────────────────────
 
-async def get_standings(league_auto_id: int) -> StandingsResponse:
+async def get_standings(league_auto_id: int, viewer=None) -> StandingsResponse:
     league = await _league_or_404(league_auto_id)
 
-    memberships = await LeagueMembership.find(
-        LeagueMembership.league_id == league.id
-    ).to_list()
+    # Only what `viewer` may already see (score paywall) — see viewer_memberships.
+    memberships = await viewer_memberships(league.id, viewer)
 
     if not memberships:
         return StandingsResponse(
@@ -144,7 +227,7 @@ async def get_standings(league_auto_id: int) -> StandingsResponse:
     user_ids = [m.user_id for m in memberships]
     umap = await _user_map(user_ids)
 
-    sorted_ms = await ranked_memberships(league.id, umap, memberships)
+    sorted_ms = await ranked_memberships(league.id, umap, memberships, viewer=viewer)
     playoff_spots = min(4, len(sorted_ms))
 
     teams: list[StandingsEntry] = []

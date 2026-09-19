@@ -235,25 +235,9 @@ async def update_standings(league_id: PydanticObjectId) -> None:
         LeagueMatch.status == MATCH_STATUS_COMPLETED,
     ).to_list()
 
-    for match in completed_matches:
-        home = member_map.get(match.home_user_id)
-        away = member_map.get(match.away_user_id)
+    from app.modules.leagues.leaderboard_service import tally_matches
 
-        if home:
-            home.points_for += match.home_score or 0.0
-            home.points_against += match.away_score or 0.0
-            if match.winner_id == match.home_user_id:
-                home.wins += 1
-            elif match.winner_id == match.away_user_id:
-                home.losses += 1
-
-        if away:
-            away.points_for += match.away_score or 0.0
-            away.points_against += match.home_score or 0.0
-            if match.winner_id == match.away_user_id:
-                away.wins += 1
-            elif match.winner_id == match.home_user_id:
-                away.losses += 1
+    tally_matches(member_map, completed_matches)
 
     # Full tie-break cascade (spec §4.6.2): wins → differential → points_for →
     # head-to-head → alphabetical pseudo. Shared with the Standings tab and

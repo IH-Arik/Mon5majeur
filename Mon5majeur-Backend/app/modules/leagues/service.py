@@ -596,6 +596,8 @@ class LeagueService:
     async def get_my_leagues_compat(
         self, user: User, league_type: str | None = None
     ) -> list[PublicLeagueCompatResponse]:
+        from app.modules.leagues import leaderboard_service
+        from app.modules.leagues.score_visibility import has_live_access
         from app.modules.users.model import User as UserModel
 
         memberships = await self.membership_repo.get_user_memberships(user.id)
@@ -618,7 +620,13 @@ class LeagueService:
             compat = await self._to_compat_response(league, users)
             membership = membership_map.get(league.id)
             compat.current_week = league.current_week
+            # The stored rank already reflects results still behind the score
+            # paywall; rebuild it from what this user may see (QA 15/09 item 4).
             compat.rank = membership.rank if membership else None
+            if membership and not has_live_access(user):
+                compat.rank = await leaderboard_service.viewer_rank(
+                    league.id, user.id, user
+                )
             compat.lineup_submitted, compat.lock_in_seconds = await _lineup_lock_info(
                 user.id, league.id, today
             )

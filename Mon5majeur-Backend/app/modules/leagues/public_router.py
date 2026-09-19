@@ -185,9 +185,9 @@ async def get_public_bonus_status(
 )
 async def get_public_standings(
     league_id: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StandingsResponse:
-    return await leaderboard_service.get_standings(league_id)
+    return await leaderboard_service.get_standings(league_id, current_user)
 
 
 @router.get(

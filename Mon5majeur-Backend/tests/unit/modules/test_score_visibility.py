@@ -83,3 +83,85 @@ def test_normalize_name_ignores_accents_case_punctuation_and_suffixes():
     )
     assert normalize_name("Gary Payton II") == normalize_name("Gary Payton")
     assert normalize_name("") == ""
+
+
+# ── standings honour the paywall (viewer-filtered tallies) ────────────────────
+
+import asyncio
+import copy
+
+
+class _Rows:
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def to_list(self):
+        return self._rows
+
+
+def _member(uid):
+    m = SimpleNamespace(
+        user_id=uid, wins=5, losses=5, points_for=999.0, points_against=999.0
+    )
+    m.model_copy = lambda m=m: copy.copy(m)
+    return m
+
+
+def _match(home, away, night, hs, as_, winner, status="completed"):
+    return SimpleNamespace(
+        home_user_id=home, away_user_id=away, nba_date=night, home_score=hs,
+        away_score=as_, winner_id=winner, status=status,
+    )
+
+
+def _patch_league(monkeypatch, members, matches):
+    from app.modules.leagues import leaderboard_service as ls
+
+    monkeypatch.setattr(ls.LeagueMembership, "find", lambda *a, **k: _Rows(members))
+    monkeypatch.setattr(ls.LeagueMatch, "find", lambda *a, **k: _Rows(matches))
+    return ls
+
+
+def test_tally_matches_counts_wins_losses_and_points():
+    from app.modules.leagues.leaderboard_service import tally_matches
+
+    a = SimpleNamespace(wins=0, losses=0, points_for=0.0, points_against=0.0)
+    b = SimpleNamespace(wins=0, losses=0, points_for=0.0, points_against=0.0)
+    tally_matches({"a": a, "b": b}, [_match("a", "b", NIGHT, 100.0, 90.0, "a")])
+    assert (a.wins, a.losses, a.points_for, a.points_against) == (1, 0, 100.0, 90.0)
+    assert (b.wins, b.losses, b.points_for, b.points_against) == (0, 1, 90.0, 100.0)
+
+
+def test_non_subscriber_standings_leave_out_unreleased_matches(monkeypatch):
+    """A match finished last night (before 09:00 Paris) must not move the
+    non-subscriber's W/L or points; an older one still does."""
+    from unittest import mock
+
+    old_night = date(2026, 8, 1)  # long released relative to the mocked clock
+    fresh = date(2026, 9, 8)
+    members = [_member("a"), _member("b")]
+    matches = [
+        _match("a", "b", old_night, 100.0, 90.0, "a"),
+        _match("b", "a", fresh, 120.0, 80.0, "b"),
+    ]
+    ls = _patch_league(monkeypatch, members, matches)
+
+    with mock.patch(
+        "app.modules.leagues.score_visibility.datetime",
+        wraps=datetime,
+    ) as dt:
+        dt.now.return_value = _at(5, 0)  # 07:00 Paris on the 9th: still hidden
+        out = asyncio.run(ls.viewer_memberships("L", _free()))
+    a = next(m for m in out if m.user_id == "a")
+    b = next(m for m in out if m.user_id == "b")
+    assert (a.wins, a.losses, a.points_for) == (1, 0, 100.0)
+    assert (b.wins, b.losses, b.points_for) == (0, 1, 90.0)
+    # the stored (real) totals are untouched
+    assert members[0].wins == 5 and members[0].points_for == 999.0
+
+
+def test_subscriber_gets_the_stored_totals(monkeypatch):
+    members = [_member("a")]
+    ls = _patch_league(monkeypatch, members, [])
+    out = asyncio.run(ls.viewer_memberships("L", _premium()))
+    assert out[0].wins == 5 and out[0].points_for == 999.0

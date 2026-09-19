@@ -214,7 +214,7 @@ async def get_private_standings(
     current_user: User = Depends(get_current_user),
 ) -> StandingsResponse:
     await _ensure_private_member(league_id, current_user)
-    return await leaderboard_service.get_standings(league_id)
+    return await leaderboard_service.get_standings(league_id, current_user)
 
 
 @router.get(

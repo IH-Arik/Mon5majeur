@@ -177,18 +177,45 @@ async def get_profile_stats(
 
     # ── Aggregate W/L/points from ALL memberships (duel leagues only —
     # Global League memberships never accrue wins/losses/points here) ──────
-    total_wins = sum(m.wins for m in memberships)
-    total_losses = sum(m.losses for m in memberships)
-    total_pf = sum(m.points_for for m in memberships)
-    total_pa = sum(m.points_against for m in memberships)
+    from app.modules.leagues.score_visibility import has_live_access, scores_hidden
 
-    home_matches = await LeagueMatch.find(
-        {"home_user_id": user_id, "status": "completed"}
-    ).count()
-    away_matches = await LeagueMatch.find(
-        {"away_user_id": user_id, "status": "completed"}
-    ).count()
-    total_matches = home_matches + away_matches
+    if has_live_access(current_user):
+        total_wins = sum(m.wins for m in memberships)
+        total_losses = sum(m.losses for m in memberships)
+        total_pf = sum(m.points_for for m in memberships)
+        total_pa = sum(m.points_against for m in memberships)
+
+        home_matches = await LeagueMatch.find(
+            {"home_user_id": user_id, "status": "completed"}
+        ).count()
+        away_matches = await LeagueMatch.find(
+            {"away_user_id": user_id, "status": "completed"}
+        ).count()
+        total_matches = home_matches + away_matches
+    else:
+        # Score paywall (QA 15/09/2026 item 4): W/L and points would reveal a
+        # result before 09:00 Paris, so count only matches already released.
+        mine = await LeagueMatch.find(
+            {"status": "completed"},
+            {"$or": [{"home_user_id": user_id}, {"away_user_id": user_id}]},
+        ).to_list()
+        shown = [
+            m for m in mine
+            if not scores_hidden(current_user, status=m.status, nba_date=m.nba_date)
+        ]
+        total_matches = len(shown)
+        total_wins = sum(1 for m in shown if m.winner_id == user_id)
+        total_losses = sum(
+            1 for m in shown if m.winner_id is not None and m.winner_id != user_id
+        )
+        total_pf = sum(
+            (m.home_score if m.home_user_id == user_id else m.away_score) or 0.0
+            for m in shown
+        )
+        total_pa = sum(
+            (m.away_score if m.home_user_id == user_id else m.home_score) or 0.0
+            for m in shown
+        )
     no_match = max(0, total_matches - total_wins - total_losses)
 
     # ── Performance averages ────────────────────────────────────────────────
