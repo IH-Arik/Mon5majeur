@@ -13,6 +13,7 @@ import 'package:mon5majeur_app/core/utils/datetime_format.dart';
 import 'package:mon5majeur_app/data/models/match_result_model.dart' as mr;
 import 'package:mon5majeur_app/data/models/my_match_today_model.dart';
 import 'package:mon5majeur_app/data/models/playoff_bracket_model.dart';
+import 'package:mon5majeur_app/presentation/screens/home/controllers/home_controller.dart';
 import 'package:mon5majeur_app/presentation/screens/home/tabs/match_results_dialog.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/match_lineups_field.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/position_label.dart';
@@ -218,5 +219,15 @@ void main() {
       'Available: @n / @m players'.trParams({'n': '3', 'm': '10'}),
       'Available: 3 / 10 players',
     );
+  });
+
+  test('home card refresh: 30 s while a match is live, 2 min otherwise', () {
+    expect(matchRefreshInterval([_match(status: 'live')]), const Duration(seconds: 30));
+    expect(
+      matchRefreshInterval([_match(status: 'completed'), _match(status: 'live')]),
+      const Duration(seconds: 30),
+    );
+    expect(matchRefreshInterval([_match(status: 'completed')]), const Duration(minutes: 2));
+    expect(matchRefreshInterval([]), const Duration(minutes: 2));
   });
 }

@@ -25,7 +25,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _logoController;
   late AnimationController _pulseController;
   late AnimationController _slideController;
@@ -92,10 +93,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Start animations
     _logoController.forward();
     _slideController.forward();
+
+    // Keep tonight's result card fresh while this screen is open (live scores
+    // for subscribers, tip-off / final / 09:00 release for everyone).
+    WidgetsBinding.instance.addObserver(this);
+    Get.find<HomeController>().startMatchAutoRefresh();
+  }
+
+  // No polling while the app is in the background.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = Get.find<HomeController>();
+    if (state == AppLifecycleState.resumed) {
+      controller.refreshMatchesSilently();
+      controller.startMatchAutoRefresh();
+    } else if (state == AppLifecycleState.paused) {
+      controller.stopMatchAutoRefresh();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().stopMatchAutoRefresh();
+    }
     _spotlightWorker?.dispose();
     _logoController.dispose();
     _pulseController.dispose();
