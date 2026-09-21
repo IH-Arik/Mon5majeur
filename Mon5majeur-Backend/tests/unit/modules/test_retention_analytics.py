@@ -264,3 +264,17 @@ def test_tracked_users_filter_keeps_accounts_without_the_field():
     from app.modules.analytics.service import _TRACKED_USERS
 
     assert _TRACKED_USERS == {"usage_stats_enabled": {"$ne": False}}
+
+
+# ── DAU 7-night average is a billing figure: only locked nights count ─────────
+
+def test_rolling_average_excludes_tonight_until_its_lineups_are_locked():
+    from app.modules.analytics.service import rolling_complete_nights
+
+    nights = [date(2026, 10, d) for d in (22, 21, 20, 19, 18, 17, 16, 15)]  # most recent first
+    # before tonight's first tip-off: tonight (22) is still filling up -> skipped
+    assert rolling_complete_nights(nights, tonight_locked=False, size=7) == nights[1:8]
+    # once locked, tonight counts
+    assert rolling_complete_nights(nights, tonight_locked=True, size=7) == nights[:7]
+    # no history yet
+    assert rolling_complete_nights([], tonight_locked=False, size=7) == []

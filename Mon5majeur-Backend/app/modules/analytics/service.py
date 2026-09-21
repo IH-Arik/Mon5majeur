@@ -91,6 +91,17 @@ async def _lineup_filter() -> dict:
     return {**_VALIDATED_LINEUP_FILTER, "user_id": {"$nin": out}}
 
 
+def rolling_complete_nights(nights_desc: list[date], tonight_locked: bool, size: int) -> list[date]:
+    """The nights the DAU rolling average may use (spec: "used for sponsor
+    billing"). `nights_desc` is most recent first. Tonight only counts once its
+    lineups are locked (first tip-off passed): before that its DAU is still
+    filling up, so including it makes a billing figure drift through the day."""
+    nights = list(nights_desc)
+    if nights and not tonight_locked:
+        nights = nights[1:]
+    return nights[:size]
+
+
 def _utc_today() -> date:
     return datetime.now(timezone.utc).date()
 
@@ -149,7 +160,9 @@ class RetentionAnalyticsService:
             lineups_tonight = await self._lineups_on(night)
             dau = await self._dau_on(night)
 
-        rolling_nights = await self.match_nights(limit=DAU_ROLLING_NIGHTS)
+        recent = await self.match_nights(limit=DAU_ROLLING_NIGHTS + 1)
+        tonight_locked = bool(recent) and await self._night_locked(recent[0])
+        rolling_nights = rolling_complete_nights(recent, tonight_locked, DAU_ROLLING_NIGHTS)
         dau_values = [await self._dau_on(n) for n in rolling_nights]
         dau_avg = round(sum(dau_values) / len(dau_values), 1) if dau_values else 0.0
 
@@ -165,6 +178,18 @@ class RetentionAnalyticsService:
             account_deletions=deletions,
             night_date=night,
         )
+
+    async def _night_locked(self, night: date) -> bool:
+        """True once the night's first game has tipped off (lineups are locked,
+        so its DAU can no longer grow)."""
+        return (
+            await NBAGame.find(
+                {
+                    "nba_date": _as_datetime(night),
+                    "tip_off_time": {"$lte": datetime.now(timezone.utc)},
+                }
+            ).count()
+        ) > 0
 
     async def _lineups_on(self, night: date) -> int:
         return await FlutterPlayerSelection.find(
