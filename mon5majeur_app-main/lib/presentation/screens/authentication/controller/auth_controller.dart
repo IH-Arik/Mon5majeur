@@ -21,6 +21,7 @@ import '../../../../controllers/global_league_controller.dart';
 import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../controllers/my_match_today_controller.dart';
 import '../../../../controllers/notifications_controller.dart';
+import '../../../../core/services/revenuecat_service.dart';
 
 import '../../home/controllers/home_controller.dart';
 import '../../home/controllers/create_league_controller.dart';
@@ -150,6 +151,10 @@ class AuthController extends GetxController {
     if (Get.isRegistered<LanguageController>()) {
       Get.find<LanguageController>().syncCurrentLanguageToBackend();
     }
+
+    // ── RevenueCat: link this auth session to the RC subscriber ID ──
+    // Fire-and-forget; a failure here is non-fatal.
+    RevenueCatService.instance.loginUser();
   }
 
   Future<bool> _refreshSessionAndCheckProfile() async {

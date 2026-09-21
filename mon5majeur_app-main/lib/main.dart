@@ -15,6 +15,7 @@ import 'core/routes/routes.dart';
 import 'core/language/language_controller.dart';
 import 'core/dependency_injection/getx_injection.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/revenuecat_service.dart';
 import 'firebase_options.dart';
 
 /// =======================================
@@ -45,6 +46,12 @@ Future<void> main() async {
   // validation prompt (team_confirm_controls.dart) — this just keeps the
   // token in sync on every app start once permission already exists.
   unawaited(syncFcmTokenIfPermissionGranted());
+
+  // ── RevenueCat ──
+  // Initialise the SDK early so the paywall can fetch offerings immediately.
+  // If the user already has a stored session, link them to RevenueCat.
+  await RevenueCatService.instance.init();
+  unawaited(RevenueCatService.instance.loginUser());
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await initDependencies();

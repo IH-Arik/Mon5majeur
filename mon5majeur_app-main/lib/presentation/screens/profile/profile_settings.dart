@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/revenuecat_service.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -176,6 +177,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Future<void> _logout() async {
+    await RevenueCatService.instance.logoutUser();
     await _clearTokens();
     if (mounted) context.go(RoutePath.signInScreen.addBasePath);
   }
