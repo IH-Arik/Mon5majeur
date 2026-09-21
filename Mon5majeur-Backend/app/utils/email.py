@@ -68,6 +68,8 @@ def send_otp_email(to: str, otp: str, purpose: str) -> None:
         </div>
         """
 
-    # Log OTP in dev mode so you can test without SMTP
-    logger.info("[OTP] to=%s purpose=%s code=%s", to, purpose, otp)
+    # Dev convenience only (no SMTP configured AND DEBUG on). Never in production:
+    # a logged code lets anyone with log access reset the account.
+    if settings.DEBUG and not settings.SMTP_HOST:
+        logger.info("[OTP] to=%s purpose=%s code=%s", to, purpose, otp)
     _send_email(to, subject, html)

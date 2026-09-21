@@ -18,6 +18,8 @@ import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
 import '../../tutorial/tutorial_skip_button.dart';
 import '../screens/select_player_screen.dart';
+import '../widgets/lineup_widgets.dart';
+import '../widgets/position_label.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
 
@@ -203,13 +205,13 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
         }
       } else {
         setState(() {
-          errorMessage = 'Failed to load players';
+          errorMessage = 'Failed to load players'.tr;
           isLoadingPlayers = false;
         });
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Error loading players: ${e.toString()}';
+        errorMessage = 'Error loading players: @e'.trParams({'e': e.toString()});
         isLoadingPlayers = false;
       });
       debugPrint('Error fetching players: $e');
@@ -320,13 +322,13 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
         });
       } else {
         setState(() {
-          gamesErrorMessage = 'Failed to load games';
+          gamesErrorMessage = 'Failed to load games'.tr;
           isLoadingGames = false;
         });
       }
     } catch (e) {
       setState(() {
-        gamesErrorMessage = 'Error loading games: $e';
+        gamesErrorMessage = 'Error loading games: @e'.trParams({'e': '$e'});
         isLoadingGames = false;
       });
     }
@@ -335,7 +337,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   void _selectPlayer(int index) {
     if (isLoadingPlayers && availablePlayers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loading players, please wait...')),
+        SnackBar(content: Text('Loading players, please wait...'.tr)),
       );
       return;
     }
@@ -395,7 +397,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   Future<void> _saveTeam() async {
     if (!isTeamComplete) {
       Get.snackbar(
-        'Incomplete Team',
+        'Incomplete Team'.tr,
         'Please select all 5 players before saving',
         backgroundColor: Colors.red,
         colorText: Colors.white,
@@ -456,10 +458,10 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       widget.onTeamSaved?.call();
     } else {
       Get.snackbar(
-        'Error',
+        'Error'.tr,
         _controller.errorMessage.value.isNotEmpty
             ? _controller.errorMessage.value
-            : 'Failed to save team. Please try again.',
+            : 'Failed to save team. Please try again.'.tr,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
@@ -656,239 +658,22 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   }
 
   Widget _buildCourtField() {
-    return Stack(
-      children: [
-        Container(
-          margin: EdgeInsets.symmetric(horizontal: 16.w),
-          height: 600.h,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12.r),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Assets.images.playground.image(fit: BoxFit.cover),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 50.h,
-                  left: 20.w,
-                  child: _buildChangeJerseyButton(),
-                ),
-                Positioned(
-                  top: 150.h,
-                  left: 40.w,
-                  child: _buildPlayerSlot(0, 'SF'),
-                ),
-                Positioned(
-                  top: 120.h,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _buildPlayerSlot(1, 'C')),
-                ),
-                Positioned(
-                  top: 150.h,
-                  right: 40.w,
-                  child: _buildPlayerSlot(2, 'SF'),
-                ),
-                Positioned(
-                  top: 320.h,
-                  left: 60.w,
-                  child: _buildPlayerSlot(3, 'PG'),
-                ),
-                Positioned(
-                  top: 320.h,
-                  right: 60.w,
-                  child: _buildPlayerSlot(4, 'PG'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChangeJerseyButton() {
-    return GestureDetector(
-      onTap: _selectJersey,
-      child: Container(
-        width: 60.w,
-        height: 80.h,
-        decoration: ShapeDecoration(
-          color: const Color(0xFF2C2C2C),
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1.r, color: const Color(0xFF1A1A1A)),
-            borderRadius: BorderRadius.circular(6.r),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 35.w,
-              height: 35.h,
-              child: jerseys[selectedJerseyIndex].image(fit: BoxFit.contain),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              AppString.changeJersey.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 8.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w400,
-                height: 1.2,
-              ),
-            ),
-            Text(
-              AppString.plus.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w100,
-              ),
-            ),
-          ],
-        ),
+    return LineupCourt(
+      slotBuilder: _buildPlayerSlot,
+      changeJerseyButton: LineupChangeJerseyButton(
+        jersey: jerseys[selectedJerseyIndex],
+        onTap: _selectJersey,
       ),
     );
   }
+
 
   Widget _buildPlayerSlot(int index, String position) {
-    final player = selectedPlayers[index];
-
-    final slot = GestureDetector(
+    final slot = LineupPlayerSlot(
+      player: selectedPlayers[index],
+      jersey: jerseys[selectedJerseyIndex],
+      label: position,
       onTap: () => _selectPlayer(index),
-      child: Column(
-        children: [
-          SizedBox(
-            width: 114.w,
-            height: 96.h,
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: Container(
-                    width: 114.w,
-                    height: 91.h,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: jerseys[selectedJerseyIndex].image().image,
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 35.w,
-                  top: 85.h,
-                  child: Container(
-                    width: 40.w,
-                    height: 14.h,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFF1A1A1A),
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 0.50.r,
-                          color: const Color(0xFF1A1A1A),
-                        ),
-                        borderRadius: BorderRadius.circular(3.r),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 38.w,
-                  top: 87.h,
-                  child: SizedBox(
-                    width: 34.w,
-                    height: 10.h,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        position,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 9.sp,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.w500,
-                          height: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (player == null)
-                  Positioned(
-                    left: 45.w,
-                    top: 35.h,
-                    child: Container(
-                      width: 20.w,
-                      height: 20.h,
-                      decoration: const ShapeDecoration(
-                        color: Color(0xFFFF8C42),
-                        shape: OvalBorder(),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 16.r,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          if (player != null) ...[
-            SizedBox(height: 8.h),
-            Text(
-              player.name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFFFECD56),
-                fontSize: 12.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w600,
-                height: 1.83,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 6.w),
-              decoration: ShapeDecoration(
-                color: const Color(0xFF1A1A1A),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(width: 1.r, color: const Color(0xFF2C2C2C)),
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-              ),
-              child: Text(
-                '${player.price.toInt()}M',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.sp,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w800,
-                  height: 1.83,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
 
     if (index != 0) return slot;
@@ -992,14 +777,20 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   }
 
   Widget _buildTimeLeft() {
+    final lock = _controller.globalLeagueSelection.value?.lockInSeconds;
+    // Same rule as the private league: no placeholder while loading, and
+    // "Aucun match aujourd'hui" (no clock icon) when there are no games.
+    if (lock == null && isLoadingGames) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
         children: [
-          Icon(Icons.access_time, color: Colors.white70, size: 20.r),
-          SizedBox(width: 8.w),
+          if (lock != null) ...[
+            Icon(Icons.access_time, color: Colors.white70, size: 20.r),
+            SizedBox(width: 8.w),
+          ],
           Text(
-            formatTimeLeft(_controller.globalLeagueSelection.value?.lockInSeconds),
+            formatTimeLeft(lock),
             style: TextStyle(
               color: Colors.white70,
               fontSize: 16.sp,

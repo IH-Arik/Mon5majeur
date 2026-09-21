@@ -5,6 +5,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/utils/datetime_format.dart';
 
 /// The states of the team-builder confirm flow.
 ///
@@ -30,16 +31,14 @@ LineupState lineupStateFor({
   return LineupState.ready;
 }
 
-/// "3h 42m Left" from real backend seconds-until-lock. Falls back to
-/// [AppString.fourHoursLeft] while lock data hasn't loaded yet, since there's
-/// nothing truthful to show in that brief window.
+/// Time until the night's first tip-off, from real backend seconds-until-lock
+/// (QA 15/09/2026 item 6): "4 h 12 min", never a rounded "4 Heures". With no
+/// game scheduled there is nothing to count down to, so it reads
+/// "Aucun match aujourd'hui" instead of a made-up figure.
 String formatTimeLeft(int? lockInSeconds) {
-  if (lockInSeconds == null) return AppString.fourHoursLeft.tr;
+  if (lockInSeconds == null) return AppString.noGamesToday.tr;
   if (lockInSeconds <= 0) return AppString.lineupLocked.tr;
-  final duration = Duration(seconds: lockInSeconds);
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60);
-  return '${hours}h ${minutes}m Left';
+  return formatCountdown(lockInSeconds);
 }
 
 /// Green ("Team complete") / red ("You need X more players") status banner.

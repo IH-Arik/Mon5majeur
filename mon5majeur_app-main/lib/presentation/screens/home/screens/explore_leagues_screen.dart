@@ -415,7 +415,7 @@ class _ExploreLeaguesScreenState extends State<ExploreLeaguesScreen> {
                                           ),
                                           SizedBox(width: 6.w),
                                           Text(
-                                            '$teamsCount/$maxTeams Teams',
+                                            '@n/@m Teams'.trParams({'n': '$teamsCount', 'm': '$maxTeams'}),
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 12.sp,
@@ -617,12 +617,10 @@ class _ExploreLeaguesScreenState extends State<ExploreLeaguesScreen> {
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      '$teamsCount/$maxTeams Teams',
+                      '@n/@m Teams'.trParams({'n': '$teamsCount', 'm': '$maxTeams'}),
                       style: TextStyle(
                         color: const Color(0xFF6B6E82),
                         fontSize: 13.sp,

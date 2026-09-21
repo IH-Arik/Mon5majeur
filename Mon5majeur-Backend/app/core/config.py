@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     GOALSERVE_API_KEY: str = ""
 
     # ── Scheduler ────────────────────────────────────────────────────────────
+    # Connections per API worker. Motor's default is 100, and every worker/replica
+    # has its own pool, which can exhaust a small Atlas tier's connection cap.
+    MONGODB_MAX_POOL_SIZE: int = 20
     ENABLE_SCHEDULER: bool = True          # set False in tests/workers that don't run CRON
 
     # ── FCM (Firebase Cloud Messaging) ───────────────────────────────────────

@@ -69,13 +69,13 @@ class _GlobalTeamDetailScreenState extends State<GlobalTeamDetailScreen> {
       }
 
       setState(() {
-        _error = 'Failed to load team (${response.statusCode}).';
+        _error = 'Failed to load team (@code).'.trParams({'code': '${response.statusCode}'});
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to load team: $e';
+        _error = 'Failed to load team: @e'.trParams({'e': '$e'});
         _isLoading = false;
       });
     }

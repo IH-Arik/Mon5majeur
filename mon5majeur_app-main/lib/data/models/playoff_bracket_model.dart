@@ -60,6 +60,9 @@ class PlayoffSeries {
   final int? winnerId;
   final String? winnerName;
   final bool isComplete;
+  // True while some game's score is still paywalled for this viewer — wins
+  // and the winner then only reflect the games already revealed.
+  final bool hasHiddenScores;
 
   PlayoffSeries({
     required this.seriesIndex,
@@ -74,6 +77,7 @@ class PlayoffSeries {
     this.winnerId,
     this.winnerName,
     required this.isComplete,
+    this.hasHiddenScores = false,
   });
 
   factory PlayoffSeries.fromJson(Map<String, dynamic> json) {
@@ -94,6 +98,7 @@ class PlayoffSeries {
       winnerId: json['winner_id'],
       winnerName: json['winner_name'],
       isComplete: json['is_complete'] ?? false,
+      hasHiddenScores: json['has_hidden_scores'] ?? false,
     );
   }
 }
@@ -103,12 +108,19 @@ class PlayoffGame {
   final int scoreA;
   final int scoreB;
   final String winnerTeam;
+  // Lets the popup open the match detail for this game (QA 15/09 item 8).
+  final int? matchDay;
+  final String matchStatus;
+  final bool scoresHidden;
 
   PlayoffGame({
     required this.gameNumber,
     required this.scoreA,
     required this.scoreB,
     required this.winnerTeam,
+    this.matchDay,
+    this.matchStatus = 'scheduled',
+    this.scoresHidden = false,
   });
 
   factory PlayoffGame.fromJson(Map<String, dynamic> json) {
@@ -119,6 +131,9 @@ class PlayoffGame {
       scoreA: (json['score_a'] as num?)?.round() ?? 0,
       scoreB: (json['score_b'] as num?)?.round() ?? 0,
       winnerTeam: json['winner_team'] ?? '',
+      matchDay: json['match_day'],
+      matchStatus: json['match_status'] ?? 'scheduled',
+      scoresHidden: json['scores_hidden'] ?? false,
     );
   }
 }

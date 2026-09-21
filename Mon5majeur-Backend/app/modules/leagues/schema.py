@@ -324,6 +324,10 @@ class MyMatchTodayCompatResponse(BaseSchema):
     # necessarily today's, per spec §"last completed result").
     is_live_for_user: bool = False
     result_available: bool = False
+    # Score paywall (QA 15/09/2026 item 4): non-subscribers get zeros here
+    # until `scores_release_at` (09:00 Paris the morning after the night).
+    scores_hidden: bool = False
+    scores_release_at: str | None = None
 
 
 # ── Match Result (Flutter Result tab) ────────────────────────────────────────
@@ -370,6 +374,9 @@ class MatchResultCompatResponse(BaseSchema):
     player_scores: list[PlayerScoreItem] = []
     pairs: list[MatchPairItem] = []
     created_at: str = ""
+    # Score paywall — see MyMatchTodayCompatResponse.
+    scores_hidden: bool = False
+    scores_release_at: str | None = None
 
 
 # ── Player Selection (Flutter Build-Your-Team screen) ────────────────────────
@@ -391,6 +398,11 @@ class PlayersSelectionGetResponse(BaseSchema):
     # now < lock_time). None = no game scheduled for this match day,
     # 0 = already locked, >0 = seconds until lock.
     lock_in_seconds: int | None = None
+    # Budget cap before the Luxury Tax bonus (league budget + playoff seed
+    # bonus) and the size of that bonus, so the app's cap/progress bar match
+    # what the POST enforces (QA 15/09/2026 item 6).
+    base_budget: float | None = None
+    luxury_tax_bonus: float = 5.0
     # Echo back the saved bonus state so the app can restore it on reload.
     luxury_tax: bool = False
     chef_curry: bool = False
@@ -497,6 +509,11 @@ class PlayoffGameResponse(BaseSchema):
     score_a: int = 0
     score_b: int = 0
     winner_team: str = ""
+    # Lets the app open the match detail for this game (QA 15/09/2026 item 8).
+    match_day: int | None = None
+    match_status: str = "scheduled"
+    scores_hidden: bool = False
+    scores_release_at: str | None = None
 
 
 class PlayoffSeriesResponse(BaseSchema):
@@ -513,6 +530,9 @@ class PlayoffSeriesResponse(BaseSchema):
     winner_id: int | None = None
     winner_name: str | None = None
     is_complete: bool = False
+    # True while at least one game's score is still paywalled for this viewer
+    # — wins_a/wins_b/winner then only reflect the games already revealed.
+    has_hidden_scores: bool = False
 
 
 class PlayoffRoundResponse(BaseSchema):

@@ -21,29 +21,132 @@ logger = logging.getLogger(__name__)
 # 09:00 Paris — daily close (strict order: scores → standings → prices)
 # ---------------------------------------------------------------------------
 
+MAX_CATCH_UP_NIGHTS = 30
+
+
+async def _nights_pending_close(today: date) -> list[date]:
+    """Nights BEFORE `today` that still have unscored duels in an active
+    league, oldest first. A night the cron missed (downtime, deploy, crash) is
+    simply still pending here, so it is caught up on the next run instead of
+    being lost (audit 3.4). Tonight (`today`) is never included - its games
+    have not been played yet."""
+    from app.modules.leagues.model import League, LeagueMatch
+
+    active_ids = [
+        lg.id
+        for lg in await League.find(
+            {"status": {"$in": ["regular_season", "playoffs"]}}
+        ).to_list()
+    ]
+    if not active_ids:
+        return []
+    rows = await LeagueMatch.aggregate(
+        [
+            {
+                "$match": {
+                    "league_id": {"$in": active_ids},
+                    "status": {"$ne": "completed"},
+                    "nba_date": {"$lt": datetime.combine(today, datetime.min.time())},
+                }
+            },
+            {"$group": {"_id": "$nba_date"}},
+            {"$sort": {"_id": 1}},
+            {"$limit": MAX_CATCH_UP_NIGHTS},
+        ]
+    ).to_list()
+    return [r["_id"].date() if isinstance(r["_id"], datetime) else r["_id"] for r in rows]
+
+
+async def _prepare_night_data(night: date) -> None:
+    """Make sure the night's box scores are really in before anything is scored.
+
+    Pulls the night's scores fresh (the live poll used to stop at UTC midnight,
+    freezing the late games mid-game), computes the fantasy scores, and refuses
+    to continue if Goalserve gave us nothing for a night that had games:
+    scoring on empty data silently finishes every duel 0-0 (audit 3.1).
+    """
+    from app.modules.players.goalserve_client import GoalserveEmptyResponseError
+    from app.modules.players.model import NBAGame, PlayerGameStats
+    from app.modules.players.repository import PlayerRepository
+    from app.modules.players.service import PlayerService
+
+    games = await NBAGame.find(NBAGame.nba_date == night).to_list()
+    if not games:
+        return  # no NBA games that night: nothing to fetch, duels are forfeits
+
+    svc = PlayerService(PlayerRepository())
+    await svc.sync_scores_for_date(night)
+
+    games = await NBAGame.find(NBAGame.nba_date == night).to_list()
+    for game in games:
+        if game.status == "final":
+            await svc.finalize_game_scores(game.goalserve_id)
+
+    stat_rows = await PlayerGameStats.find(PlayerGameStats.nba_date == night).count()
+    final_games = sum(1 for g in games if g.status == "final")
+    if stat_rows == 0 or final_games == 0:
+        raise GoalserveEmptyResponseError(
+            f"night {night}: {len(games)} game(s) scheduled but {final_games} final "
+            f"and {stat_rows} player stat rows - refusing to score"
+        )
+
+
 async def daily_close_job() -> None:
+    from app.cron.lock import release, try_acquire
     from app.modules.leagues.engine import run_daily_close
+    from app.modules.players.goalserve_client import GoalserveEmptyResponseError
+    from app.modules.players.nba_night import latest_finished_night
     from app.modules.players.service import PlayerService
     from app.modules.players.repository import PlayerRepository
 
     today = datetime.now(timezone.utc).date()
     logger.info("CRON daily_close_job: starting for %s", today)
 
+    # Safety net against a double-fired cron (see cron/lock.py).
+    lock_key = f"daily_close:{today.isoformat()}"
+    if not await try_acquire(lock_key):
+        return
+
     try:
-        # 1. Finalize all slot scores from PlayerGameStats
-        from app.modules.lineups.service import LineupService
-        from app.modules.bonuses.service import BonusService
-        lineup_svc = LineupService(BonusService())
+        # The night to close is the one that just ENDED (D), not the UTC date
+        # this job runs on (D+1) - passing `today` looked for tonight's duels.
+        latest = await latest_finished_night(today)
+        pending = await _nights_pending_close(today)
+        nights = sorted(set(pending) | ({latest} if latest else set()))
 
-        filled = await lineup_svc.fill_slot_scores_from_stats(today)
-        logger.info("CRON: filled %d slot scores", filled)
+        closed: list[date] = []
+        for night in nights:
+            try:
+                await _prepare_night_data(night)
+            except GoalserveEmptyResponseError as exc:
+                # Stop here: later nights must not be scored before this one.
+                # The duels stay pending and are retried by the next run.
+                logger.critical("CRON daily_close_job: %s", exc)
+                break
 
-        finalized = await lineup_svc.finalize_lineup_scores(today)
-        logger.info("CRON: finalized %d lineup total scores", finalized)
+            if night in pending:
+                # 1. Finalize slot scores (legacy lineup system) for that night
+                from app.modules.lineups.service import LineupService
+                from app.modules.bonuses.service import BonusService
+                lineup_svc = LineupService(BonusService())
+                filled = await lineup_svc.fill_slot_scores_from_stats(night)
+                finalized = await lineup_svc.finalize_lineup_scores(night)
+                logger.info(
+                    "CRON: night %s - filled %d slot scores, finalized %d",
+                    night, filled, finalized,
+                )
 
-        # 2. Score matches + update standings + advance match days
-        result = await run_daily_close(today)
-        logger.info("CRON: league engine done: %s", result)
+                # 2. Score duels + standings + advance match days (guarded)
+                result = await run_daily_close(night)
+                logger.info("CRON: night %s league engine done: %s", night, result)
+            closed.append(night)
+
+        if latest is None or latest not in closed:
+            logger.error(
+                "CRON daily_close_job: night %s not closed - skipping prices/archive/push",
+                latest,
+            )
+            return
 
         # 3. Recompute player prices
         player_svc = PlayerService(PlayerRepository())
@@ -52,20 +155,21 @@ async def daily_close_job() -> None:
 
         # 4. Archive last night's Global League scores (feeds Weekly/Monthly rank)
         from app.modules.leagues.global_score_service import archive_daily_scores
-        archived = await archive_daily_scores(today)
+        archived = await archive_daily_scores(latest)
         logger.info("CRON: archived %d Global League daily scores", archived)
 
-        # 5. Tell everyone the results are out (spec §4.8 notification 2).
+        # 5. Tell everyone the results are out (spec 4.8 notification 2).
         #    Last, and in its own try: results are already published by now,
         #    so a push failure must not fail the close.
         try:
-            pushed = await _send_results_pushes(today)
+            pushed = await _send_results_pushes(latest)
             logger.info("CRON: sent %d results pushes", pushed)
         except Exception as exc:  # noqa: BLE001
             logger.error("CRON: results push failed: %s", exc, exc_info=True)
 
     except Exception as exc:
         logger.error("CRON daily_close_job failed: %s", exc, exc_info=True)
+        await release(lock_key)  # let a retry / the next run take over
 
 
 async def _send_results_pushes(night: date) -> int:
@@ -140,7 +244,12 @@ async def weekly_monthly_rewards_job() -> None:
 # ---------------------------------------------------------------------------
 
 async def reminder_push_job() -> None:
+    from app.cron.lock import try_acquire
+
     logger.info("CRON reminder_push_job: starting")
+    # One reminder per user even if the cron is double-fired (see cron/lock.py).
+    if not await try_acquire(f"reminder:{datetime.now(timezone.utc).date().isoformat()}", 20 * 3600):
+        return
     try:
         await _send_reminder_pushes()
     except Exception as exc:
@@ -310,7 +419,11 @@ async def sync_live_games_job() -> None:
     from app.modules.players.service import PlayerService
     from app.modules.players.repository import PlayerRepository
 
-    today = datetime.now(timezone.utc).date()
+    # The NBA night, not the UTC date: after 00:00 UTC (02:00 Paris) the UTC
+    # date is already tomorrow while tonight's late games are still being played.
+    from app.modules.players.nba_night import current_nba_night
+
+    today = await current_nba_night()
 
     try:
         games = await NBAGame.find(NBAGame.nba_date == today).to_list()

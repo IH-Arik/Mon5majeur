@@ -44,16 +44,15 @@ async def _clear_form(player: Player) -> None:
 async def compute_and_store_form_indicators(today: date) -> int:
     """Returns the number of players whose `form` field changed."""
     games_today = await NBAGame.find(NBAGame.nba_date == today).to_list()
-    team_ids_playing: set[str] = set()
-    for g in games_today:
-        team_ids_playing.add(g.home_team_id)
-        team_ids_playing.add(g.away_team_id)
+    from app.modules.players.teams_playing import TeamsPlaying
+
+    teams_playing = TeamsPlaying(games_today)
 
     all_active = await Player.find(Player.is_active == True).to_list()  # noqa: E712
 
     candidates: list[_Candidate] = []
     for player in all_active:
-        if player.team_goalserve_id not in team_ids_playing:
+        if not teams_playing.plays(player.team_name, player.team_goalserve_id):
             await _clear_form(player)
             continue
 

@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/nba_teams.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/local_db/local_db.dart';
 import '../../../core/routes/route_path.dart';
@@ -53,6 +54,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   String _email = '';
   int _sinceYear = DateTime.now().year;
   bool _notificationsEnabled = false;
+  bool _usageStatsEnabled = true;
   String selectedTeam = '';
   String selectedLogo = 'assets/icons/logo1.png';
   bool isTeamExpanded = false;
@@ -67,12 +69,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     {'name': AppString.logo6.tr, 'path': 'assets/icons/logo6.png'},
   ];
 
-  final List<String> teams = [
-    AppString.lakers.tr,
-    AppString.bostonCeltics.tr,
-    AppString.chicagoBulls.tr,
-    AppString.atlantaHawks.tr,
-  ];
+  // All 30 NBA teams, alphabetical, full names (QA 15/09/2026 item 3).
+  final List<String> teams = kNbaTeams;
 
   @override
   void initState() {
@@ -100,23 +98,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _teamName = profile.teamName.isNotEmpty
             ? profile.teamName
             : AppString.defaultTeamName.tr;
+        // Older builds stored "LAKERS"/"Lakers"; show the canonical full name.
         selectedTeam = profile.favoriteTeam.isNotEmpty
-            ? profile.favoriteTeam
-            : (teams.isNotEmpty ? teams.first : '');
+            ? canonicalNbaTeam(profile.favoriteTeam)
+            : '';
         selectedLogo =
             _logoKeyToPath[profile.teamLogo] ?? 'assets/icons/logo1.png';
         _notificationsEnabled = profile.recivedNotifications;
+        _usageStatsEnabled = profile.usageStatsEnabled;
         if ((profile.createdAt ?? '').isNotEmpty) {
           _sinceYear =
               DateTime.tryParse(profile.createdAt!)?.year ?? _sinceYear;
         }
       } else {
-        selectedTeam = teams.isNotEmpty ? teams.first : '';
-        _teamName = selectedTeam;
+        _teamName = AppString.defaultTeamName.tr;
       }
     } catch (_) {
-      selectedTeam = teams.isNotEmpty ? teams.first : '';
-      _teamName = selectedTeam;
+      _teamName = AppString.defaultTeamName.tr;
     }
   }
 
@@ -124,7 +122,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _saveProfile() async {
     if (_profileId == null) {
-      _showSnack('Profile not loaded yet', isError: true);
+      _showSnack('Profile not loaded yet'.tr, isError: true);
       return;
     }
     setState(() => _isSaving = true);
@@ -137,10 +135,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           'team_name': _teamName,
           'favorite_team': selectedTeam,
           'recived_notifications': _notificationsEnabled,
+          'usage_stats_enabled': _usageStatsEnabled,
         },
       );
       if (response.statusCode == 200) {
-        _showSnack('Profile saved');
+        _showSnack('Profile saved'.tr);
         // Refresh HomeController so other screens reflect the change
         try {
           await Get.find<HomeController>().fetchUserProfile();
@@ -150,12 +149,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           setState(() {});
         }
       } else {
-        final msg = response.body?['detail'] ?? 'Failed to save profile';
+        final msg = response.body?['detail'] ?? 'Failed to save profile'.tr;
         _showSnack(msg.toString(), isError: true);
       }
     } catch (e) {
       _log.e('Save profile error: $e');
-      _showSnack('Network error', isError: true);
+      _showSnack('Network error'.tr, isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -192,7 +191,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       await _clearTokens();
       if (mounted) context.go(RoutePath.signInScreen.addBasePath);
     } else {
-      if (mounted) _showSnack('Failed to delete account', isError: true);
+      if (mounted) _showSnack('Failed to delete account'.tr, isError: true);
     }
   }
 
@@ -210,17 +209,49 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     await _saveProfile();
   }
 
-  Future<void> _refreshFromBackend() async {
-    try {
-      await Get.find<HomeController>().fetchUserProfile();
-      await _loadCurrentProfile();
-      if (mounted) {
-        setState(() {});
-      }
-      _showSnack('Profile updated');
-    } catch (e) {
-      _showSnack('Refresh failed', isError: true);
-      _log.e('Refresh profile error: $e');
+  // Real backend action, not just a display flag: while off, the account is
+  // excluded from every admin-dashboard statistic (CNIL audience-measurement
+  // opt-out, QA 15/09/2026 item 3). Saved on the account, so it survives
+  // logout / reinstall. _saveProfile reloads the profile afterwards, so a
+  // failed save snaps the switch back to the server's real value.
+  Future<void> _toggleUsageStats() async {
+    setState(() => _usageStatsEnabled = !_usageStatsEnabled);
+    await _saveProfile();
+  }
+
+  Future<void> _showEditNameDialog() async {
+    final controller = TextEditingController(text: _teamName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 30,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            counterStyle: TextStyle(color: Color(0xFFB0B0B0)),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Color(0x7FB0B0B0)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppString.cancel.tr),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: Text(AppString.confirm.tr),
+          ),
+        ],
+      ),
+    );
+    if (result != null && result.isNotEmpty && result != _teamName) {
+      setState(() => _teamName = result);
+      await _saveProfile(); // saved automatically - there is no "Modifier" button
     }
   }
 
@@ -399,7 +430,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Delete your account? This cannot be undone.',
+                'Delete your account? This cannot be undone.'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -574,7 +605,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  '${AppString.sincePrefix.tr} \$_sinceYear',
+                  '${AppString.sincePrefix.tr} $_sinceYear',
                   style: TextStyle(
                     color: const Color(0xFFB0B0B0),
                     fontSize: 12.sp,
@@ -611,6 +642,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 _buildSettingItem(
                   icon: Icons.person_outline,
                   title: _teamName.isNotEmpty ? _teamName : AppString.defaultTeamName.tr,
+                  trailing: Icon(
+                    Icons.edit,
+                    color: const Color(0xFF2196F3),
+                    size: 16.r,
+                  ),
+                  onTap: _showEditNameDialog,
                 ),
 
                 // Favorite Team — saves on selection
@@ -620,7 +657,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       icon: Icons.sports_basketball,
                       title: selectedTeam.isNotEmpty
                           ? selectedTeam
-                          : AppString.lakers.tr,
+                          : AppString.favoriteTeam.tr,
                       iconColor: const Color(0xFFE8632C),
                       trailing: Icon(
                         isTeamExpanded
@@ -643,7 +680,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             width: 1.w,
                           ),
                         ),
-                        child: Column(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: 320.h),
+                          child: ListView(
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
                           children: teams.map((team) {
                             return ListTile(
                               title: Text(
@@ -655,13 +696,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                               ),
                               onTap: () {
                                 setState(() {
-                                  selectedTeam = team.toUpperCase();
+                                  selectedTeam = team;
                                   isTeamExpanded = false;
                                 });
                                 _saveProfile();
                               },
                             );
                           }).toList(),
+                          ),
                         ),
                       ),
                   ],
@@ -679,28 +721,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ),
                   onTap: _toggleNotifications,
                 ),
+                // "Statistiques d'utilisation" (replaces "Cookies / Pubs"): ON by
+                // default; switching it off really excludes the account from
+                // the analytics - see _toggleUsageStats. The duplicate
+                // "Protection des donnees" and "Mentions legales" entries are
+                // gone (both already live in the home menu).
                 _buildSettingItem(
-                  icon: Icons.sync,
-                  title: AppString.update.tr,
-                  onTap: _refreshFromBackend,
-                ),
-                _buildSettingItem(
-                  icon: Icons.cookie_outlined,
+                  icon: Icons.bar_chart_outlined,
                   title: AppString.cookiesAds.tr,
-                  onTap: () =>
-                      context.go(RoutePath.termsOfUseScreen.addBasePath),
-                ),
-                _buildSettingItem(
-                  icon: Icons.shield_outlined,
-                  title: AppString.dataProtection.tr,
-                  onTap: () =>
-                      context.go(RoutePath.privacyPolicyScreen.addBasePath),
-                ),
-                _buildSettingItem(
-                  icon: Icons.article_outlined,
-                  title: AppString.legalNotice.tr,
-                  onTap: () =>
-                      context.go(RoutePath.legalNoticesScreen.addBasePath),
+                  trailing: Switch(
+                    value: _usageStatsEnabled,
+                    onChanged: (_) => _toggleUsageStats(),
+                    activeColor: const Color(0xFFE8632C),
+                  ),
+                  onTap: _toggleUsageStats,
                 ),
                 _buildSettingItem(
                   icon: Icons.support_agent_outlined,
@@ -727,7 +761,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         ),
                         SizedBox(width: 8.w),
                         Text(
-                          'Saving...',
+                          'Saving...'.tr,
                           style: TextStyle(
                             color: const Color(0xFFB0B0B0),
                             fontSize: 13.sp,
@@ -857,7 +891,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         Navigator.pop(context);
       } else {
         final body = response.body;
-        String errorMsg = 'Failed to update password';
+        String errorMsg = 'Failed to update password'.tr;
         if (body is Map) {
           errorMsg = body['detail']?.toString() ??
               body['old_password']?.toString() ??
@@ -875,7 +909,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Network error: $e'),
+            content: Text('Network error: @e'.trParams({'e': '$e'})),
             backgroundColor: const Color(0xFFD32F2F),
           ),
         );

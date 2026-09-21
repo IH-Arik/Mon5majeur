@@ -90,6 +90,31 @@ async def _lock_in_seconds(league_auto_id: int, match_day: int) -> int | None:
     return max(0, int(remaining))
 
 
+LUXURY_TAX_BONUS = 5.0
+
+
+async def _base_budget(league_auto_id: int, match_day: int, user: User) -> float | None:
+    """The budget cap BEFORE the Luxury Tax bonus: the league's own budget
+    plus, for a playoff game, this user's seeding bonus. The app adds
+    LUXURY_TAX_BONUS on top when the bonus is switched on, so its cap and
+    progress bar always match what save_player_selection will enforce."""
+    league = await League.find_one(League.auto_id == league_auto_id)
+    if not league:
+        return None
+    seed_bonus = 0.0
+    match = await LeagueMatch.find_one(
+        LeagueMatch.league_id == league.id,
+        LeagueMatch.match_day == match_day,
+        {"$or": [{"home_user_id": user.id}, {"away_user_id": user.id}]},
+    )
+    if match and match.is_playoff:
+        from app.modules.leagues.playoff_engine import SEED_BUDGET_BONUS
+
+        my_seed = match.home_seed if user.id == match.home_user_id else match.away_seed
+        seed_bonus = SEED_BUDGET_BONUS.get(my_seed, 0.0)
+    return float(league.budget) + seed_bonus
+
+
 async def get_player_selection(
     league_auto_id: int,
     match_day: int,
@@ -101,9 +126,12 @@ async def get_player_selection(
         FlutterPlayerSelection.match_day == match_day,
     )
     lock_in_seconds = await _lock_in_seconds(league_auto_id, match_day)
+    base_budget = await _base_budget(league_auto_id, match_day, current_user)
     return {
         "selected_players": doc.selected_players if doc else [],
         "lock_in_seconds": lock_in_seconds,
+        "base_budget": base_budget,
+        "luxury_tax_bonus": LUXURY_TAX_BONUS,
         "luxury_tax": doc.luxury_tax if doc else False,
         "chef_curry": doc.chef_curry if doc else False,
         "sixth_man_player": doc.sixth_man_player if doc else None,
@@ -149,12 +177,13 @@ async def _validate_selection(selected_players: list[dict], nba_date: date | Non
         )
 
     if nba_date is not None:
+        from app.modules.players.teams_playing import TeamsPlaying
+
         games_tonight = await NBAGame.find(NBAGame.nba_date == nba_date).to_list()
-        team_ids_playing = {g.home_team_id for g in games_tonight} | {
-            g.away_team_id for g in games_tonight
-        }
+        teams_tonight = TeamsPlaying(games_tonight)
         for p in players:
-            if p.team_goalserve_id not in team_ids_playing:
+            # By team, not by the drifting team-id scheme (see teams_playing.py).
+            if not teams_tonight.plays(p.team_name, p.team_goalserve_id):
                 raise ForbiddenException(f"{p.full_name} does not play tonight")
             if p.is_out:
                 raise ForbiddenException(f"{p.full_name} is OUT and cannot be selected")
@@ -261,7 +290,7 @@ async def save_player_selection(
         )
         seed_bonus = SEED_BUDGET_BONUS.get(my_seed, 0.0)
 
-    effective_budget = float(league.budget) + (5.0 if luxury_tax else 0.0) + seed_bonus
+    effective_budget = float(league.budget) + (LUXURY_TAX_BONUS if luxury_tax else 0.0) + seed_bonus
     used = sum(_parse_price(p.get("price", "0")) for p in selected_players)
     if used > effective_budget:
         raise ForbiddenException(
@@ -329,7 +358,8 @@ def _parse_price(price_raw) -> float:
 _STATUS_MAP = {"upcoming": "scheduled", "live": "live", "completed": "completed"}
 
 
-async def get_match_result(league_auto_id: int, match_day: int) -> dict:
+async def get_match_result(league_auto_id: int, match_day: int, viewer: User | None = None) -> dict:
+    from app.modules.leagues.score_visibility import release_iso, scores_hidden
     from app.modules.players.model import PlayerGameStats
 
     league = await League.find_one(League.auto_id == league_auto_id)
@@ -444,6 +474,21 @@ async def get_match_result(league_auto_id: int, match_day: int) -> dict:
             "match_object_id": str(m.id),
         })
 
+    # Score paywall (QA 15/09/2026 item 4): strip every number before the
+    # response leaves the server. Lineups (names/positions) stay visible so
+    # the match detail still shows both teams.
+    hidden = viewer is not None and scores_hidden(
+        viewer, status=overall_status, nba_date=nba_date
+    )
+    if hidden:
+        for ps in player_scores:
+            ps["total_points"] = 0
+            for item in ps["selection"]:
+                item["score"] = 0
+        for pr in pairs:
+            pr["score_a"] = 0
+            pr["score_b"] = 0
+
     first = matches[0]
     return {
         "id": first.auto_id or 0,
@@ -456,4 +501,6 @@ async def get_match_result(league_auto_id: int, match_day: int) -> dict:
         "player_scores": player_scores,
         "pairs": pairs,
         "created_at": first.created_at.isoformat(),
+        "scores_hidden": hidden,
+        "scores_release_at": release_iso(nba_date) if hidden else None,
     }

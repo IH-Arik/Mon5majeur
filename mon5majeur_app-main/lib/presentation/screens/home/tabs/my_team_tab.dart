@@ -299,8 +299,6 @@ class _MyTeamTabState extends State<MyTeamTab> {
             child: Text(
               player.name,
               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Color(0xFFFECD56),
                 fontSize: 11.sp,

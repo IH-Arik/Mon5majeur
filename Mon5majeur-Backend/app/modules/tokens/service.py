@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from beanie import PydanticObjectId
+from pymongo import ReturnDocument
 
 from app.core.logging import get_logger
 from app.exceptions.errors import BadRequestException, NotFoundException
@@ -31,9 +34,15 @@ class TokenService:
         reference_id: str | None = None,
         note: str | None = None,
     ) -> TokenWallet:
+        # One atomic $inc: the old read-modify-write lost updates when two
+        # credits (or a credit and a debit) ran at the same moment.
         wallet = await self.get_wallet(user_id)
-        wallet.balance += amount
-        await wallet.save()
+        doc = await TokenWallet.get_motor_collection().find_one_and_update(
+            {"_id": wallet.id},
+            {"$inc": {"balance": amount}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        wallet.balance = doc["balance"]
         await TokenTransaction(
             user_id=user_id,
             amount=amount,
@@ -53,13 +62,21 @@ class TokenService:
         reference_id: str | None = None,
         note: str | None = None,
     ) -> TokenWallet:
+        """Spend `amount` tokens. The balance check and the deduction are ONE
+        conditional update (`balance >= amount`), so two simultaneous purchases
+        can never both pass the check and overspend (audit 4.3)."""
         wallet = await self.get_wallet(user_id)
-        if wallet.balance < amount:
+        doc = await TokenWallet.get_motor_collection().find_one_and_update(
+            {"_id": wallet.id, "balance": {"$gte": amount}},
+            {"$inc": {"balance": -amount}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if doc is None:
+            current = (await self.get_wallet(user_id)).balance
             raise BadRequestException(
-                f"Insufficient tokens: have {wallet.balance}, need {amount}"
+                f"Insufficient tokens: have {current}, need {amount}"
             )
-        wallet.balance -= amount
-        await wallet.save()
+        wallet.balance = doc["balance"]
         await TokenTransaction(
             user_id=user_id,
             amount=-amount,

@@ -22,6 +22,11 @@ services:
     env_file: .env.prod
     expose:
       - "8000"
+    # API replicas NEVER run the cron: every process with the scheduler on fires
+    # every job, so N replicas/workers = N daily closes (double notifications,
+    # match days skipped). Exactly one container - `scheduler` below - runs it.
+    environment:
+      ENABLE_SCHEDULER: "false"
     volumes:
       - ./uploads:/app/uploads
     # If using local MongoDB, depend on it. If using Atlas, this can be safely removed.
@@ -33,6 +38,19 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
+
+  # The one and only cron runner (exactly ONE replica, never scale this).
+  scheduler:
+    image: mon5majeur-api:${TAG:-latest}
+    restart: always
+    env_file: .env.prod
+    environment:
+      ENABLE_SCHEDULER: "true"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    deploy:
+      replicas: 1
 
   nginx:
     image: nginx:alpine

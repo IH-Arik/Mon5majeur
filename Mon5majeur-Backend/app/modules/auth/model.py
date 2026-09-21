@@ -23,6 +23,7 @@ class OTPToken(BaseDocument):
     code: str                            # 6-digit string
     purpose: Literal["verify_email", "reset_password"]
     expires_at: datetime = None          # set by validator
+    failed_attempts: int = 0             # capped by otp_guard (audit 2.1)
 
     def __init__(self, **data):
         if "expires_at" not in data:

@@ -86,7 +86,7 @@ class CreateLeagueController extends GetxController {
   // Validation
   String? validateLeagueName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return "League name is required";
+      return "League name is required".tr;
     }
     if (value.trim().length < 3) {
       return "League name must be at least 3 characters";
@@ -96,7 +96,7 @@ class CreateLeagueController extends GetxController {
 
   String? validateLogo(String? value) {
     if (value == null || value.isEmpty) {
-      return "Please select a league logo";
+      return "Please select a league logo".tr;
     }
     return null;
   }
@@ -144,8 +144,8 @@ class CreateLeagueController extends GetxController {
         leagueNameController.text.trim().isEmpty) {
       showSnackbar(
         context,
-        "Validation Error",
-        "Please fill in all required fields",
+        "Validation Error".tr,
+        "Please fill in all required fields".tr,
         isError: true,
       );
       return;
@@ -154,8 +154,8 @@ class CreateLeagueController extends GetxController {
     if (selectedLogo.value.isEmpty) {
       showSnackbar(
         context,
-        "Validation Error",
-        "Please select a league logo",
+        "Validation Error".tr,
+        "Please select a league logo".tr,
         isError: true,
       );
       return;
@@ -235,14 +235,14 @@ class CreateLeagueController extends GetxController {
             response.body['message'] ??
             "Failed to create $_leagueTypeLabel league";
 
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, "Error".tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Create League Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while creating the league",
+        "Error".tr,
+        "An error occurred while creating the league".tr,
         isError: true,
       );
     } finally {
@@ -297,16 +297,16 @@ class CreateLeagueController extends GetxController {
         final errorMessage =
             response.body['detail'] ??
             response.body['message'] ??
-            "Failed to fetch league details";
+            "Failed to fetch league details".tr;
 
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, "Error".tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Get League Details Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while fetching league details",
+        "Error".tr,
+        "An error occurred while fetching league details".tr,
         isError: true,
       );
     } finally {
@@ -322,8 +322,8 @@ class CreateLeagueController extends GetxController {
         leagueNameController.text.trim().isEmpty) {
       showSnackbar(
         context,
-        "Validation Error",
-        "Please fill in all required fields",
+        "Validation Error".tr,
+        "Please fill in all required fields".tr,
         isError: true,
       );
       return;
@@ -378,7 +378,7 @@ class CreateLeagueController extends GetxController {
         } else {
           showSnackbar(
             context,
-            "Error",
+            "Error".tr,
             "Failed to update $_leagueTypeLabel league",
             isError: true,
           );
@@ -420,17 +420,17 @@ class CreateLeagueController extends GetxController {
           final errorMessage =
               response.body['detail'] ??
               response.body['message'] ??
-              "Failed to update league";
+              "Failed to update league".tr;
 
-          showSnackbar(context, "Error", errorMessage, isError: true);
+          showSnackbar(context, "Error".tr, errorMessage, isError: true);
         }
       }
     } catch (e) {
       logger.e("Update League Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while updating the league",
+        "Error".tr,
+        "An error occurred while updating the league".tr,
         isError: true,
       );
     } finally {
@@ -488,7 +488,7 @@ class CreateLeagueController extends GetxController {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                "$_leagueTypeLabel league deleted successfully!",
+                '@type league deleted successfully!'.trParams({'type': _leagueTypeLabel}),
               ),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
@@ -500,8 +500,8 @@ class CreateLeagueController extends GetxController {
         if (context.mounted) {
           showSnackbar(
             context,
-            "Error",
-            "Failed to delete league",
+            "Error".tr,
+            "Failed to delete league".tr,
             isError: true,
           );
         }
@@ -511,8 +511,8 @@ class CreateLeagueController extends GetxController {
       if (context.mounted) {
         showSnackbar(
           context,
-          "Error",
-          "An error occurred while deleting the league",
+          "Error".tr,
+          "An error occurred while deleting the league".tr,
           isError: true,
         );
       }
@@ -532,8 +532,8 @@ class CreateLeagueController extends GetxController {
     if (!isPublic && (joinCode == null || joinCode.trim().isEmpty)) {
       showSnackbar(
         context,
-        "Validation Error",
-        "Please enter a valid join code",
+        "Validation Error".tr,
+        "Please enter a valid join code".tr,
         isError: true,
       );
       return;
@@ -561,7 +561,7 @@ class CreateLeagueController extends GetxController {
 
       if (response.statusCode == 200) {
         final detail =
-            response.body['detail'] ?? 'Successfully joined the league.';
+            response.body['detail'] ?? 'Successfully joined the league.'.tr;
 
         showSnackbar(context, "Success", detail);
 
@@ -598,16 +598,16 @@ class CreateLeagueController extends GetxController {
         final errorMessage =
             response.body['detail'] ??
             response.body['message'] ??
-            "Failed to join league";
+            "Failed to join league".tr;
 
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, "Error".tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Join League Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while joining the league",
+        "Error".tr,
+        "An error occurred while joining the league".tr,
         isError: true,
       );
     } finally {
@@ -642,7 +642,7 @@ class CreateLeagueController extends GetxController {
       logger.i("Kick Team Body: ${response.body}");
 
       if (response.statusCode == 200) {
-        final message = response.body['detail'] ?? "Team kicked successfully";
+        final message = response.body['detail'] ?? "Team kicked successfully".tr;
 
         leagueTeams.removeWhere((team) => team.teamId == teamId);
 
@@ -655,16 +655,16 @@ class CreateLeagueController extends GetxController {
         final errorMessage =
             response.body['detail'] ??
             response.body['message'] ??
-            "Failed to kick team";
+            "Failed to kick team".tr;
 
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, "Error".tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Kick Team Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while kicking the team",
+        "Error".tr,
+        "An error occurred while kicking the team".tr,
         isError: true,
       );
     } finally {
@@ -697,7 +697,7 @@ class CreateLeagueController extends GetxController {
 
       if (response.statusCode == 200) {
         final message =
-            response.body['detail'] ?? "League started successfully";
+            response.body['detail'] ?? "League started successfully".tr;
 
         logger.i("$_leagueTypeLabel League Started Successfully");
 
@@ -726,16 +726,16 @@ class CreateLeagueController extends GetxController {
         final errorMessage =
             response.body['detail'] ??
             response.body['message'] ??
-            "Failed to start league";
+            "Failed to start league".tr;
 
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, "Error".tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Start League Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while starting the league",
+        "Error".tr,
+        "An error occurred while starting the league".tr,
         isError: true,
       );
     } finally {
@@ -774,16 +774,16 @@ class CreateLeagueController extends GetxController {
         final errorMessage =
             response.body['detail'] ??
             response.body['message'] ??
-            "Failed to get active leagues";
+            "Failed to get active leagues".tr;
 
-        showSnackbar(context, "Error", errorMessage, isError: true);
+        showSnackbar(context, "Error".tr, errorMessage, isError: true);
       }
     } catch (e) {
       logger.e("Get Active Leagues Error: $e");
       showSnackbar(
         context,
-        "Error",
-        "An error occurred while fetching active leagues",
+        "Error".tr,
+        "An error occurred while fetching active leagues".tr,
         isError: true,
       );
     } finally {

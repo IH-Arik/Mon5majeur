@@ -9,7 +9,9 @@ _client: AsyncIOMotorClient | None = None
 def get_motor_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
-        _client = AsyncIOMotorClient(settings.MONGODB_URI)
+        _client = AsyncIOMotorClient(
+            settings.MONGODB_URI, maxPoolSize=settings.MONGODB_MAX_POOL_SIZE
+        )
     return _client
 
 
@@ -34,6 +36,8 @@ async def init_db() -> None:
     from app.modules.roles.model import Role
     from app.modules.tokens.model import TokenPack, TokenTransaction, TokenWallet
     from app.modules.users.model import User
+    from app.core.rate_limit import RateLimitBucket
+    from app.cron.lock import JobLock
 
     client = get_motor_client()
     await init_beanie(
@@ -71,6 +75,8 @@ async def init_db() -> None:
             ContentPageDoc,
             FaqEntryDoc,
             SupportTicket,
+            RateLimitBucket,
+            JobLock,
         ],
     )
 

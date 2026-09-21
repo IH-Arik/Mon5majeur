@@ -25,6 +25,7 @@ from app.modules.leagues.schema import (
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
 from app.modules.players.team_trigrams import trigram_for_team_name
+from app.modules.players.teams_playing import TeamsPlaying
 from app.modules.users.model import User
 
 router = APIRouter(tags=["Players & Games (Flutter compat)"])
@@ -87,9 +88,7 @@ def _game_to_compat(game: NBAGame) -> GameCompatResponse:
     )
 
 
-def _player_to_compat(
-    player: Player, game_by_team: dict[str, NBAGame] | None = None
-) -> PlayerCompatItem:
+def _player_to_compat(player: Player, teams=None) -> PlayerCompatItem:
     status = "OUT" if player.is_out else "OK"
     price_str = f"{player.daily_price:.1f}M"
 
@@ -97,9 +96,9 @@ def _player_to_compat(
     # own team (that would mean the field is wired to the wrong source).
     is_home: bool | None = None
     opponent_trigram: str | None = None
-    game = (game_by_team or {}).get(player.team_goalserve_id or "")
+    game = teams.game_for(player.team_name, player.team_goalserve_id) if teams else None
     if game:
-        is_home = player.team_goalserve_id == game.home_team_id
+        is_home = teams.is_home(game, player.team_name, player.team_goalserve_id)
         opponent_name = game.away_team_name if is_home else game.home_team_name
         opponent_trigram = trigram_for_team_name(opponent_name)
 
@@ -156,25 +155,17 @@ async def players_today(
     today = await _nba_today()
 
     games = await NBAGame.find(NBAGame.nba_date == today).to_list()
-    team_ids_playing: set[str] = set()
-    game_by_team: dict[str, NBAGame] = {}
-    for g in games:
-        team_ids_playing.add(g.home_team_id)
-        team_ids_playing.add(g.away_team_id)
-        game_by_team[g.home_team_id] = g
-        game_by_team[g.away_team_id] = g
+    teams = TeamsPlaying(games)
 
-    if not team_ids_playing:
+    if not teams:
         return PlayersTodayPageResponse(count=0, next=None, results=[])
 
-    total = await Player.find(
-        {"team_goalserve_id": {"$in": list(team_ids_playing)}, "is_active": True}
-    ).count()
+    # One rule (teams_playing.py) for the count, the page and per-player
+    # checks — matches by team, not by the drifting team-id scheme.
+    total = await Player.find(teams.mongo_filter()).count()
 
     offset = (page - 1) * _PAGE_SIZE
-    players = await Player.find(
-        {"team_goalserve_id": {"$in": list(team_ids_playing)}, "is_active": True}
-    ).sort(-Player.daily_price).skip(offset).limit(_PAGE_SIZE).to_list()
+    players = await Player.find(teams.mongo_filter()).sort(-Player.daily_price).skip(offset).limit(_PAGE_SIZE).to_list()
 
     has_next = offset + len(players) < total
     next_url: str | None = None
@@ -191,7 +182,7 @@ async def players_today(
     return PlayersTodayPageResponse(
         count=total,
         next=next_url,
-        results=[_player_to_compat(p, game_by_team) for p in players],
+        results=[_player_to_compat(p, teams) for p in players],
     )
 
 

@@ -95,3 +95,10 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+
+  fonts:
+    # NBA-style scoreboard face for every score (QA 15/09/2026 item 4).
+    # Bebas Neue, SIL Open Font License 1.1.
+    - family: BebasNeue
+      fonts:
+        - asset: assets/fonts/BebasNeue-Regular.ttf

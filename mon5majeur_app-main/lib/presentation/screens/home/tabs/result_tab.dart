@@ -9,6 +9,8 @@ import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../controllers/result_controller.dart';
+import '../widgets/match_lineups_field.dart';
+import '../../../widgets/match_widgets.dart';
 
 class ResultTab extends StatefulWidget {
   final int? leagueId;
@@ -66,7 +68,7 @@ class _ResultTabState extends State<ResultTab> {
               Icon(Icons.error_outline, color: Colors.white54, size: 48.r),
               SizedBox(height: 16.h),
               Text(
-                'No match data available',
+                AppString.noMatchesToday.tr,
                 style: TextStyle(color: Colors.white54, fontSize: 16.sp),
               ),
             ],
@@ -115,7 +117,7 @@ class _ResultTabState extends State<ResultTab> {
             Icon(Icons.leaderboard_outlined, color: Colors.white54, size: 48.r),
             SizedBox(height: 16.h),
             Text(
-              'No global results yet',
+              AppString.noMatchesToday.tr,
               style: TextStyle(color: Colors.white54, fontSize: 16.sp),
             ),
           ],
@@ -194,7 +196,6 @@ class _ResultTabState extends State<ResultTab> {
                               fontSize: 15.sp,
                               fontWeight: FontWeight.w700,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                           SizedBox(height: 4.h),
                           Text(
@@ -203,7 +204,6 @@ class _ResultTabState extends State<ResultTab> {
                               color: Colors.white54,
                               fontSize: 11.sp,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -244,12 +244,6 @@ class _ResultTabState extends State<ResultTab> {
   Widget _buildMatchdaySelector() {
     return Column(
       children: [
-        // Debug info
-        Text(
-          ' League ${controller.leagueId}, Day ${controller.currentMatchDay.value}',
-          style: TextStyle(color: Colors.white38, fontSize: 10.sp),
-        ),
-        SizedBox(height: 8.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -301,50 +295,10 @@ class _ResultTabState extends State<ResultTab> {
           ),
         ),
         SizedBox(height: 8.h),
-        _buildStatusBadge(matchResult.status),
+        MatchStatusBadge(
+          status: matchResult.status == 'scheduled' ? 'upcoming' : matchResult.status,
+        ),
       ],
-    );
-  }
-
-  Widget _buildStatusBadge(String status) {
-    Color color;
-    String text;
-
-    switch (status) {
-      case 'scheduled':
-        color = Colors.orange;
-        text = 'Scheduled';
-        break;
-      case 'live':
-        color = Colors.green;
-        text = 'Live';
-        break;
-      case 'completed':
-        color = Colors.blue;
-        text = 'Completed';
-        break;
-      default:
-        color = Colors.grey;
-        text = status;
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-      decoration: ShapeDecoration(
-        color: color.withValues(alpha: 0.2),
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: color),
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
     );
   }
 
@@ -399,45 +353,19 @@ class _ResultTabState extends State<ResultTab> {
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              softWrap: true,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Score
+                    // Score — NBA-style face, or the paywall placeholder when
+                    // the server is withholding a non-subscriber's numbers.
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${pair.scoreA}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.w),
-                            child: Text(
-                              AppString.vs.tr,
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12.sp,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${pair.scoreB}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w),
+                      child: (controller.matchResult.value?.scoresHidden ?? false)
+                          ? const ScoreLockedLabel()
+                          : ScoreLine(scoreA: pair.scoreA, scoreB: pair.scoreB),
                     ),
                     // Team B
                     Expanded(
@@ -452,7 +380,6 @@ class _ResultTabState extends State<ResultTab> {
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
                               ),
-                              overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.right,
                             ),
                           ),
@@ -478,7 +405,12 @@ class _ResultTabState extends State<ResultTab> {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             child: isExpanded
-                ? _buildMatchDetailsField(playerAScore, playerBScore)
+                ? MatchLineupsField(
+                        teamA: playerAScore,
+                        teamB: playerBScore,
+                        scoresHidden:
+                            controller.matchResult.value?.scoresHidden ?? false,
+                      )
                 : SizedBox.shrink(),
           ),
         ],
@@ -596,368 +528,6 @@ class _ResultTabState extends State<ResultTab> {
             ],
           );
         }),
-      ),
-    );
-  }
-
-  Widget _buildMatchDetailsField(
-    PlayerScore? playerAScore,
-    PlayerScore? playerBScore,
-  ) {
-    final teamAPlayers = playerAScore?.selection ?? [];
-    final teamBPlayers = playerBScore?.selection ?? [];
-
-    return Container(
-      margin: EdgeInsets.only(top: 12.h),
-      width: double.infinity,
-      constraints: BoxConstraints(maxWidth: 362.w),
-      height: 700.h,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12.r),
-        child: Stack(
-          children: [
-            // Full playground background
-            Positioned.fill(
-              child: Assets.images.fullplayground.image(fit: BoxFit.cover),
-            ),
-            // Semi-transparent overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-
-            // Show message if no teams selected
-            if (teamAPlayers.isEmpty && teamBPlayers.isEmpty)
-              Positioned.fill(
-                child: Center(
-                  child: Container(
-                    margin: EdgeInsets.all(32.w),
-                    padding: EdgeInsets.all(24.w),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: Colors.orange.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.groups_outlined,
-                          color: Colors.orange,
-                          size: 48.r,
-                        ),
-                        SizedBox(height: 16.h),
-                        Text(
-                          'Teams Not Ready',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          'Both players need to select their teams before the match can begin.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-            // Team A widgets - only show if there are players or if we want to show "not ready"
-            if (teamAPlayers.isNotEmpty ||
-                (teamAPlayers.isEmpty && teamBPlayers.isNotEmpty)) ...[
-              // Team A label
-              if (teamAPlayers.isNotEmpty)
-                Positioned(
-                  top: 16.h,
-                  left: 16.w,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 6.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Text(
-                      playerAScore?.teamName ?? 'Team A',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Team A players
-              ...teamAPlayers.map((player) {
-                final idx = teamAPlayers.indexOf(player);
-                return _positionPlayer(
-                  idx,
-                  teamAPlayers.length,
-                  player.name,
-                  '${player.score}',
-                  Assets.icons.jerseyDevil,
-                  isTopTeam: true,
-                );
-              }),
-
-              // Team A not ready message
-              if (teamAPlayers.isEmpty)
-                Positioned(
-                  top: 100.h,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16.w,
-                        vertical: 8.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Text(
-                        '${playerAScore?.teamName ?? "Team A"} - Not Ready',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-
-            // Team B widgets - only show if there are players or if we want to show "not ready"
-            if (teamBPlayers.isNotEmpty ||
-                (teamBPlayers.isEmpty && teamAPlayers.isNotEmpty)) ...[
-              // Team B label
-              if (teamBPlayers.isNotEmpty)
-                Positioned(
-                  bottom: 16.h,
-                  right: 16.w,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 6.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Text(
-                      playerBScore?.teamName ?? 'Team B',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Team B players
-              ...teamBPlayers.map((player) {
-                final idx = teamBPlayers.indexOf(player);
-                return _positionPlayer(
-                  idx,
-                  teamBPlayers.length,
-                  player.name,
-                  '${player.score}',
-                  Assets.icons.jerseyFlower,
-                  isTopTeam: false,
-                );
-              }),
-
-              // Team B not ready message
-              if (teamBPlayers.isEmpty)
-                Positioned(
-                  bottom: 100.h,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16.w,
-                        vertical: 8.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Text(
-                        '${playerBScore?.teamName ?? "Team B"} - Not Ready',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _positionPlayer(
-    int index,
-    int totalPlayers,
-    String name,
-    String points,
-    AssetGenImage jersey, {
-    required bool isTopTeam,
-  }) {
-    // Calculate positions based on index
-    double? top, bottom, left, right;
-
-    if (isTopTeam) {
-      if (index == 0) {
-        top = 140.h;
-        left = 60.w;
-      } else if (index == 1) {
-        top = 140.h;
-        right = 60.w;
-      } else if (index == 2) {
-        top = 60.h;
-        left = 30.w;
-      } else if (index == 3) {
-        top = 60.h;
-        left = 0.w;
-        right = 0.w;
-      } else if (index == 4) {
-        top = 60.h;
-        right = 30.w;
-      }
-    } else {
-      if (index == 0) {
-        bottom = 140.h;
-        left = 60.w;
-      } else if (index == 1) {
-        bottom = 140.h;
-        right = 60.w;
-      } else if (index == 2) {
-        bottom = 60.h;
-        left = 30.w;
-      } else if (index == 3) {
-        bottom = 60.h;
-        left = 0.w;
-        right = 0.w;
-      } else if (index == 4) {
-        bottom = 60.h;
-        right = 30.w;
-      }
-    }
-
-    Widget playerWidget = _buildPlayer(name, points, jersey);
-
-    if (left != null && right != null) {
-      return Positioned(
-        top: top,
-        bottom: bottom,
-        left: left,
-        right: right,
-        child: Center(child: playerWidget),
-      );
-    }
-
-    return Positioned(
-      top: top,
-      bottom: bottom,
-      left: left,
-      right: right,
-      child: playerWidget,
-    );
-  }
-
-  Widget _buildPlayer(String name, String points, AssetGenImage jersey) {
-    return SizedBox(
-      width: 90.w,
-      height: 107.h,
-      child: Stack(
-        children: [
-          // Jersey image
-          Positioned(
-            left: 0.w,
-            top: 0.h,
-            child: Container(
-              width: 90.w,
-              height: 72.h,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: jersey.provider(),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-          // Player name
-          Positioned(
-            left: 5.w,
-            top: 66.h,
-            right: 5.w,
-            child: Text(
-              name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFFFECD56),
-                fontSize: 9.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w600,
-                height: 1.5,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // Points badge
-          Positioned(
-            left: 35.w,
-            top: 85.h,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-              decoration: ShapeDecoration(
-                color: const Color(0xFF1A1A1A),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(width: 1.w, color: const Color(0xFF2C2C2C)),
-                  borderRadius: BorderRadius.circular(6.r),
-                ),
-              ),
-              child: Text(
-                points,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.sp,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

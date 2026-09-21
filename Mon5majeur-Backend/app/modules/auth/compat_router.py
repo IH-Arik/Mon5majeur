@@ -23,6 +23,8 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.core import rate_limit
+from app.core.rate_limit import client_ip, guard_login, guard_otp_request, guard_otp_verify
 from app.exceptions.errors import BadRequestException, UnauthorizedException
 from app.modules.auth.model import OTPToken
 from app.modules.auth.schema import AppleOAuthRequest, GoogleOAuthRequest
@@ -149,25 +151,19 @@ async def _send_otp(user: User, purpose: str) -> None:
 
 
 async def _validate_otp_peek(user: User, otp: str, purpose: str) -> OTPToken:
-    """Validate OTP but do NOT consume (delete) it — used for 2-step forgot-password flow."""
-    token = await OTPToken.find_one(
-        OTPToken.user_id == user.id,
-        OTPToken.code == otp,
-        OTPToken.purpose == purpose,
-    )
-    if not token:
-        raise BadRequestException("Invalid verification code")
-    if token.is_expired:
-        await token.delete()
-        raise BadRequestException("Verification code has expired. Please request a new one")
-    return token
+    """Validate OTP but do NOT consume (delete) it — used for the 2-step
+    forgot-password flow. Every check spends one of a small, hard-capped number
+    of attempts (see otp_guard.py)."""
+    from app.modules.auth.otp_guard import validate_otp
+
+    return await validate_otp(user, otp, purpose, consume=False)
 
 
 async def _validate_and_consume_otp(user: User, otp: str, purpose: str) -> OTPToken:
     """Validate OTP and consume (delete) it."""
-    token = await _validate_otp_peek(user, otp, purpose)
-    await token.delete()
-    return token
+    from app.modules.auth.otp_guard import validate_otp
+
+    return await validate_otp(user, otp, purpose, consume=True)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -179,8 +175,10 @@ async def _validate_and_consume_otp(user: User, otp: str, purpose: str) -> OTPTo
 )
 async def flutter_register(
     payload: FlutterRegisterRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
+    await guard_otp_request(payload.email, client_ip(request), kind="register")
     if payload.password != payload.password2:
         raise BadRequestException("Passwords do not match")
     if len(payload.password) < 6:
@@ -210,8 +208,10 @@ async def flutter_register(
 )
 async def flutter_verify_otp(
     payload: FlutterVerifyOtpRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
+    await guard_otp_verify(payload.email, client_ip(request))
     user = await service.user_repo.get_by_email(payload.email)
     if not user:
         raise BadRequestException("Invalid request")
@@ -229,11 +229,15 @@ async def flutter_verify_otp(
 )
 async def flutter_login(
     payload: FlutterLoginRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> FlutterLoginResponse:
+    await guard_login(payload.email, client_ip(request))
     user = await service.user_repo.get_by_email(payload.email)
     if not user or not verify_password(payload.password, user.hashed_password or ""):
+        await rate_limit.record_failure(f"login:{payload.email.lower()}", client_ip(request))
         raise UnauthorizedException("Invalid email or password")
+    await rate_limit.clear_failures(f"login:{payload.email.lower()}")
     if user.is_banned:
         raise UnauthorizedException("This account has been banned")
     if not user.is_active:
@@ -253,8 +257,10 @@ async def flutter_login(
 )
 async def flutter_forgot_password(
     payload: FlutterForgotPasswordRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
+    await guard_otp_request(payload.email, client_ip(request), kind="forgot")
     user = await service.user_repo.get_by_email(payload.email)
     if user and user.is_active:
         await _send_otp(user, "reset_password")
@@ -267,8 +273,10 @@ async def flutter_forgot_password(
 )
 async def flutter_verify_forgot_otp(
     payload: FlutterVerifyForgotOtpRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
+    await guard_otp_verify(payload.email, client_ip(request))
     user = await service.user_repo.get_by_email(payload.email)
     if not user:
         raise BadRequestException("Invalid request")
@@ -282,8 +290,10 @@ async def flutter_verify_forgot_otp(
 )
 async def flutter_change_password(
     payload: FlutterChangePasswordRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
+    await guard_otp_verify(payload.email, client_ip(request))
     if payload.new_password != payload.confirm_password:
         raise BadRequestException("Passwords do not match")
     if len(payload.new_password) < 6:

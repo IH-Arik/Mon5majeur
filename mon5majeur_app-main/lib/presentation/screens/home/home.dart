@@ -30,6 +30,7 @@ export 'screens/global_league_screen.dart';
 export 'screens/league_fantasy_screen.dart';
 export 'screens/select_player_screen.dart';
 export 'screens/live_score_screen.dart';
+export 'screens/match_detail_screen.dart';
 export 'screens/notifications_screen.dart';
 
 // Widgets

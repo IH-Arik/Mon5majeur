@@ -220,8 +220,8 @@ class _CreatePrivateLeagueWaitingRoomScreenState
   void _kickTeam(int teamId, String teamName) {
     if (widget.leagueId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: League ID not found'),
+        SnackBar(
+          content: Text('Error: League ID not found'.tr),
           backgroundColor: Colors.red,
         ),
       );

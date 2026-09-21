@@ -91,9 +91,16 @@ class AuthService:
     # ── Login ─────────────────────────────────────────────────────────────────
 
     async def login(self, payload: LoginRequest) -> TokenResponse:
+        from app.core.rate_limit import guard_login
+
+        from app.core import rate_limit
+
+        await guard_login(payload.email)
         user = await self.user_repo.get_by_email(payload.email)
         if not user or not verify_password(payload.password, getattr(user, "hashed_password", "") or ""):
+            await rate_limit.record_failure(f"login:{payload.email.lower()}")
             raise UnauthorizedException("Invalid email or password")
+        await rate_limit.clear_failures(f"login:{payload.email.lower()}")
         if getattr(user, "is_banned", False):
             raise UnauthorizedException("This account has been banned")
         if not getattr(user, "is_active", True):
@@ -121,6 +128,9 @@ class AuthService:
     # ── Email verification ────────────────────────────────────────────────────
 
     async def verify_email(self, payload: VerifyEmailRequest) -> dict:
+        from app.core.rate_limit import guard_otp_verify
+
+        await guard_otp_verify(payload.email)
         user = await self.user_repo.get_by_email(payload.email)
         if not user:
             raise NotFoundException("User not found")
@@ -132,6 +142,9 @@ class AuthService:
         return {"detail": "Email verified successfully"}
 
     async def resend_verification(self, payload: ResendVerificationRequest) -> dict:
+        from app.core.rate_limit import guard_otp_request
+
+        await guard_otp_request(payload.email)
         user = await self.user_repo.get_by_email(payload.email)
         if not user:
             # Don't reveal if email exists
@@ -151,6 +164,9 @@ class AuthService:
     # ── Forgot / Reset password ───────────────────────────────────────────────
 
     async def forgot_password(self, payload: ForgotPasswordRequest) -> dict:
+        from app.core.rate_limit import guard_otp_request
+
+        await guard_otp_request(payload.email)
         user = await self.user_repo.get_by_email(payload.email)
         if user and user.is_active:
             # Delete any existing reset OTPs
@@ -165,6 +181,9 @@ class AuthService:
         return {"detail": "If this email is registered, a reset code has been sent"}
 
     async def reset_password(self, payload: ResetPasswordRequest) -> dict:
+        from app.core.rate_limit import guard_otp_verify
+
+        await guard_otp_verify(payload.email)
         user = await self.user_repo.get_by_email(payload.email)
         if not user:
             raise BadRequestException("Invalid request")
@@ -373,22 +392,11 @@ class AuthService:
         ).insert()
 
         send_otp_email(user.email, code, purpose)
-        logger.info("OTP created | user=%s | purpose=%s | code=%s", user.email, purpose, code)
+        # Never log the code itself: anyone able to read the logs could take over the account.
+        logger.info("OTP created | user=%s | purpose=%s", user.email, purpose)
         return code
 
     async def _validate_otp(self, user: User, code: str, purpose: str) -> OTPToken:
-        token = await OTPToken.find_one(
-            OTPToken.user_id == user.id,
-            OTPToken.code == code,
-            OTPToken.purpose == purpose,
-        )
+        from app.modules.auth.otp_guard import validate_otp
 
-        if not token:
-            raise BadRequestException("Invalid verification code")
-        if token.is_expired:
-            await token.delete()
-            raise BadRequestException("Verification code has expired. Please request a new one")
-
-        # Consume OTP — delete after use
-        await token.delete()
-        return token
+        return await validate_otp(user, code, purpose, consume=True)

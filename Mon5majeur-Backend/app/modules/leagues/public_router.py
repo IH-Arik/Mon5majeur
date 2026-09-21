@@ -127,9 +127,9 @@ async def create_public_league(
 async def get_public_match_result(
     league_id: int,
     match_day: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> MatchResultCompatResponse:
-    data = await selection_service.get_match_result(league_id, match_day)
+    data = await selection_service.get_match_result(league_id, match_day, current_user)
     return MatchResultCompatResponse(**data)
 
 
@@ -185,9 +185,9 @@ async def get_public_bonus_status(
 )
 async def get_public_standings(
     league_id: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> StandingsResponse:
-    return await leaderboard_service.get_standings(league_id)
+    return await leaderboard_service.get_standings(league_id, current_user)
 
 
 @router.get(
@@ -197,9 +197,9 @@ async def get_public_standings(
 )
 async def get_public_playoffs(
     league_id: int,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> PlayoffBracketResponse:
-    return await leaderboard_service.get_playoff_bracket(league_id)
+    return await leaderboard_service.get_playoff_bracket(league_id, current_user)
 
 
 @router.get(

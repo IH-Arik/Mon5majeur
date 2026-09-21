@@ -51,8 +51,101 @@ def _display_name(user: User | None) -> str:
     return user.team_name or (user.email.split("@")[0] if user.email else "Unknown")
 
 
+def _match_visible(viewer, match) -> bool:
+    """False when `viewer` must not yet see this match's outcome (score
+    paywall, QA 15/09/2026 item 4). No viewer = internal/system use = all."""
+    if viewer is None:
+        return True
+    from app.modules.leagues.score_visibility import scores_hidden
+
+    return not scores_hidden(viewer, status=match.status, nba_date=match.nba_date)
+
+
+def tally_matches(member_map: dict, matches: list) -> None:
+    """Add each completed match's points and win/loss to the members in
+    `member_map` ({user_id: membership-like}). The one place the W/L/PF/PA
+    arithmetic lives: engine.update_standings (stored totals) and the
+    viewer-filtered standings both call it, so they can never disagree."""
+    for match in matches:
+        home = member_map.get(match.home_user_id)
+        away = member_map.get(match.away_user_id)
+        if home:
+            home.points_for += match.home_score or 0.0
+            home.points_against += match.away_score or 0.0
+            if match.winner_id == match.home_user_id:
+                home.wins += 1
+            elif match.winner_id == match.away_user_id:
+                home.losses += 1
+        if away:
+            away.points_for += match.away_score or 0.0
+            away.points_against += match.home_score or 0.0
+            if match.winner_id == match.away_user_id:
+                away.wins += 1
+            elif match.winner_id == match.home_user_id:
+                away.losses += 1
+
+
+async def viewer_memberships(
+    league_id: PydanticObjectId, viewer
+) -> list[LeagueMembership]:
+    """The league's memberships as `viewer` is allowed to see them.
+
+    Live Scoring subscribers (and system callers) get the stored totals. For
+    everyone else the totals are rebuilt from only the matches whose scores
+    are already released (09:00 Paris the morning after the night) — otherwise
+    W/L/points/rank would reveal a result the paywall is hiding. Returns
+    in-memory copies; nothing is saved."""
+    from app.modules.leagues.score_visibility import has_live_access
+
+    memberships = await LeagueMembership.find({"league_id": league_id}).to_list()
+    if viewer is None or has_live_access(viewer):
+        return memberships
+
+    copies = [m.model_copy() for m in memberships]
+    for m in copies:
+        m.wins = 0
+        m.losses = 0
+        m.points_for = 0.0
+        m.points_against = 0.0
+    completed = await LeagueMatch.find(
+        {"league_id": league_id, "status": MATCH_STATUS_COMPLETED}
+    ).to_list()
+    tally_matches(
+        {m.user_id: m for m in copies},
+        [m for m in completed if _match_visible(viewer, m)],
+    )
+    return copies
+
+
+async def league_fully_released(league_id: PydanticObjectId, viewer) -> bool:
+    """True once every match of the league is visible to `viewer`. A league
+    flips to "completed" the moment its final ends, so its trophies (winner /
+    last place) would reveal the final's outcome before 09:00 Paris; they are
+    only shown once the last match's scores have been released."""
+    if viewer is None:
+        return True
+    matches = await LeagueMatch.find({"league_id": league_id}).to_list()
+    return all(_match_visible(viewer, m) for m in matches)
+
+
+async def viewer_rank(league_id: PydanticObjectId, user_id, viewer) -> int | None:
+    """`user_id`'s standing as `viewer` may see it (see viewer_memberships)."""
+    ms = await viewer_memberships(league_id, viewer)
+    if not ms:
+        return None
+    umap = await _user_map([m.user_id for m in ms])
+    ranked = await ranked_memberships(league_id, umap, ms, viewer=viewer)
+    for rank, m in enumerate(ranked, start=1):
+        if m.user_id == user_id:
+            return rank
+    return None
+
+
 async def _head_to_head_winner(
-    league_id: PydanticObjectId, user_a: PydanticObjectId, user_b: PydanticObjectId
+    league_id: PydanticObjectId,
+    user_a: PydanticObjectId,
+    user_b: PydanticObjectId,
+    viewer=None,
 ) -> PydanticObjectId | None:
     """Who won more of the regular-season meetings between these two
     (spec §4.6.2 tie-break step 3). None if never played or perfectly split —
@@ -66,6 +159,7 @@ async def _head_to_head_winner(
             {"home_user_id": user_b, "away_user_id": user_a},
         ]},
     ).to_list()
+    matches = [m for m in matches if _match_visible(viewer, m)]
 
     wins_a = sum(1 for m in matches if m.winner_id == user_a)
     wins_b = sum(1 for m in matches if m.winner_id == user_b)
@@ -78,6 +172,7 @@ async def ranked_memberships(
     league_id: PydanticObjectId,
     umap: dict,
     memberships: list[LeagueMembership] | None = None,
+    viewer=None,
 ) -> list[LeagueMembership]:
     """Full standings order (spec §4.6.2): wins → differential → points_for →
     head-to-head → alphabetical pseudo (deterministic last resort). Shared by
@@ -99,7 +194,7 @@ async def ranked_memberships(
         if a.points_for != b.points_for:
             return -1 if a.points_for > b.points_for else 1
 
-        h2h = await _head_to_head_winner(league_id, a.user_id, b.user_id)
+        h2h = await _head_to_head_winner(league_id, a.user_id, b.user_id, viewer)
         if h2h is not None:
             return -1 if h2h == a.user_id else 1
 
@@ -126,12 +221,11 @@ async def ranked_memberships(
 
 # ── Standings ─────────────────────────────────────────────────────────────────
 
-async def get_standings(league_auto_id: int) -> StandingsResponse:
+async def get_standings(league_auto_id: int, viewer=None) -> StandingsResponse:
     league = await _league_or_404(league_auto_id)
 
-    memberships = await LeagueMembership.find(
-        LeagueMembership.league_id == league.id
-    ).to_list()
+    # Only what `viewer` may already see (score paywall) — see viewer_memberships.
+    memberships = await viewer_memberships(league.id, viewer)
 
     if not memberships:
         return StandingsResponse(
@@ -144,7 +238,7 @@ async def get_standings(league_auto_id: int) -> StandingsResponse:
     user_ids = [m.user_id for m in memberships]
     umap = await _user_map(user_ids)
 
-    sorted_ms = await ranked_memberships(league.id, umap, memberships)
+    sorted_ms = await ranked_memberships(league.id, umap, memberships, viewer=viewer)
     playoff_spots = min(4, len(sorted_ms))
 
     teams: list[StandingsEntry] = []
@@ -173,7 +267,10 @@ async def get_standings(league_auto_id: int) -> StandingsResponse:
 
 # ── Playoff Bracket ───────────────────────────────────────────────────────────
 
-async def get_playoff_bracket(league_auto_id: int) -> PlayoffBracketResponse:
+async def get_playoff_bracket(league_auto_id: int, viewer=None) -> PlayoffBracketResponse:
+    from app.modules.leagues.model import LeagueMatch
+    from app.modules.leagues.score_visibility import release_iso, scores_hidden
+
     league = await _league_or_404(league_auto_id)
 
     all_series = await PlayoffSeries.find(
@@ -189,22 +286,58 @@ async def get_playoff_bracket(league_auto_id: int) -> PlayoffBracketResponse:
     })
     umap = await _user_map(all_user_ids)
 
+    # The duel behind each playoff game — gives the app a match_day to open
+    # the match detail with, and the status the score paywall depends on.
+    series_ids = [s.id for s in all_series]
+    playoff_matches = (
+        await LeagueMatch.find({"playoff_series_id": {"$in": series_ids}}).to_list()
+        if series_ids
+        else []
+    )
+    match_by_game = {
+        (m.playoff_series_id, m.playoff_game_number): m for m in playoff_matches
+    }
+
     def _series_to_response(s: PlayoffSeries) -> PlayoffSeriesResponse:
         user_a = umap.get(s.team_a_id)
         user_b = umap.get(s.team_b_id)
-        winner = umap.get(s.winner_id) if s.winner_id else None
 
-        games = [
-            PlayoffGameResponse(
-                game_number=g.game_number,
-                score_a=int(g.score_a),
-                score_b=int(g.score_b),
-                winner_team=_display_name(
-                    user_a if g.winner_id == s.team_a_id else user_b
-                ) if g.winner_id else "",
+        games = []
+        wins_a = wins_b = 0
+        any_hidden = False
+        for g in s.games:
+            m = match_by_game.get((s.id, g.game_number))
+            status = m.status if m else ("completed" if g.winner_id else "upcoming")
+            hidden = viewer is not None and scores_hidden(
+                viewer, status=status, nba_date=(m.nba_date if m else g.nba_date)
             )
-            for g in s.games
-        ]
+            any_hidden = any_hidden or hidden
+            if not hidden and g.winner_id == s.team_a_id:
+                wins_a += 1
+            elif not hidden and g.winner_id == s.team_b_id:
+                wins_b += 1
+            games.append(
+                PlayoffGameResponse(
+                    game_number=g.game_number,
+                    score_a=0 if hidden else int(g.score_a),
+                    score_b=0 if hidden else int(g.score_b),
+                    winner_team=(
+                        _display_name(user_a if g.winner_id == s.team_a_id else user_b)
+                        if g.winner_id and not hidden
+                        else ""
+                    ),
+                    match_day=m.match_day if m else None,
+                    match_status=status,
+                    scores_hidden=hidden,
+                    scores_release_at=(
+                        release_iso(m.nba_date if m else g.nba_date) if hidden else None
+                    ),
+                )
+            )
+
+        # A series result would leak a paywalled game's outcome, so it is
+        # only reported once every game in it has been revealed.
+        winner = umap.get(s.winner_id) if (s.winner_id and not any_hidden) else None
 
         return PlayoffSeriesResponse(
             series_index=s.series_index,
@@ -213,12 +346,13 @@ async def get_playoff_bracket(league_auto_id: int) -> PlayoffBracketResponse:
             team_a_name=_display_name(user_a),
             team_b_id=user_b.auto_id or 0 if user_b else 0,
             team_b_name=_display_name(user_b),
-            wins_a=s.wins_a,
-            wins_b=s.wins_b,
+            wins_a=wins_a if viewer is not None else s.wins_a,
+            wins_b=wins_b if viewer is not None else s.wins_b,
             games=games,
             winner_id=winner.auto_id if winner else None,
             winner_name=_display_name(winner) if winner else None,
-            is_complete=s.is_complete,
+            is_complete=s.is_complete and not any_hidden,
+            has_hidden_scores=any_hidden,
         )
 
     rounds: list[PlayoffRoundResponse] = []

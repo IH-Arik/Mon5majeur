@@ -199,7 +199,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
 
   Widget _buildDuelView(LiveMatchScore? match) {
     if (match == null) {
-      return _buildErrorState('No live match data available');
+      return _buildErrorState('No live match data available'.tr);
     }
 
     return SingleChildScrollView(
@@ -227,7 +227,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
 
   Widget _buildGlobalView(LiveGlobalScore? score) {
     if (score == null) {
-      return _buildErrorState('No live score data available');
+      return _buildErrorState('No live score data available'.tr);
     }
 
     return SingleChildScrollView(
@@ -291,8 +291,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                 Text(
                   leftName,
                   textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 13.sp,
@@ -348,8 +346,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                 Text(
                   rightName,
                   textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 13.sp,
@@ -462,8 +458,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
               children: [
                 Text(
                   p.fullName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: p.isCounted ? Colors.white : Colors.white38,
                     fontSize: 13.sp,

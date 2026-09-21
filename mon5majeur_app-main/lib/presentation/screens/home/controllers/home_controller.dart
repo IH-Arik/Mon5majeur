@@ -1,4 +1,6 @@
 // lib/presentation/screens/home/controller/home_controller.dart
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 
@@ -14,6 +16,17 @@ import '../../../../data/services/api_url.dart';
 
 final logger = Logger();
 
+/// How long to wait before the next silent refresh of the Home "Résultats de
+/// la nuit" card: every 30 s while any of the user's matches is live (a Live
+/// Scoring subscriber then sees the score move), otherwise every 2 min so a
+/// tip-off, a final and the 09:00 Paris score release all show up without a
+/// manual pull-to-refresh.
+const Duration kLiveMatchRefresh = Duration(seconds: 30);
+const Duration kIdleMatchRefresh = Duration(minutes: 2);
+
+Duration matchRefreshInterval(List<MyMatchTodayModel> matches) =>
+    matches.any((m) => m.status == 'live') ? kLiveMatchRefresh : kIdleMatchRefresh;
+
 class HomeController extends GetxController {
   // Observable variables
   var isLoading = false.obs;
@@ -24,6 +37,9 @@ class HomeController extends GetxController {
   var myLeagues = <MyLeagueModel>[].obs;
   var profileExists = false.obs;
 
+  Timer? _matchTimer;
+  bool _matchRefreshInFlight = false;
+
   @override
   void onInit() {
     super.onInit();
@@ -32,7 +48,38 @@ class HomeController extends GetxController {
     fetchMyLeagues();
   }
 
+  @override
+  void onClose() {
+    stopMatchAutoRefresh();
+    super.onClose();
+  }
+
+  /// Start the silent refresh loop (Home screen visible). Safe to call twice.
+  void startMatchAutoRefresh() {
+    _matchTimer?.cancel();
+    _scheduleNextMatchRefresh();
+  }
+
+  void stopMatchAutoRefresh() {
+    _matchTimer?.cancel();
+    _matchTimer = null;
+  }
+
+  void _scheduleNextMatchRefresh() {
+    _matchTimer?.cancel();
+    _matchTimer = Timer(matchRefreshInterval(todayMatches), () async {
+      await refreshMatchesSilently();
+      // stopMatchAutoRefresh() during the request must not be undone
+      if (_matchTimer != null) _scheduleNextMatchRefresh();
+    });
+  }
+
+  /// Reload the matches WITHOUT the loading spinner, so the card updates in
+  /// place instead of flashing.
+  Future<void> refreshMatchesSilently() => _loadMatches(silent: true);
+
   void resetSessionState() {
+    stopMatchAutoRefresh();
     userProfile.value = null;
     todayMatches.clear();
     myLeagues.clear();
@@ -108,10 +155,13 @@ class HomeController extends GetxController {
   }
 
   // Fetch today's matches
-  Future<void> fetchTodayMatches() async {
-    if (matchesLoading.value) return;
+  Future<void> fetchTodayMatches() => _loadMatches(silent: false);
 
-    matchesLoading.value = true;
+  Future<void> _loadMatches({required bool silent}) async {
+    if (matchesLoading.value || _matchRefreshInFlight) return;
+
+    _matchRefreshInFlight = true;
+    if (!silent) matchesLoading.value = true;
 
     try {
       final apiClient = ApiClient();
@@ -141,7 +191,8 @@ class HomeController extends GetxController {
     } catch (e) {
       logger.e('Error fetching matches: $e');
     } finally {
-      matchesLoading.value = false;
+      _matchRefreshInFlight = false;
+      if (!silent) matchesLoading.value = false;
     }
   }
 

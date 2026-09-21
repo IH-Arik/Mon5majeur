@@ -108,13 +108,13 @@ class _SupportScreenState extends State<SupportScreen> {
         });
       } else {
         setState(() {
-          _error = 'Failed to load (${response.statusCode}).';
+          _error = 'Failed to load (@code).'.trParams({'code': '${response.statusCode}'});
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _error = 'Something went wrong. Please try again.';
+        _error = 'Something went wrong. Please try again.'.tr;
         _isLoading = false;
       });
     }

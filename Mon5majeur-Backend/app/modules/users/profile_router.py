@@ -59,6 +59,7 @@ class UserProfileCompatResponse(BaseModel):
     date_of_birth: str = ""
     accept_terms_conditions: bool = False
     recived_notifications: bool = False  # typo intentional — matches Flutter
+    usage_stats_enabled: bool = True
     created_at: str | None = None
     updated_at: str | None = None
     user: int | None = None              # same as id
@@ -80,6 +81,7 @@ class UserProfileUpdateRequest(BaseModel):
     date_of_birth: str | None = None
     accept_terms_conditions: bool | None = None
     recived_notifications: bool | None = None
+    usage_stats_enabled: bool | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -95,6 +97,7 @@ def _to_profile_response(user: User) -> UserProfileCompatResponse:
         date_of_birth=dob,
         accept_terms_conditions=user.terms_accepted,
         recived_notifications=user.push_notifications_enabled,
+        usage_stats_enabled=user.usage_stats_enabled,
         created_at=created,
         updated_at=created,
         user=user.auto_id,
@@ -174,18 +177,46 @@ async def get_profile_stats(
 
     # ── Aggregate W/L/points from ALL memberships (duel leagues only —
     # Global League memberships never accrue wins/losses/points here) ──────
-    total_wins = sum(m.wins for m in memberships)
-    total_losses = sum(m.losses for m in memberships)
-    total_pf = sum(m.points_for for m in memberships)
-    total_pa = sum(m.points_against for m in memberships)
+    from app.modules.leagues.leaderboard_service import league_fully_released
+    from app.modules.leagues.score_visibility import has_live_access, scores_hidden
 
-    home_matches = await LeagueMatch.find(
-        {"home_user_id": user_id, "status": "completed"}
-    ).count()
-    away_matches = await LeagueMatch.find(
-        {"away_user_id": user_id, "status": "completed"}
-    ).count()
-    total_matches = home_matches + away_matches
+    if has_live_access(current_user):
+        total_wins = sum(m.wins for m in memberships)
+        total_losses = sum(m.losses for m in memberships)
+        total_pf = sum(m.points_for for m in memberships)
+        total_pa = sum(m.points_against for m in memberships)
+
+        home_matches = await LeagueMatch.find(
+            {"home_user_id": user_id, "status": "completed"}
+        ).count()
+        away_matches = await LeagueMatch.find(
+            {"away_user_id": user_id, "status": "completed"}
+        ).count()
+        total_matches = home_matches + away_matches
+    else:
+        # Score paywall (QA 15/09/2026 item 4): W/L and points would reveal a
+        # result before 09:00 Paris, so count only matches already released.
+        mine = await LeagueMatch.find(
+            {"status": "completed"},
+            {"$or": [{"home_user_id": user_id}, {"away_user_id": user_id}]},
+        ).to_list()
+        shown = [
+            m for m in mine
+            if not scores_hidden(current_user, status=m.status, nba_date=m.nba_date)
+        ]
+        total_matches = len(shown)
+        total_wins = sum(1 for m in shown if m.winner_id == user_id)
+        total_losses = sum(
+            1 for m in shown if m.winner_id is not None and m.winner_id != user_id
+        )
+        total_pf = sum(
+            (m.home_score if m.home_user_id == user_id else m.away_score) or 0.0
+            for m in shown
+        )
+        total_pa = sum(
+            (m.away_score if m.home_user_id == user_id else m.home_score) or 0.0
+            for m in shown
+        )
     no_match = max(0, total_matches - total_wins - total_losses)
 
     # ── Performance averages ────────────────────────────────────────────────
@@ -211,6 +242,12 @@ async def get_profile_stats(
         if not league or league.type == LEAGUE_TYPE_GLOBAL:
             continue
         if league.status != LEAGUE_STATUS_COMPLETED or m.rank is None:
+            continue
+        # Score paywall: hold the trophy back until the final's result is
+        # released to this viewer (QA 15/09/2026 item 4).
+        if not has_live_access(current_user) and not await league_fully_released(
+            league.id, current_user
+        ):
             continue
         if m.rank == 1:
             trophy_gold += 1
@@ -315,6 +352,8 @@ async def update_user_profile(
         updates["terms_accepted"] = payload.accept_terms_conditions
     if payload.recived_notifications is not None:
         updates["push_notifications_enabled"] = payload.recived_notifications
+    if payload.usage_stats_enabled is not None:
+        updates["usage_stats_enabled"] = payload.usage_stats_enabled
 
     if updates:
         updates["is_profile_complete"] = True

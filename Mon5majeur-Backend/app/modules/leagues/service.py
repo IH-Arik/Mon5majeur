@@ -1,14 +1,17 @@
 from datetime import date, datetime, timezone
 
 from beanie import PydanticObjectId
+from pymongo import ReturnDocument
 
 from app.exceptions.errors import BadRequestException, NotFoundException
 from app.modules.leagues.constants import (
     GLOBAL_LEAGUE_BUDGET,
+    LEAGUE_STATUS_COMPLETED,
     LEAGUE_STATUS_WAITING,
     LEAGUE_TYPE_GLOBAL,
     LEAGUE_TYPE_PRIVATE,
     MATCH_DAYS_BY_SIZE,
+    MAX_ACTIVE_LEAGUES_PER_USER,
 )
 from app.modules.leagues.model import League, LeagueMembership, LeagueMatch
 from app.modules.leagues.repository import LeagueRepository, MatchRepository, MembershipRepository
@@ -138,7 +141,69 @@ class LeagueService:
 
     # ── Private / Public League ───────────────────────────────────────────────
 
+    # ── Seats & limits (audit 4.1 / 4.2) ──────────────────────────────────────
+
+    async def _join_with_seat(self, league: League, user: User) -> None:
+        """Add `user` to `league`, claiming a seat ATOMICALLY.
+
+        The old code read current_size, compared it with max_size and wrote
+        current_size + 1 back - two people joining a league with one free spot
+        at the same moment both passed the check and the league ended up over
+        capacity. The seat is now claimed with one conditional update, so at
+        most max_size people can ever get one; the loser gets "League is full".
+        """
+        existing = await self.membership_repo.get_membership(league.id, user.id)
+        if existing:
+            raise BadRequestException("Already in this league")
+
+        claimed = await League.get_motor_collection().find_one_and_update(
+            {"_id": league.id, "current_size": {"$lt": league.max_size}},
+            {
+                "$inc": {"current_size": 1},
+                "$set": {"updated_at": datetime.now(timezone.utc)},
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        if claimed is None:
+            raise BadRequestException("League is full")
+
+        try:
+            await LeagueMembership(league_id=league.id, user_id=user.id).insert()
+        except Exception:
+            # Membership was not created (e.g. a duplicate from a double tap):
+            # give the seat back so it is not lost.
+            await self._release_seat(league)
+            raise
+        league.current_size = claimed["current_size"]
+
+    async def _release_seat(self, league: League) -> None:
+        """Free one seat atomically (never below zero)."""
+        after = await League.get_motor_collection().find_one_and_update(
+            {"_id": league.id, "current_size": {"$gt": 0}},
+            {"$inc": {"current_size": -1}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if after is not None:
+            league.current_size = after["current_size"]
+
+    async def _ensure_can_create_league(self, user: User) -> None:
+        """One user may run at most MAX_ACTIVE_LEAGUES_PER_USER leagues at a
+        time; creation used to be unlimited, so a single account could flood
+        the database with empty leagues (audit 4.1)."""
+        active = await League.find(
+            {
+                "admin_id": user.id,
+                "type": {"$ne": LEAGUE_TYPE_GLOBAL},
+                "status": {"$nin": [LEAGUE_STATUS_COMPLETED, "cancelled"]},
+            }
+        ).count()
+        if active >= MAX_ACTIVE_LEAGUES_PER_USER:
+            raise BadRequestException(
+                f"Maximum {MAX_ACTIVE_LEAGUES_PER_USER} active leagues"
+            )
+
     async def create_league(self, user: User, payload: CreateLeagueRequest) -> LeagueResponse:
+        await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
         invite_code = None
@@ -170,15 +235,7 @@ class LeagueService:
             raise NotFoundException("Invalid invite code")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
 
         return self._to_response(league)
 
@@ -188,15 +245,7 @@ class LeagueService:
             raise NotFoundException("Public league not found")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
         return self._to_response(league)
 
     # ── My Leagues ────────────────────────────────────────────────────────────
@@ -259,11 +308,14 @@ class LeagueService:
         users = await UserModel.find({"_id": {"$in": list(user_ids)}}).to_list()
         user_map = {u.id: u for u in users}
 
+        from app.modules.leagues.score_visibility import scores_hidden
+
         result = []
         for match in matches:
             league = league_map.get(match.league_id)
             home_u = user_map.get(match.home_user_id)
             away_u = user_map.get(match.away_user_id)
+            hidden = scores_hidden(user, status=match.status, nba_date=match.nba_date)
 
             result.append(LeagueMatchResponse(
                 id=match.id,
@@ -282,8 +334,8 @@ class LeagueService:
                     team_name=away_u.team_name if away_u else None,
                     team_logo=away_u.team_logo if away_u else None,
                 ),
-                home_score=match.home_score,
-                away_score=match.away_score,
+                home_score=None if hidden else match.home_score,
+                away_score=None if hidden else match.away_score,
             ))
 
         return result
@@ -383,7 +435,7 @@ class LeagueService:
             raise BadRequestException("League creator cannot leave — delete the league instead")
 
         await membership.delete()
-        await league.save_updated(current_size=max(0, league.current_size - 1))
+        await self._release_seat(league)
 
         if league.auto_id:
             try:
@@ -424,7 +476,7 @@ class LeagueService:
 
         target_user = await User.get(target_user_id)
         await membership.delete()
-        await league.save_updated(current_size=max(0, league.current_size - 1))
+        await self._release_seat(league)
 
         if league.auto_id:
             try:
@@ -498,6 +550,7 @@ class LeagueService:
     async def create_public_league_compat(
         self, user: User, payload: CreatePublicLeagueRequest
     ) -> PublicLeagueCompatResponse:
+        await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
         budget = payload.budget_int if payload.budget_int in (80, 100) else 100
@@ -546,15 +599,7 @@ class LeagueService:
             raise NotFoundException("Public league not found")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
 
         try:
             await emit_team_joined(
@@ -593,6 +638,8 @@ class LeagueService:
     async def get_my_leagues_compat(
         self, user: User, league_type: str | None = None
     ) -> list[PublicLeagueCompatResponse]:
+        from app.modules.leagues import leaderboard_service
+        from app.modules.leagues.score_visibility import has_live_access
         from app.modules.users.model import User as UserModel
 
         memberships = await self.membership_repo.get_user_memberships(user.id)
@@ -615,7 +662,13 @@ class LeagueService:
             compat = await self._to_compat_response(league, users)
             membership = membership_map.get(league.id)
             compat.current_week = league.current_week
+            # The stored rank already reflects results still behind the score
+            # paywall; rebuild it from what this user may see (QA 15/09 item 4).
             compat.rank = membership.rank if membership else None
+            if membership and not has_live_access(user):
+                compat.rank = await leaderboard_service.viewer_rank(
+                    league.id, user.id, user
+                )
             compat.lineup_submitted, compat.lock_in_seconds = await _lineup_lock_info(
                 user.id, league.id, today
             )
@@ -623,16 +676,21 @@ class LeagueService:
         return result
 
     async def get_my_matches_today_compat(self, user: User) -> list[MyMatchTodayCompatResponse]:
-        from app.modules.live_scores.service import _is_premium
+        from app.modules.leagues.score_visibility import (
+            has_live_access as _has_live_access,
+            release_iso,
+            scores_hidden,
+        )
         from app.modules.users.model import User as UserModel
 
         today = date.today()
-        has_live_access = _is_premium(user)
+        has_live_access = _has_live_access(user)
 
         matches = await self.match_repo.get_user_matches_today(user.id, today)
-        # A live match this user can't watch live doesn't count as "today's
-        # result" per spec — fall back to the last completed match instead.
-        displayable = [m for m in matches if not (m.status == "live" and not has_live_access)]
+        # QA 15/09/2026 item 4: before tonight's match starts, keep showing
+        # the previous result; once it is live or over, show it to everyone
+        # (non-subscribers just get their scores paywalled below).
+        displayable = [m for m in matches if m.status in ("live", "completed")]
         if not displayable:
             fallback = await self.match_repo.get_latest_completed_match(user.id)
             if fallback:
@@ -657,13 +715,14 @@ class LeagueService:
             league = league_map.get(match.league_id)
             home_u = user_map.get(match.home_user_id)
             away_u = user_map.get(match.away_user_id)
+            hidden = scores_hidden(user, status=match.status, nba_date=match.nba_date)
             pair = MatchPairCompatResponse(
                 player_a_id=home_u.auto_id if home_u else None,
                 player_a_name=home_u.team_name if home_u else None,
                 player_b_id=away_u.auto_id if away_u else None,
                 player_b_name=away_u.team_name if away_u else None,
-                score_a=match.home_score or 0,
-                score_b=match.away_score or 0,
+                score_a=0 if hidden else (match.home_score or 0),
+                score_b=0 if hidden else (match.away_score or 0),
                 match_object_id=str(match.id),
             )
             is_live_for_user = match.status == "live" and has_live_access
@@ -679,7 +738,9 @@ class LeagueService:
                 pairs=[pair],
                 created_at=match.created_at.isoformat(),
                 is_live_for_user=is_live_for_user,
-                result_available=match.status in ("live", "completed"),
+                result_available=match.status in ("live", "completed") and not hidden,
+                scores_hidden=hidden,
+                scores_release_at=release_iso(match.nba_date) if hidden else None,
             ))
         return result
 
@@ -738,6 +799,7 @@ class LeagueService:
     async def create_private_league_compat(
         self, user: User, payload: CreatePublicLeagueRequest
     ) -> PublicLeagueCompatResponse:
+        await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
         budget = payload.budget_int if payload.budget_int in (80, 100) else 100
@@ -840,15 +902,7 @@ class LeagueService:
             raise NotFoundException("Invalid invite code")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
 
         if league.auto_id:
             try:
@@ -895,7 +949,7 @@ class LeagueService:
             raise BadRequestException("User is not in this league")
 
         await membership.delete()
-        await league.save_updated(current_size=max(0, league.current_size - 1))
+        await self._release_seat(league)
 
         if league.auto_id:
             try:

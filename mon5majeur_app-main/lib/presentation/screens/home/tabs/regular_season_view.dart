@@ -156,8 +156,6 @@ class RegularSeasonView extends StatelessWidget {
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

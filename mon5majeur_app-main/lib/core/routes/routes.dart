@@ -331,6 +331,20 @@ class AppRouter {
       ),
 
       GoRoute(
+        name: RoutePath.matchDetailScreen,
+        path: RoutePath.matchDetailScreen.addBasePath,
+        builder: (BuildContext context, GoRouterState state) {
+          final q = state.uri.queryParameters;
+          return MatchDetailScreen(
+            leagueId: int.tryParse(q['leagueId'] ?? '') ?? 0,
+            matchDay: int.tryParse(q['matchDay'] ?? '') ?? 1,
+            isPrivate: q['isPrivate'] != 'false',
+            matchObjectId: q['matchObjectId'],
+          );
+        },
+      ),
+
+      GoRoute(
         name: RoutePath.liveScoreScreen,
         path: RoutePath.liveScoreScreen.addBasePath,
         builder: (BuildContext context, GoRouterState state) {

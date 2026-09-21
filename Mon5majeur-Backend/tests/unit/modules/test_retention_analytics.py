@@ -50,7 +50,14 @@ def _patch_sources(monkeypatch, users, night_pairs):
     """night_pairs: iterable of (user_id, date) — a validated lineup that night."""
     from app.modules.analytics import service as svc
 
-    monkeypatch.setattr(svc.User, "find_all", lambda *a, **k: _Result(users))
+    # Users are read through User.find(_TRACKED_USERS) (opt-out aware) and the
+    # opted-out ids through _opted_out_user_ids - stub both.
+    monkeypatch.setattr(svc.User, "find", lambda *a, **k: _Result(users))
+
+    async def _no_opt_outs():
+        return []
+
+    monkeypatch.setattr(svc, "_opted_out_user_ids", _no_opt_outs)
     monkeypatch.setattr(
         svc.FlutterPlayerSelection,
         "aggregate",
@@ -61,6 +68,15 @@ def _patch_sources(monkeypatch, users, night_pairs):
             ]
         ),
     )
+
+
+def _no_opt_outs_for(monkeypatch):
+    from app.modules.analytics import service as svc
+
+    async def _none():
+        return []
+
+    monkeypatch.setattr(svc, "_opted_out_user_ids", _none)
 
 
 def _run(coro):
@@ -192,7 +208,8 @@ def test_no_users_yields_empty_grid(monkeypatch):
 def test_activation_rate_is_distinct_users_over_total(monkeypatch):
     from app.modules.analytics import service as svc
 
-    monkeypatch.setattr(svc.User, "find_all", lambda *a, **k: _Result([1, 2, 3, 4]))
+    monkeypatch.setattr(svc.User, "find", lambda *a, **k: _Result([1, 2, 3, 4]))
+    _no_opt_outs_for(monkeypatch)
     monkeypatch.setattr(
         svc.FlutterPlayerSelection, "aggregate", lambda *a, **k: _Result([{"n": 2}])
     )
@@ -207,8 +224,57 @@ def test_activation_rate_is_distinct_users_over_total(monkeypatch):
 def test_activation_rate_is_zero_not_error_with_no_users(monkeypatch):
     from app.modules.analytics import service as svc
 
-    monkeypatch.setattr(svc.User, "find_all", lambda *a, **k: _Result([]))
+    monkeypatch.setattr(svc.User, "find", lambda *a, **k: _Result([]))
+    _no_opt_outs_for(monkeypatch)
     monkeypatch.setattr(svc.FlutterPlayerSelection, "aggregate", lambda *a, **k: _Result([]))
 
     res = _run(RetentionAnalyticsService().activation())
     assert res.activation_rate == 0.0
+
+
+# ── usage-statistics opt-out (QA 15/09/2026 item 3) ───────────────────────────
+
+def test_lineup_filter_excludes_opted_out_users(monkeypatch):
+    """Opted-out users must be dropped from every lineup-based metric."""
+    from app.modules.analytics import service as svc
+
+    async def _opted():
+        return ["u-out"]
+
+    monkeypatch.setattr(svc, "_opted_out_user_ids", _opted)
+    flt = _run(svc._lineup_filter())
+    assert flt["user_id"] == {"$nin": ["u-out"]}
+    # the 5-player "validated lineup" rule is still part of the filter
+    assert flt.items() >= svc._VALIDATED_LINEUP_FILTER.items()
+
+
+def test_lineup_filter_unchanged_when_nobody_opted_out(monkeypatch):
+    from app.modules.analytics import service as svc
+
+    async def _none():
+        return []
+
+    monkeypatch.setattr(svc, "_opted_out_user_ids", _none)
+    assert _run(svc._lineup_filter()) == svc._VALIDATED_LINEUP_FILTER
+
+
+def test_tracked_users_filter_keeps_accounts_without_the_field():
+    """Existing accounts have no usage_stats_enabled field: they must still be
+    counted, so the filter is `$ne: False`, not `== True`."""
+    from app.modules.analytics.service import _TRACKED_USERS
+
+    assert _TRACKED_USERS == {"usage_stats_enabled": {"$ne": False}}
+
+
+# ── DAU 7-night average is a billing figure: only locked nights count ─────────
+
+def test_rolling_average_excludes_tonight_until_its_lineups_are_locked():
+    from app.modules.analytics.service import rolling_complete_nights
+
+    nights = [date(2026, 10, d) for d in (22, 21, 20, 19, 18, 17, 16, 15)]  # most recent first
+    # before tonight's first tip-off: tonight (22) is still filling up -> skipped
+    assert rolling_complete_nights(nights, tonight_locked=False, size=7) == nights[1:8]
+    # once locked, tonight counts
+    assert rolling_complete_nights(nights, tonight_locked=True, size=7) == nights[:7]
+    # no history yet
+    assert rolling_complete_nights([], tonight_locked=False, size=7) == []

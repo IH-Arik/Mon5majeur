@@ -60,13 +60,13 @@ class _RulesTabState extends State<RulesTab> {
 
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to load rules (${response.statusCode}).';
+        _error = 'Failed to load rules (@code).'.trParams({'code': '${response.statusCode}'});
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to load rules: $e';
+        _error = 'Failed to load rules: @e'.trParams({'e': '$e'});
         _isLoading = false;
       });
     }
@@ -98,7 +98,7 @@ class _RulesTabState extends State<RulesTab> {
         child: Padding(
           padding: EdgeInsets.all(24.w),
           child: Text(
-            'No rules available right now.',
+            'No rules available right now.'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white70, fontSize: 14.sp),
           ),

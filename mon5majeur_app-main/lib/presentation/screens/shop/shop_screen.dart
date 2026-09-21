@@ -317,17 +317,17 @@ class ShopScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.r)),
         title: Text(
-          'Confirm Purchase',
+          'Confirm Purchase'.tr,
           style: TextStyle(color: Colors.white, fontSize: 16.sp),
         ),
         content: Text(
-          'Buy ${offer.name.tr} for ${offer.cost} tokens?\n\nYour balance: ${c.tokenBalance.value} tokens.',
+          'Buy @name for @cost tokens?\n\nYour balance: @bal tokens.'.trParams({'name': offer.name.tr, 'cost': '${offer.cost}', 'bal': '${c.tokenBalance.value}'}),
           style: TextStyle(color: Colors.grey, fontSize: 13.sp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel',
+            child: Text('Cancel'.tr,
                 style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
           ),
           ElevatedButton(
@@ -341,7 +341,7 @@ class ShopScreen extends StatelessWidget {
               final ok = await c.purchaseBonus(offer.slug);
               if (ok) {
                 Get.snackbar(
-                  'Purchased!',
+                  'Purchased!'.tr,
                   offer.slug == _liveScoringOffer.slug
                       ? '${offer.name.tr} activated for 30 days'
                       : '${offer.name.tr} added to your inventory',
@@ -351,7 +351,7 @@ class ShopScreen extends StatelessWidget {
                 );
               }
             },
-            child: Text('Buy',
+            child: Text('Buy'.tr,
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 13.sp,

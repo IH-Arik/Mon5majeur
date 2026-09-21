@@ -101,7 +101,7 @@ async def get_private_match_result(
     current_user: User = Depends(get_current_user),
 ) -> MatchResultCompatResponse:
     await _ensure_private_member(league_id, current_user)
-    data = await selection_service.get_match_result(league_id, match_day)
+    data = await selection_service.get_match_result(league_id, match_day, current_user)
     return MatchResultCompatResponse(**data)
 
 
@@ -214,7 +214,7 @@ async def get_private_standings(
     current_user: User = Depends(get_current_user),
 ) -> StandingsResponse:
     await _ensure_private_member(league_id, current_user)
-    return await leaderboard_service.get_standings(league_id)
+    return await leaderboard_service.get_standings(league_id, current_user)
 
 
 @router.get(
@@ -227,7 +227,7 @@ async def get_private_playoffs(
     current_user: User = Depends(get_current_user),
 ) -> PlayoffBracketResponse:
     await _ensure_private_member(league_id, current_user)
-    return await leaderboard_service.get_playoff_bracket(league_id)
+    return await leaderboard_service.get_playoff_bracket(league_id, current_user)
 
 
 @router.get(

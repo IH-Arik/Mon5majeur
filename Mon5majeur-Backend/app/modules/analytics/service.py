@@ -72,6 +72,36 @@ _VALIDATED_LINEUP_FILTER: dict = {
 }
 
 
+# Users who switched "Statistiques d'utilisation" off in Settings (QA 15/09/2026
+# item 3). Missing field == never opted out, hence `$ne: False` not `== True`.
+_TRACKED_USERS: dict = {"usage_stats_enabled": {"$ne": False}}
+
+
+async def _opted_out_user_ids() -> list:
+    rows = await User.find({"usage_stats_enabled": False}).to_list()
+    return [u.id for u in rows]
+
+
+async def _lineup_filter() -> dict:
+    """Validated-lineup filter that also drops opted-out users, so they are
+    never counted in DAU, retention, activation, volume or league figures."""
+    out = await _opted_out_user_ids()
+    if not out:
+        return dict(_VALIDATED_LINEUP_FILTER)
+    return {**_VALIDATED_LINEUP_FILTER, "user_id": {"$nin": out}}
+
+
+def rolling_complete_nights(nights_desc: list[date], tonight_locked: bool, size: int) -> list[date]:
+    """The nights the DAU rolling average may use (spec: "used for sponsor
+    billing"). `nights_desc` is most recent first. Tonight only counts once its
+    lineups are locked (first tip-off passed): before that its DAU is still
+    filling up, so including it makes a billing figure drift through the day."""
+    nights = list(nights_desc)
+    if nights and not tonight_locked:
+        nights = nights[1:]
+    return nights[:size]
+
+
 def _utc_today() -> date:
     return datetime.now(timezone.utc).date()
 
@@ -118,9 +148,10 @@ class RetentionAnalyticsService:
         today = _utc_today()
         night = await self.current_night()
 
-        downloads = await User.find_all().count()
+        downloads = await User.find(_TRACKED_USERS).count()
         signups_today = await User.find(
-            User.created_at >= datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
+            User.created_at >= datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc),
+            _TRACKED_USERS,
         ).count()
 
         lineups_tonight = 0
@@ -129,7 +160,9 @@ class RetentionAnalyticsService:
             lineups_tonight = await self._lineups_on(night)
             dau = await self._dau_on(night)
 
-        rolling_nights = await self.match_nights(limit=DAU_ROLLING_NIGHTS)
+        recent = await self.match_nights(limit=DAU_ROLLING_NIGHTS + 1)
+        tonight_locked = bool(recent) and await self._night_locked(recent[0])
+        rolling_nights = rolling_complete_nights(recent, tonight_locked, DAU_ROLLING_NIGHTS)
         dau_values = [await self._dau_on(n) for n in rolling_nights]
         dau_avg = round(sum(dau_values) / len(dau_values), 1) if dau_values else 0.0
 
@@ -146,9 +179,21 @@ class RetentionAnalyticsService:
             night_date=night,
         )
 
+    async def _night_locked(self, night: date) -> bool:
+        """True once the night's first game has tipped off (lineups are locked,
+        so its DAU can no longer grow)."""
+        return (
+            await NBAGame.find(
+                {
+                    "nba_date": _as_datetime(night),
+                    "tip_off_time": {"$lte": datetime.now(timezone.utc)},
+                }
+            ).count()
+        ) > 0
+
     async def _lineups_on(self, night: date) -> int:
         return await FlutterPlayerSelection.find(
-            {"nba_date": _as_datetime(night), **_VALIDATED_LINEUP_FILTER}
+            {"nba_date": _as_datetime(night), **await _lineup_filter()}
         ).count()
 
     async def _dau_on(self, night: date) -> int:
@@ -156,7 +201,7 @@ class RetentionAnalyticsService:
         a user in three leagues on one night is one active user, not three."""
         rows = await FlutterPlayerSelection.aggregate(
             [
-                {"$match": {"nba_date": _as_datetime(night), **_VALIDATED_LINEUP_FILTER}},
+                {"$match": {"nba_date": _as_datetime(night), **await _lineup_filter()}},
                 {"$group": {"_id": "$user_id"}},
                 {"$count": "n"},
             ]
@@ -180,7 +225,7 @@ class RetentionAnalyticsService:
         """
         today = _utc_today()
 
-        users = await User.find_all().to_list()
+        users = await User.find(_TRACKED_USERS).to_list()
         if not users:
             return CohortRetentionResponse(day_offsets=COHORT_DAY_OFFSETS, rows=[])
 
@@ -190,7 +235,7 @@ class RetentionAnalyticsService:
         nights_by_user: dict[object, set[date]] = defaultdict(set)
         rows = await FlutterPlayerSelection.aggregate(
             [
-                {"$match": {"nba_date": {"$ne": None}, **_VALIDATED_LINEUP_FILTER}},
+                {"$match": {"nba_date": {"$ne": None}, **await _lineup_filter()}},
                 {"$group": {"_id": {"u": "$user_id", "d": "$nba_date"}}},
             ]
         ).to_list()
@@ -237,10 +282,10 @@ class RetentionAnalyticsService:
         that predate that field — "ever played" does not depend on knowing
         which night it was.
         """
-        total = await User.find_all().count()
+        total = await User.find(_TRACKED_USERS).count()
         rows = await FlutterPlayerSelection.aggregate(
             [
-                {"$match": _VALIDATED_LINEUP_FILTER},
+                {"$match": await _lineup_filter()},
                 {"$group": {"_id": "$user_id"}},
                 {"$count": "n"},
             ]
@@ -273,7 +318,7 @@ class RetentionAnalyticsService:
                     {
                         "$match": {
                             "nba_date": {"$in": [_as_datetime(d) for d in recent]},
-                            **_VALIDATED_LINEUP_FILTER,
+                            **await _lineup_filter(),
                         }
                     },
                     {"$group": {"_id": "$nba_date", "n": {"$sum": 1}}},
@@ -333,7 +378,7 @@ class RetentionAnalyticsService:
                         "$match": {
                             "nba_date": night_filter,
                             "league_id": {"$in": private_ids},
-                            **_VALIDATED_LINEUP_FILTER,
+                            **await _lineup_filter(),
                         }
                     },
                     {"$group": {"_id": "$user_id"}},
@@ -344,7 +389,7 @@ class RetentionAnalyticsService:
 
         total_rows = await FlutterPlayerSelection.aggregate(
             [
-                {"$match": {"nba_date": night_filter, **_VALIDATED_LINEUP_FILTER}},
+                {"$match": {"nba_date": night_filter, **await _lineup_filter()}},
                 {"$group": {"_id": "$user_id"}},
                 {"$count": "n"},
             ]
@@ -366,12 +411,20 @@ class RetentionAnalyticsService:
         currently belongs to (0 / 1 / 2 / 3+). Unlike players_in_private
         above, this counts membership rows directly — it does not require
         the user to have validated a lineup."""
-        total_users = await User.find_all().count()
+        total_users = await User.find(_TRACKED_USERS).count()
         counts_by_user: dict[object, int] = {}
+        opted_out = await _opted_out_user_ids()
         if private_league_ids and total_users:
             rows = await LeagueMembership.aggregate(
                 [
-                    {"$match": {"league_id": {"$in": private_league_ids}}},
+                    {
+                        "$match": {
+                            "league_id": {"$in": private_league_ids},
+                            **(
+                                {"user_id": {"$nin": opted_out}} if opted_out else {}
+                            ),
+                        }
+                    },
                     {"$group": {"_id": "$user_id", "n": {"$sum": 1}}},
                 ]
             ).to_list()

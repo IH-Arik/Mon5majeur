@@ -134,7 +134,7 @@
 //                         return 'Please confirm your new password';
 //                       }
 //                       if (value != _newPasswordController.text) {
-//                         return 'Passwords do not match';
+//                         return 'Passwords do not match'.tr;
 //                       }
 //                       return null;
 //                     },

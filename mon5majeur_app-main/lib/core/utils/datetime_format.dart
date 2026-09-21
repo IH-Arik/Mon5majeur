@@ -57,3 +57,37 @@ String? formatGameLocalTime(String datetimeUtc) {
   );
   return formatLocalClockTime(asUtc);
 }
+
+/// Formats a backend `YYYY-MM-DD` match date for display: French
+/// "08/09/2026", English "Sep 8, 2026" (QA 15/09/2026 item 5). Returns the
+/// input unchanged if it isn't a parseable date.
+String formatMatchDate(String isoDate) {
+  final d = DateTime.tryParse(isoDate);
+  if (d == null) return isoDate;
+  if (Get.locale?.languageCode == 'fr') {
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
+  }
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return '${months[d.month - 1]} ${d.day}, ${d.year}';
+}
+
+/// "Matchday 16" / "Journée 16".
+String formatMatchdayLabel(int matchDay) =>
+    AppString.matchdayNumberTemplate.trParams({'n': '$matchDay'});
+
+/// Precise time-to-tip-off, e.g. "4 h 12 min" (QA 15/09/2026 item 6). Under
+/// an hour it's just "12 min"; never rounds up to a whole hour.
+String formatCountdown(int seconds) {
+  final totalMinutes = (seconds / 60).floor();
+  final h = totalMinutes ~/ 60;
+  final m = totalMinutes % 60;
+  if (h <= 0) {
+    return AppString.minutesTemplate.trParams({'m': '$m'});
+  }
+  return AppString.hoursMinutesTemplate.trParams({'h': '$h', 'm': '$m'});
+}

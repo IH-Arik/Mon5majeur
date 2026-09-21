@@ -9,6 +9,9 @@ class UserProfileModel {
   final String dateOfBirth;
   final bool acceptTermsConditions;
   final bool recivedNotifications;
+  // Usage-statistics opt-out (QA 15/09/2026 item 3): false = the backend
+  // excludes this account from every analytics figure.
+  final bool usageStatsEnabled;
   final String? createdAt;
   final String? updatedAt;
   final int? user;
@@ -21,6 +24,7 @@ class UserProfileModel {
     required this.dateOfBirth,
     required this.acceptTermsConditions,
     required this.recivedNotifications,
+    this.usageStatsEnabled = true,
     this.createdAt,
     this.updatedAt,
     this.user,
@@ -48,6 +52,7 @@ class UserProfileModel {
       dateOfBirth: json['date_of_birth'] ?? '',
       acceptTermsConditions: json['accept_terms_conditions'] ?? false,
       recivedNotifications: json['recived_notifications'] ?? false,
+      usageStatsEnabled: json['usage_stats_enabled'] ?? true,
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
       user: json['user'],

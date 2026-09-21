@@ -565,8 +565,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                       child: ShaderMask(
                         shaderCallback: (bounds) {
                           return LinearGradient(
-                            begin: Alignment(-2 + 4 * _shimmerController.value,
-                                0),
+                            begin: Alignment(
+                                -2 + 4 * _shimmerController.value, 0),
                             end: Alignment(
                                 -1 + 4 * _shimmerController.value, 0),
                             colors: [
@@ -638,7 +638,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                                 Text(
                                   '${pack.tokens} TOKENS',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.5),
+                                    color:
+                                        Colors.white.withValues(alpha: 0.5),
                                     fontSize: 12.sp,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2,
@@ -654,7 +655,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                                 vertical: 5.h,
                               ),
                               decoration: BoxDecoration(
-                                color: pack.badgeColor ?? const Color(0xFFFF6B35),
+                                color:
+                                    pack.badgeColor ?? const Color(0xFFFF6B35),
                                 borderRadius: BorderRadius.circular(20.r),
                               ),
                               child: Text(

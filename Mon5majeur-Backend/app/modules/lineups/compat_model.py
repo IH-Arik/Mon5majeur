@@ -43,4 +43,8 @@ class FlutterPlayerSelection(BaseDocument):
             # additionally narrows by league.
             IndexModel([("nba_date", ASCENDING)]),
             IndexModel([("nba_date", ASCENDING), ("league_id", ASCENDING)]),
+            # cohort_retention() groups by (user, night); users/service stats
+            # filter by submitted_at (audit 1.4).
+            IndexModel([("user_id", ASCENDING), ("nba_date", ASCENDING)]),
+            IndexModel([("submitted_at", ASCENDING)]),
         ]

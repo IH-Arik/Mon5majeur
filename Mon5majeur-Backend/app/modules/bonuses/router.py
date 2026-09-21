@@ -118,24 +118,38 @@ async def purchase_bonus(
         note=f"Shop purchase: {payload.bonus}",
     )
 
-    # Update inventory
-    inv = await _get_inventory(current_user)
-    now = datetime.now(timezone.utc)
+    # Grant the bonus. The tokens are already spent, so if granting fails for
+    # ANY reason the purchase is refunded: the user must never pay for a bonus
+    # they did not get (audit 4.3). A hard process crash between the two steps
+    # is the one remaining window; closing it needs a Mongo transaction, which
+    # requires a replica set (Atlas has one, self-hosted single node does not).
+    try:
+        inv = await _get_inventory(current_user)
+        now = datetime.now(timezone.utc)
 
-    if payload.bonus in _CHARGE_BONUSES:
-        field = f"{payload.bonus}_charges"
-        setattr(inv, field, getattr(inv, field) + 1)
-    elif payload.bonus == "live_scoring":
-        current_expiry = _aware(inv.live_scoring_until)
-        base = current_expiry if current_expiry and current_expiry > now else now
-        inv.live_scoring_until = base + timedelta(days=30)
-        # This is what live_scores/service.py._is_premium actually checks —
-        # without syncing it here, a purchase would update the inventory but
-        # never actually unlock the live-score endpoint (403 forever).
-        current_user.premium_until = inv.live_scoring_until
-        await current_user.save()
+        if payload.bonus in _CHARGE_BONUSES:
+            field = f"{payload.bonus}_charges"
+            setattr(inv, field, getattr(inv, field) + 1)
+        elif payload.bonus == "live_scoring":
+            current_expiry = _aware(inv.live_scoring_until)
+            base = current_expiry if current_expiry and current_expiry > now else now
+            inv.live_scoring_until = base + timedelta(days=30)
+            # This is what live_scores/service.py._is_premium actually checks —
+            # without syncing it here, a purchase would update the inventory but
+            # never actually unlock the live-score endpoint (403 forever).
+            current_user.premium_until = inv.live_scoring_until
+            await current_user.save()
 
-    await inv.save()
+        await inv.save()
+    except Exception:
+        await svc.credit(
+            current_user.id,
+            cost,
+            tx_type="refund",
+            reference_id=payload.bonus,
+            note=f"Auto-refund: could not grant {payload.bonus}",
+        )
+        raise
 
     return PurchaseResponse(
         bonus=payload.bonus,

@@ -95,13 +95,13 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
       }
 
       setState(() {
-        _error = 'Failed to load standings (${response.statusCode}).';
+        _error = 'Failed to load standings (@code).'.trParams({'code': '${response.statusCode}'});
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Failed to load standings: $e';
+        _error = 'Failed to load standings: @e'.trParams({'e': '$e'});
         _isLoading = false;
       });
     }
@@ -346,7 +346,6 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
           Expanded(
             child: Text(
               team.teamName,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14.sp,

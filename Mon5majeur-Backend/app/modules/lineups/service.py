@@ -126,9 +126,10 @@ class LineupService:
                 raise ForbiddenException(f"Player {player.full_name} is OUT and cannot be selected")
 
             # Player must have a game today
+            from app.modules.players.teams_playing import TeamsPlaying
+
             games_today = await NBAGame.find(NBAGame.nba_date == nba_date).to_list()
-            team_ids_playing = {g.home_team_id for g in games_today} | {g.away_team_id for g in games_today}
-            if player.team_goalserve_id not in team_ids_playing:
+            if not TeamsPlaying(games_today).plays(player.team_name, player.team_goalserve_id):
                 raise ForbiddenException(
                     f"Player {player.full_name}'s team has no game on {nba_date}"
                 )

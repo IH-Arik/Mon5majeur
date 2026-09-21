@@ -256,8 +256,11 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
           children: [
             Icon(Icons.bolt, color: Colors.white54, size: 24.r),
             SizedBox(height: 4.h),
+            // Short label so all 5 tabs fit ("Score en direct" was cut off
+            // as "Score en Dire..." - QA 15/09/2026 item 9).
             Text(
-              AppString.liveScoreTitle.tr,
+              AppString.liveTabLabel.tr,
+              maxLines: 1,
               style: TextStyle(
                 color: Colors.white54,
                 fontSize: 11.sp,

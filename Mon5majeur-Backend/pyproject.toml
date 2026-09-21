@@ -15,6 +15,7 @@ exclude = ["alembic/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = ["real_rate_limit: exercise the real (Mongo-backed) rate limiter"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

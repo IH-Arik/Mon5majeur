@@ -26,6 +26,12 @@ from app.core.config import settings
 
 logger = __import__("logging").getLogger(__name__)
 
+
+class GoalserveEmptyResponseError(RuntimeError):
+    """Goalserve answered but returned no games / no player stats for a night
+    that had games. Scoring on top of that would silently finish every duel
+    0-0 (audit 3.1), so callers must stop and alert instead."""
+
 _BASE = "https://www.goalserve.com/getfeed"
 
 # Goalserve's status strings map onto our 3-state vocabulary. Anything not
