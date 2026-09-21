@@ -323,7 +323,7 @@ class AuthController extends GetxController {
         });
       } else {
         final errorMessage =
-            response.body['message'] ??
+            (response.body['detail'] ?? response.body['message']) ??
             response.body['email']?.toString() ??
             response.body['error']?.toString() ??
             "Registration failed".tr;
@@ -433,7 +433,7 @@ class AuthController extends GetxController {
         });
       } else {
         final errorMessage =
-            response.body['message'] ??
+            (response.body['detail'] ?? response.body['message']) ??
             response.body['email']?.toString() ??
             response.body['otp']?.toString() ??
             response.body['error']?.toString() ??
@@ -485,7 +485,7 @@ class AuthController extends GetxController {
         // Restart the timer
         startOtpTimer();
       } else {
-        final errorMessage = response.body['message'] ?? "Failed to resend OTP".tr;
+        final errorMessage = (response.body['detail'] ?? response.body['message']) ?? "Failed to resend OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
@@ -646,7 +646,7 @@ class AuthController extends GetxController {
         });
       } else {
         final errorMessage =
-            response.body['message'] ??
+            (response.body['detail'] ?? response.body['message']) ??
             response.body['email']?.toString() ??
             "Failed to send OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
@@ -715,7 +715,7 @@ class AuthController extends GetxController {
         });
       } else {
         final errorMessage =
-            response.body['message'] ??
+            (response.body['detail'] ?? response.body['message']) ??
             response.body['otp']?.toString() ??
             response.body['error']?.toString() ??
             "Invalid OTP".tr;
@@ -805,7 +805,7 @@ class AuthController extends GetxController {
         });
       } else {
         final errorMessage =
-            response.body['message'] ??
+            (response.body['detail'] ?? response.body['message']) ??
             response.body['new_password']?.toString() ??
             response.body['error']?.toString() ??
             "Failed to change password".tr;
@@ -860,7 +860,7 @@ class AuthController extends GetxController {
         // Restart the timer
         startOtpTimer();
       } else {
-        final errorMessage = response.body['message'] ?? "Failed to resend OTP".tr;
+        final errorMessage = (response.body['detail'] ?? response.body['message']) ?? "Failed to resend OTP".tr;
         showSnackbar(context, AppString.errorGeneric.tr, errorMessage, isError: true);
       }
     } catch (e) {
@@ -980,7 +980,7 @@ class AuthController extends GetxController {
         final error =
             response.body is Map
                 ? (response.body['detail'] ??
-                    response.body['message'] ??
+                    (response.body['detail'] ?? response.body['message']) ??
                     "Google login failed".tr)
                 : "Google login failed: ${response.body}";
         showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
@@ -1113,7 +1113,7 @@ class AuthController extends GetxController {
         final error =
             response.body is Map
                 ? (response.body['detail'] ??
-                    response.body['message'] ??
+                    (response.body['detail'] ?? response.body['message']) ??
                     "Apple login failed".tr)
                 : "Apple login failed: ${response.body}";
         showSnackbar(context, AppString.errorGeneric.tr, error.toString(), isError: true);
