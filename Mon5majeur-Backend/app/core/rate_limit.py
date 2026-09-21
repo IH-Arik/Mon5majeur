@@ -68,27 +68,86 @@ def client_ip(request) -> str:
     )
 
 
-# Named limits: (limit, window seconds)
-LOGIN_PER_EMAIL = (10, 15 * 60)
-LOGIN_PER_IP = (30, 60)
+# ── Client spec (audit 2.1): 5/minute per IP on login, register and verify-otp;
+#    after 5 consecutive failures a 15-minute temporary block; log repeated attempts.
+IP_PER_MINUTE = (5, 60)
+LOCKOUT_FAILURES = 5
+LOCKOUT_SECONDS = 15 * 60
 OTP_REQUEST_PER_EMAIL = (5, 15 * 60)      # register / forgot-password / resend
-OTP_VERIFY_PER_EMAIL = (10, 15 * 60)
-AUTH_PER_IP = (30, 60)
+
+
+def _mask(key: str) -> str:
+    """Keep logs useful without writing whole email addresses into them."""
+    kind, _, ident = key.partition(":")
+    if "@" in ident:
+        name, _, domain = ident.partition("@")
+        ident = f"{name[:2]}***@{domain}"
+    return f"{kind}:{ident}"
+
+
+def _aware(dt):
+    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+async def check_lockout(key: str) -> None:
+    """Raise 429 while `key` (an email) is locked out after too many failures."""
+    doc = await RateLimitBucket.get_motor_collection().find_one({"key": f"lock:{key}"})
+    if not doc or doc.get("hits", 0) < LOCKOUT_FAILURES:
+        return
+    left = int((_aware(doc["expires_at"]) - datetime.now(timezone.utc)).total_seconds())
+    if left <= 0:
+        return  # expired; the TTL index will remove it shortly
+    logger.warning("Locked out | %s | %ss left", _mask(key), left)
+    raise RateLimitException(
+        "Too many failed attempts. Please try again in 15 minutes.",
+        headers={"Retry-After": str(left)},
+    )
+
+
+async def record_failure(key: str, ip: str | None = None) -> None:
+    """Count one failed attempt on `key`. The 5th failure starts a 15-minute
+    lockout; a lapsed counter starts again from zero (so failures must be
+    consecutive within the window)."""
+    coll = RateLimitBucket.get_motor_collection()
+    now = datetime.now(timezone.utc)
+    doc = await coll.find_one({"key": f"lock:{key}"})
+    if doc and _aware(doc["expires_at"]) <= now:
+        await coll.delete_one({"key": f"lock:{key}"})
+    doc = await coll.find_one_and_update(
+        {"key": f"lock:{key}"},
+        {
+            "$inc": {"hits": 1},
+            "$set": {"expires_at": now + timedelta(seconds=LOCKOUT_SECONDS)},
+        },
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    n = doc["hits"]
+    if n >= 2:  # a single typo is normal; repeated ones are worth a log line
+        logger.warning(
+            "Failed auth attempt #%s | %s | ip=%s%s", n, _mask(key), ip or "?",
+            " | LOCKED OUT" if n >= LOCKOUT_FAILURES else "",
+        )
+
+
+async def clear_failures(key: str) -> None:
+    """A success ends the streak (failures must be CONSECUTIVE to lock)."""
+    await RateLimitBucket.get_motor_collection().delete_one({"key": f"lock:{key}"})
 
 
 async def guard_login(email: str, ip: str | None = None) -> None:
-    await hit(f"login:{email.lower()}", *LOGIN_PER_EMAIL)
     if ip:
-        await hit(f"login-ip:{ip}", *LOGIN_PER_IP)
+        await hit(f"login-ip:{ip}", *IP_PER_MINUTE)
+    await check_lockout(f"login:{email.lower()}")
 
 
-async def guard_otp_request(email: str, ip: str | None = None) -> None:
+async def guard_otp_request(email: str, ip: str | None = None, kind: str = "otp") -> None:
     await hit(f"otp-req:{email.lower()}", *OTP_REQUEST_PER_EMAIL)
     if ip:
-        await hit(f"auth-ip:{ip}", *AUTH_PER_IP)
+        await hit(f"{kind}-ip:{ip}", *IP_PER_MINUTE)
 
 
 async def guard_otp_verify(email: str, ip: str | None = None) -> None:
-    await hit(f"otp-verify:{email.lower()}", *OTP_VERIFY_PER_EMAIL)
     if ip:
-        await hit(f"auth-ip:{ip}", *AUTH_PER_IP)
+        await hit(f"otp-verify-ip:{ip}", *IP_PER_MINUTE)
+    await check_lockout(f"otp:{email.lower()}")

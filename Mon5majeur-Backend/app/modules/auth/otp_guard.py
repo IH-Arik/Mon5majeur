@@ -14,6 +14,7 @@ import hmac
 
 from pymongo import ReturnDocument
 
+from app.core import rate_limit
 from app.exceptions.errors import BadRequestException
 from app.modules.auth.model import OTPToken
 
@@ -23,7 +24,21 @@ MAX_OTP_ATTEMPTS = 5
 async def validate_otp(user, code: str, purpose: str, *, consume: bool) -> OTPToken:
     """Validate `code` for `user`. `consume=False` is the "peek" used by the
     two-step forgot-password flow (it still costs an attempt). Raises
-    BadRequestException on any failure."""
+    BadRequestException on any failure; 5 consecutive failures for an account
+    also start a 15-minute lockout (429), across codes."""
+    lock_key = f"otp:{(getattr(user, 'email', '') or str(user.id)).lower()}"
+    await rate_limit.check_lockout(lock_key)
+
+    try:
+        token = await _validate(user, code, purpose, consume=consume)
+    except BadRequestException:
+        await rate_limit.record_failure(lock_key)
+        raise
+    await rate_limit.clear_failures(lock_key)
+    return token
+
+
+async def _validate(user, code: str, purpose: str, *, consume: bool) -> OTPToken:
     coll = OTPToken.get_motor_collection()
     doc = await coll.find_one_and_update(
         {

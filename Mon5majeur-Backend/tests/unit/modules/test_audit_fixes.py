@@ -474,3 +474,124 @@ def test_failed_bonus_grant_refunds_the_tokens(monkeypatch):
     with pytest.raises(RuntimeError):
         _run(br.purchase_bonus(SimpleNamespace(bonus="luxury_tax"), user))
     assert events == [("debit", 150), ("refund", 150)]
+
+
+# ── 2.1 client spec: 5 consecutive failures -> 15-minute lockout ─────────────
+
+class _LockColl:
+    """In-memory stand-in for the rate_limit_buckets collection."""
+
+    def __init__(self):
+        self.docs = {}
+
+    async def find_one(self, flt):
+        d = self.docs.get(flt["key"])
+        return dict(d) if d else None
+
+    async def find_one_and_update(self, flt, update, upsert=False, return_document=None):
+        d = self.docs.setdefault(flt["key"], {"key": flt["key"], "hits": 0})
+        d["hits"] += update["$inc"]["hits"]
+        if "$set" in update:
+            d.update(update["$set"])
+        return dict(d)
+
+    async def delete_one(self, flt):
+        self.docs.pop(flt["key"], None)
+
+
+def _lock_env(monkeypatch):
+    from app.core import rate_limit
+
+    coll = _LockColl()
+    monkeypatch.setattr(
+        rate_limit.RateLimitBucket, "get_motor_collection", staticmethod(lambda: coll)
+    )
+    return rate_limit, coll
+
+
+@pytest.mark.real_rate_limit
+def test_five_consecutive_failures_lock_the_account_for_15_minutes(monkeypatch):
+    rl, coll = _lock_env(monkeypatch)
+    key = "login:victim@example.com"
+
+    for _ in range(4):
+        _run(rl.record_failure(key))
+        _run(rl.check_lockout(key))          # 4 failures: still allowed
+    _run(rl.record_failure(key))             # the 5th
+    with pytest.raises(RateLimitException) as exc:
+        _run(rl.check_lockout(key))
+    assert 800 < int(exc.value.headers["Retry-After"]) <= 900
+
+
+@pytest.mark.real_rate_limit
+def test_a_successful_login_ends_the_streak(monkeypatch):
+    rl, coll = _lock_env(monkeypatch)
+    key = "login:user@example.com"
+
+    for _ in range(4):
+        _run(rl.record_failure(key))
+    _run(rl.clear_failures(key))             # success
+    for _ in range(4):
+        _run(rl.record_failure(key))
+    _run(rl.check_lockout(key))              # only 4 consecutive again: no lock
+
+
+@pytest.mark.real_rate_limit
+def test_a_lapsed_counter_starts_from_zero(monkeypatch):
+    from datetime import timedelta, timezone
+
+    rl, coll = _lock_env(monkeypatch)
+    key = "login:user@example.com"
+    for _ in range(4):
+        _run(rl.record_failure(key))
+    # the 15-minute window has passed
+    coll.docs["lock:" + key]["expires_at"] = datetime.now(timezone.utc) - timedelta(seconds=1)
+
+    _run(rl.record_failure(key))
+    assert coll.docs["lock:" + key]["hits"] == 1
+    _run(rl.check_lockout(key))
+
+
+@pytest.mark.real_rate_limit
+def test_login_and_otp_are_locked_independently_per_account(monkeypatch):
+    rl, coll = _lock_env(monkeypatch)
+    for _ in range(5):
+        _run(rl.record_failure("login:a@example.com"))
+    with pytest.raises(RateLimitException):
+        _run(rl.check_lockout("login:a@example.com"))
+    _run(rl.check_lockout("login:b@example.com"))     # other account unaffected
+    _run(rl.check_lockout("otp:a@example.com"))       # other counter unaffected
+
+
+@pytest.mark.real_rate_limit
+def test_ip_limit_is_five_per_minute_per_endpoint(monkeypatch):
+    rl, coll = _lock_env(monkeypatch)
+    coll.find_one_and_update = _CounterColl().find_one_and_update  # window counter semantics
+
+    for _ in range(5):
+        _run(rl.guard_login("x@example.com", "203.0.113.9"))
+    with pytest.raises(RateLimitException):
+        _run(rl.guard_login("y@example.com", "203.0.113.9"))    # 6th login from the same IP
+    # a different endpoint has its own bucket
+    _run(rl.guard_otp_verify("x@example.com", "203.0.113.9"))
+
+
+@pytest.mark.real_rate_limit
+def test_otp_lockout_is_counted_across_wrong_codes(monkeypatch):
+    """Five wrong verification attempts lock the account, even across new codes."""
+    from app.core import rate_limit
+    from app.modules.auth import otp_guard
+
+    rl, coll = _lock_env(monkeypatch)
+
+    async def _always_wrong(user, code, purpose, *, consume):
+        raise BadRequestException("Invalid verification code")
+
+    monkeypatch.setattr(otp_guard, "_validate", _always_wrong)
+    user = SimpleNamespace(id="u1", email="v@example.com")
+
+    for _ in range(5):
+        with pytest.raises(BadRequestException):
+            _run(otp_guard.validate_otp(user, "000000", "reset_password", consume=True))
+    with pytest.raises(RateLimitException):
+        _run(otp_guard.validate_otp(user, "123456", "reset_password", consume=True))

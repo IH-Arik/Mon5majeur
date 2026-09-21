@@ -93,10 +93,14 @@ class AuthService:
     async def login(self, payload: LoginRequest) -> TokenResponse:
         from app.core.rate_limit import guard_login
 
+        from app.core import rate_limit
+
         await guard_login(payload.email)
         user = await self.user_repo.get_by_email(payload.email)
         if not user or not verify_password(payload.password, getattr(user, "hashed_password", "") or ""):
+            await rate_limit.record_failure(f"login:{payload.email.lower()}")
             raise UnauthorizedException("Invalid email or password")
+        await rate_limit.clear_failures(f"login:{payload.email.lower()}")
         if getattr(user, "is_banned", False):
             raise UnauthorizedException("This account has been banned")
         if not getattr(user, "is_active", True):

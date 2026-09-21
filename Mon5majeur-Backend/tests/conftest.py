@@ -34,4 +34,5 @@ def _no_rate_limit(request, monkeypatch):
 
     from app.core import rate_limit
 
-    monkeypatch.setattr(rate_limit, "hit", _noop)
+    for name in ("hit", "check_lockout", "record_failure", "clear_failures"):
+        monkeypatch.setattr(rate_limit, name, _noop)

@@ -23,6 +23,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.core import rate_limit
 from app.core.rate_limit import client_ip, guard_login, guard_otp_request, guard_otp_verify
 from app.exceptions.errors import BadRequestException, UnauthorizedException
 from app.modules.auth.model import OTPToken
@@ -177,7 +178,7 @@ async def flutter_register(
     request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
-    await guard_otp_request(payload.email, client_ip(request))
+    await guard_otp_request(payload.email, client_ip(request), kind="register")
     if payload.password != payload.password2:
         raise BadRequestException("Passwords do not match")
     if len(payload.password) < 6:
@@ -234,7 +235,9 @@ async def flutter_login(
     await guard_login(payload.email, client_ip(request))
     user = await service.user_repo.get_by_email(payload.email)
     if not user or not verify_password(payload.password, user.hashed_password or ""):
+        await rate_limit.record_failure(f"login:{payload.email.lower()}", client_ip(request))
         raise UnauthorizedException("Invalid email or password")
+    await rate_limit.clear_failures(f"login:{payload.email.lower()}")
     if user.is_banned:
         raise UnauthorizedException("This account has been banned")
     if not user.is_active:
@@ -257,7 +260,7 @@ async def flutter_forgot_password(
     request: Request,
     service: AuthService = Depends(get_auth_service),
 ) -> dict:
-    await guard_otp_request(payload.email, client_ip(request))
+    await guard_otp_request(payload.email, client_ip(request), kind="forgot")
     user = await service.user_repo.get_by_email(payload.email)
     if user and user.is_active:
         await _send_otp(user, "reset_password")
