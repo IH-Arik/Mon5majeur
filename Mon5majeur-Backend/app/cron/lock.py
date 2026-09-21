@@ -33,7 +33,12 @@ class JobLock(Document):
 
 
 async def try_acquire(key: str, ttl_seconds: int = 6 * 3600) -> bool:
-    """True if this process now owns `key`; False if another one already does."""
+    """True if this process now owns `key`; False if another one already does.
+
+    Fails OPEN: if the lock itself cannot be used (collection not registered in
+    this process, Mongo hiccup) the job still runs - the lock is a safety net
+    against double-firing, and must never be the reason a nightly close does
+    not happen."""
     import os
 
     try:
@@ -48,8 +53,14 @@ async def try_acquire(key: str, ttl_seconds: int = 6 * 3600) -> bool:
     except DuplicateKeyError:
         logger.warning("Job lock %s already held by another process - skipping", key)
         return False
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Job lock %s unavailable (%s) - running WITHOUT the lock", key, exc)
+        return True
 
 
 async def release(key: str) -> None:
     """Free the lock so a failed run can be retried."""
-    await JobLock.get_motor_collection().delete_one({"key": key})
+    try:
+        await JobLock.get_motor_collection().delete_one({"key": key})
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Could not release job lock %s: %s", key, exc)

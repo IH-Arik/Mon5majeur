@@ -55,11 +55,17 @@ async def hit(key: str, limit: int, window_seconds: int) -> None:
 
 
 def client_ip(request) -> str:
-    """Real client IP behind nginx (X-Forwarded-For first hop, else X-Real-IP)."""
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
-    return request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+    """The real client IP.
+
+    nginx faces the internet directly and sets X-Real-IP from $remote_addr,
+    OVERWRITING any value the client sent - so it is trustworthy. X-Forwarded-For
+    is deliberately NOT used: nginx only APPENDS the real IP to whatever the
+    client put in it, so its first element is attacker-controlled and would let
+    anyone dodge the per-IP limit by sending a random one."""
+    return (
+        request.headers.get("x-real-ip")
+        or (request.client.host if request.client else "unknown")
+    )
 
 
 # Named limits: (limit, window seconds)

@@ -74,13 +74,52 @@ def test_rate_limit_keys_are_independent(monkeypatch):
     _run(rate_limit.hit("login:other@b.c", 3, 60))  # different account: unaffected
 
 
-def test_client_ip_prefers_the_forwarded_for_header():
+def test_client_ip_trusts_x_real_ip_and_ignores_a_spoofed_forwarded_for():
     from app.core.rate_limit import client_ip
 
-    req = SimpleNamespace(
-        headers={"x-forwarded-for": "203.0.113.9, 10.0.0.1"}, client=SimpleNamespace(host="10.0.0.1")
+    spoofed = SimpleNamespace(
+        headers={"x-forwarded-for": "6.6.6.6", "x-real-ip": "203.0.113.9"},
+        client=SimpleNamespace(host="10.0.0.1"),
     )
-    assert client_ip(req) == "203.0.113.9"
+    assert client_ip(spoofed) == "203.0.113.9"
+
+    only_forwarded = SimpleNamespace(
+        headers={"x-forwarded-for": "6.6.6.6"}, client=SimpleNamespace(host="10.0.0.1")
+    )
+    assert client_ip(only_forwarded) == "10.0.0.1", "never trust X-Forwarded-For"
+
+
+def test_job_lock_fails_open_when_it_cannot_be_used(monkeypatch):
+    """The scheduler process may not have the JobLock collection registered;
+    the nightly close must still run."""
+    from app.cron import lock
+
+    class _Broken:
+        @staticmethod
+        def get_motor_collection():
+            raise RuntimeError("CollectionWasNotInitialized")
+
+    monkeypatch.setattr(lock, "JobLock", _Broken)
+    assert _run(lock.try_acquire("daily_close:2026-10-22")) is True
+    _run(lock.release("daily_close:2026-10-22"))  # must not raise
+
+
+def test_job_lock_skips_when_another_process_holds_it(monkeypatch):
+    from pymongo.errors import DuplicateKeyError
+
+    from app.cron import lock
+
+    class _Coll:
+        async def insert_one(self, doc):
+            raise DuplicateKeyError("dup")
+
+    class _Held:
+        @staticmethod
+        def get_motor_collection():
+            return _Coll()
+
+    monkeypatch.setattr(lock, "JobLock", _Held)
+    assert _run(lock.try_acquire("daily_close:2026-10-22")) is False
 
 
 # ── 1.1 idempotent match-day advance ──────────────────────────────────────────
