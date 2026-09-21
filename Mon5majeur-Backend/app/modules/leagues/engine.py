@@ -259,32 +259,60 @@ async def update_standings(league_id: PydanticObjectId) -> None:
 # Advance match day
 # ---------------------------------------------------------------------------
 
-async def advance_match_day(league_id: PydanticObjectId) -> League:
+async def advance_match_day(
+    league_id: PydanticObjectId, expected_match_day: int | None = None
+) -> League:
     """
-    Increment current_match_day. Once all regular-season days are done, hand
-    off to the playoff engine (spec §4.6.3: every league — min size is 4 —
-    goes Regular season → Playoffs → winner, there's no size-based skip).
-    Playoff-status leagues are advanced by playoff_engine.advance_playoffs
-    instead (called from run_daily_close), not from here.
+    Move a league from `expected_match_day` to the next one. Once all
+    regular-season days are done, hand off to the playoff engine (spec
+    §4.6.3: every league — min size is 4 — goes Regular season → Playoffs →
+    winner, there's no size-based skip). Playoff-status leagues are advanced by
+    playoff_engine.advance_playoffs instead (called from run_daily_close).
+
+    Idempotent (audit 1.1): the move is one atomic update guarded on the
+    match day it started from, so a second run of the same close (a double-fired
+    cron, or a replay) cannot skip a match day or start the playoffs twice.
     """
     league = await League.get(league_id)
     if not league:
         raise NotFoundException("League not found")
+    if league.status != LEAGUE_STATUS_REGULAR:
+        return league
 
-    if league.status == LEAGUE_STATUS_REGULAR:
-        if league.current_match_day >= league.total_match_days:
-            league.status = LEAGUE_STATUS_PLAYOFFS
-            await league.save()
+    expected = expected_match_day if expected_match_day is not None else league.current_match_day
+    coll = League.get_motor_collection()
+    guard = {
+        "_id": league_id,
+        "status": LEAGUE_STATUS_REGULAR,
+        "current_match_day": expected,
+    }
 
-            from app.modules.leagues.playoff_engine import start_playoffs
-            await start_playoffs(league)
-            return league
-        else:
-            league.current_match_day += 1
-            league.current_week = (league.current_match_day - 1) // 2 + 1
+    if expected >= league.total_match_days:
+        claimed = await coll.find_one_and_update(
+            guard, {"$set": {"status": LEAGUE_STATUS_PLAYOFFS}}
+        )
+        if claimed is None:
+            logger.info("League %s already advanced past day %s - skipping", league_id, expected)
+            return await League.get(league_id)
+        league = await League.get(league_id)
+        from app.modules.leagues.playoff_engine import start_playoffs
+        await start_playoffs(league)
+        return league
 
-    await league.save()
-    return league
+    new_day = expected + 1
+    res = await coll.update_one(
+        guard,
+        {
+            "$set": {
+                "current_match_day": new_day,
+                "current_week": (new_day - 1) // 2 + 1,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+    )
+    if res.modified_count == 0:
+        logger.info("League %s already advanced past day %s - skipping", league_id, expected)
+    return await League.get(league_id)
 
 
 # ---------------------------------------------------------------------------
@@ -318,8 +346,13 @@ async def run_daily_close(nba_date: date) -> dict:
             results["matches_scored"] += scored
 
             if league.status == LEAGUE_STATUS_REGULAR:
+                if scored == 0:
+                    # No duel of this league is dated this night (e.g. the
+                    # league is on a later match day): nothing to close, and
+                    # advancing anyway would skip a match day.
+                    continue
                 await update_standings(league.id)
-                await advance_match_day(league.id)
+                await advance_match_day(league.id, league.current_match_day)
             else:
                 await advance_playoffs(league, nba_date)
             results["leagues_processed"] += 1

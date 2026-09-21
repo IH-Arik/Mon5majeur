@@ -22,3 +22,6 @@ MATCH_DAYS_BY_SIZE = {4: 6, 6: 10, 8: 14, 10: 18}
 BUDGET_STANDARD = 80
 BUDGET_PREMIUM = 100
 GLOBAL_LEAGUE_BUDGET = 100
+
+# Leagues one user may run (created and not yet completed/cancelled) at once.
+MAX_ACTIVE_LEAGUES_PER_USER = 8

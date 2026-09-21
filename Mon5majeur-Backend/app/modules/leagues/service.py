@@ -1,14 +1,17 @@
 from datetime import date, datetime, timezone
 
 from beanie import PydanticObjectId
+from pymongo import ReturnDocument
 
 from app.exceptions.errors import BadRequestException, NotFoundException
 from app.modules.leagues.constants import (
     GLOBAL_LEAGUE_BUDGET,
+    LEAGUE_STATUS_COMPLETED,
     LEAGUE_STATUS_WAITING,
     LEAGUE_TYPE_GLOBAL,
     LEAGUE_TYPE_PRIVATE,
     MATCH_DAYS_BY_SIZE,
+    MAX_ACTIVE_LEAGUES_PER_USER,
 )
 from app.modules.leagues.model import League, LeagueMembership, LeagueMatch
 from app.modules.leagues.repository import LeagueRepository, MatchRepository, MembershipRepository
@@ -138,7 +141,69 @@ class LeagueService:
 
     # ── Private / Public League ───────────────────────────────────────────────
 
+    # ── Seats & limits (audit 4.1 / 4.2) ──────────────────────────────────────
+
+    async def _join_with_seat(self, league: League, user: User) -> None:
+        """Add `user` to `league`, claiming a seat ATOMICALLY.
+
+        The old code read current_size, compared it with max_size and wrote
+        current_size + 1 back - two people joining a league with one free spot
+        at the same moment both passed the check and the league ended up over
+        capacity. The seat is now claimed with one conditional update, so at
+        most max_size people can ever get one; the loser gets "League is full".
+        """
+        existing = await self.membership_repo.get_membership(league.id, user.id)
+        if existing:
+            raise BadRequestException("Already in this league")
+
+        claimed = await League.get_motor_collection().find_one_and_update(
+            {"_id": league.id, "current_size": {"$lt": league.max_size}},
+            {
+                "$inc": {"current_size": 1},
+                "$set": {"updated_at": datetime.now(timezone.utc)},
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        if claimed is None:
+            raise BadRequestException("League is full")
+
+        try:
+            await LeagueMembership(league_id=league.id, user_id=user.id).insert()
+        except Exception:
+            # Membership was not created (e.g. a duplicate from a double tap):
+            # give the seat back so it is not lost.
+            await self._release_seat(league)
+            raise
+        league.current_size = claimed["current_size"]
+
+    async def _release_seat(self, league: League) -> None:
+        """Free one seat atomically (never below zero)."""
+        after = await League.get_motor_collection().find_one_and_update(
+            {"_id": league.id, "current_size": {"$gt": 0}},
+            {"$inc": {"current_size": -1}, "$set": {"updated_at": datetime.now(timezone.utc)}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if after is not None:
+            league.current_size = after["current_size"]
+
+    async def _ensure_can_create_league(self, user: User) -> None:
+        """One user may run at most MAX_ACTIVE_LEAGUES_PER_USER leagues at a
+        time; creation used to be unlimited, so a single account could flood
+        the database with empty leagues (audit 4.1)."""
+        active = await League.find(
+            {
+                "admin_id": user.id,
+                "type": {"$ne": LEAGUE_TYPE_GLOBAL},
+                "status": {"$nin": [LEAGUE_STATUS_COMPLETED, "cancelled"]},
+            }
+        ).count()
+        if active >= MAX_ACTIVE_LEAGUES_PER_USER:
+            raise BadRequestException(
+                f"Maximum {MAX_ACTIVE_LEAGUES_PER_USER} active leagues"
+            )
+
     async def create_league(self, user: User, payload: CreateLeagueRequest) -> LeagueResponse:
+        await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
         invite_code = None
@@ -170,15 +235,7 @@ class LeagueService:
             raise NotFoundException("Invalid invite code")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
 
         return self._to_response(league)
 
@@ -188,15 +245,7 @@ class LeagueService:
             raise NotFoundException("Public league not found")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
         return self._to_response(league)
 
     # ── My Leagues ────────────────────────────────────────────────────────────
@@ -386,7 +435,7 @@ class LeagueService:
             raise BadRequestException("League creator cannot leave — delete the league instead")
 
         await membership.delete()
-        await league.save_updated(current_size=max(0, league.current_size - 1))
+        await self._release_seat(league)
 
         if league.auto_id:
             try:
@@ -427,7 +476,7 @@ class LeagueService:
 
         target_user = await User.get(target_user_id)
         await membership.delete()
-        await league.save_updated(current_size=max(0, league.current_size - 1))
+        await self._release_seat(league)
 
         if league.auto_id:
             try:
@@ -501,6 +550,7 @@ class LeagueService:
     async def create_public_league_compat(
         self, user: User, payload: CreatePublicLeagueRequest
     ) -> PublicLeagueCompatResponse:
+        await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
         budget = payload.budget_int if payload.budget_int in (80, 100) else 100
@@ -549,15 +599,7 @@ class LeagueService:
             raise NotFoundException("Public league not found")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
 
         try:
             await emit_team_joined(
@@ -757,6 +799,7 @@ class LeagueService:
     async def create_private_league_compat(
         self, user: User, payload: CreatePublicLeagueRequest
     ) -> PublicLeagueCompatResponse:
+        await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
         budget = payload.budget_int if payload.budget_int in (80, 100) else 100
@@ -859,15 +902,7 @@ class LeagueService:
             raise NotFoundException("Invalid invite code")
         if league.status != LEAGUE_STATUS_WAITING:
             raise BadRequestException("This league has already started")
-        if league.current_size >= league.max_size:
-            raise BadRequestException("League is full")
-
-        existing = await self.membership_repo.get_membership(league.id, user.id)
-        if existing:
-            raise BadRequestException("Already in this league")
-
-        await LeagueMembership(league_id=league.id, user_id=user.id).insert()
-        await league.save_updated(current_size=league.current_size + 1)
+        await self._join_with_seat(league, user)
 
         if league.auto_id:
             try:
@@ -914,7 +949,7 @@ class LeagueService:
             raise BadRequestException("User is not in this league")
 
         await membership.delete()
-        await league.save_updated(current_size=max(0, league.current_size - 1))
+        await self._release_seat(league)
 
         if league.auto_id:
             try:

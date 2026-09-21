@@ -17,6 +17,8 @@ from app.shared.pagination import Page, PaginationParams
 
 logger = get_logger(__name__)
 
+NBA_TEAM_COUNT = 30
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -121,9 +123,11 @@ class PlayerService:
             return 0
 
         teams_seen = {r["team_name"] for r in roster}
-        if len(teams_seen) < 25 or len(roster) < 300:
-            # A partial answer is more likely an outage than a real league
-            # state — don't write anything from it.
+        if len(teams_seen) < NBA_TEAM_COUNT or len(roster) < 300:
+            # The NBA has exactly 30 teams. Fewer means a team failed to load
+            # (audit 3.3) - and every player of a missing team would be marked
+            # inactive below. Treat any partial answer as an outage and write
+            # nothing.
             logger.error(
                 "ESPN roster looks incomplete (%d teams, %d players) — sync aborted",
                 len(teams_seen), len(roster),

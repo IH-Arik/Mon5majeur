@@ -9,6 +9,7 @@ test with stubbed queries.
 """
 from typing import AsyncGenerator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
@@ -19,3 +20,18 @@ from app.main import app
 async def client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture(autouse=True)
+def _no_rate_limit(request, monkeypatch):
+    """The auth throttles need Mongo; unit tests run without it, so make them
+    no-ops. Tests of the limiter itself opt out with @pytest.mark.real_rate_limit."""
+    if request.node.get_closest_marker("real_rate_limit"):
+        return
+
+    async def _noop(*args, **kwargs):
+        return None
+
+    from app.core import rate_limit
+
+    monkeypatch.setattr(rate_limit, "hit", _noop)

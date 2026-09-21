@@ -34,6 +34,7 @@ class _FakeToken:
         self.code = code
         self.purpose = "reset_password"
         self.deleted = False
+        self.failed_attempts = 0
         self.expires_at = datetime.now(timezone.utc) + timedelta(
             minutes=-1 if expired else 15
         )
@@ -64,26 +65,37 @@ class _Field:
 
 
 def _patch_otp_token(monkeypatch, stored: _FakeToken | None):
-    """Replace OTPToken with a stub whose find_one honours the code filter.
+    """Replace OTPToken (as seen by otp_guard) with an in-memory stand-in.
 
-    The lookup returns the stored token only when the query's `code` equals
-    it — i.e. it models the database faithfully on the one dimension that
-    matters here: a query for the wrong code finds nothing.
+    The collection models the one atomic operation the guard relies on:
+    `find_one_and_update` returns the user's OTP with its attempt counter
+    incremented, or None when there is no OTP or its attempts are spent.
     """
+    from app.modules.auth import otp_guard
+
+    class _Coll:
+        async def find_one_and_update(self, flt, update, sort=None, return_document=None):
+            if stored is None or stored.deleted:
+                return None
+            if stored.failed_attempts >= otp_guard.MAX_OTP_ATTEMPTS:
+                return None
+            stored.failed_attempts += 1
+            return {"_id": "tok", "failed_attempts": stored.failed_attempts}
+
+        async def delete_many(self, flt):
+            if stored is not None:
+                stored.deleted = True
 
     class _StubOTPToken:
-        user_id = _Field("user_id")
-        code = _Field("code")
-        purpose = _Field("purpose")
+        @staticmethod
+        def get_motor_collection():
+            return _Coll()
 
         @staticmethod
-        async def find_one(*conditions):
-            query = dict(conditions)
-            if stored is None:
-                return None
-            return stored if query.get("code") == stored.code else None
+        async def get(_id):
+            return stored
 
-    monkeypatch.setattr(auth_compat, "OTPToken", _StubOTPToken)
+    monkeypatch.setattr(otp_guard, "OTPToken", _StubOTPToken)
 
 
 def _peek(monkeypatch, stored, submitted):
@@ -152,3 +164,53 @@ def test_correct_code_is_consumed_once(monkeypatch):
     _run(auth_compat._validate_and_consume_otp(_FakeUser(), "123456", "reset_password"))
 
     assert stored.deleted
+
+
+# ── brute-force cap (audit 2.1) ───────────────────────────────────────────────
+
+def test_five_wrong_guesses_burn_the_code_even_for_the_right_answer(monkeypatch):
+    """A 6-digit code must not be guessable by trying them all: after 5
+    attempts the OTP is deleted, so even the correct code no longer works."""
+    stored = _FakeToken("123456")
+    _patch_otp_token(monkeypatch, stored)
+
+    for guess in ("000001", "000002", "000003", "000004", "000005"):
+        with pytest.raises(BadRequestException):
+            _run(auth_compat._validate_otp_peek(_FakeUser(), guess, "reset_password"))
+
+    assert stored.deleted, "the OTP must be deleted once its attempts are spent"
+    with pytest.raises(BadRequestException):
+        _run(auth_compat._validate_otp_peek(_FakeUser(), "123456", "reset_password"))
+
+
+def test_the_right_code_still_works_within_the_attempt_budget(monkeypatch):
+    stored = _FakeToken("123456")
+    _patch_otp_token(monkeypatch, stored)
+
+    for guess in ("000001", "000002", "000003", "000004"):
+        with pytest.raises(BadRequestException):
+            _run(auth_compat._validate_otp_peek(_FakeUser(), guess, "reset_password"))
+
+    assert _run(auth_compat._validate_otp_peek(_FakeUser(), "123456", "reset_password")) is stored
+
+
+def test_the_two_step_reset_flow_fits_in_the_budget(monkeypatch):
+    """verify-forgot-password-otp (peek) then change-password (consume) each
+    spend an attempt; a legitimate user must not be locked out by that."""
+    stored = _FakeToken("123456")
+    _patch_otp_token(monkeypatch, stored)
+
+    _run(auth_compat._validate_otp_peek(_FakeUser(), "123456", "reset_password"))
+    _run(auth_compat._validate_and_consume_otp(_FakeUser(), "123456", "reset_password"))
+    assert stored.deleted
+
+
+def test_otp_codes_are_never_written_to_the_logs():
+    import inspect
+
+    from app.modules.auth import service as auth_service
+    from app.utils import email as email_util
+
+    assert "code=%s" not in inspect.getsource(auth_service.AuthService._create_and_send_otp)
+    src = inspect.getsource(email_util.send_otp_email)
+    assert "settings.DEBUG and not settings.SMTP_HOST" in src, "OTP log must be dev-only"
