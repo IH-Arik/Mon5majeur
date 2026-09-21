@@ -12,9 +12,11 @@ import '../../../core/services/revenuecat_service.dart';
 import 'shop_controller.dart';
 
 /// ─────────────────────────────────────────────────────────────────────────────
-/// Premium Paywall Screen — a polished, animated purchase flow powered by
-/// RevenueCat.  Falls back to the backend mock-purchase endpoint when no
-/// store products are available (sandbox / early testing).
+/// Premium Paywall Screen — frontend-driven coin/token packs.
+///
+/// All titles, descriptions, icons, and coin amounts are defined in the frontend.
+/// Clicking any pack initiates the native RevenueCat (App Store / Play Store)
+/// payment sheet, then synchronises the token balance with the backend.
 /// ─────────────────────────────────────────────────────────────────────────────
 
 class BuyTokenScreen extends StatefulWidget {
@@ -28,16 +30,20 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     with TickerProviderStateMixin {
   // ── State ───────────────────────────────────────────────────────────────
   Offerings? _offerings;
+  final Map<String, StoreProduct> _directProducts = {};
   bool _isLoadingOfferings = true;
   bool _isPurchasing = false;
+  String? _purchasingSlug;
   String? _errorMessage;
 
-  // Pack definitions (slug ↔ RevenueCat product id)
+  // ── Frontend Pack Definitions ───────────────────────────────────────────
+  // All titles, descriptions, and token amounts reside in the frontend code.
   static const _packs = [
     _PackDef(
       slug: 'rookie',
       rcProductId: 'tokens_200_rookie',
       name: 'Rookie Pack',
+      description: '200 tokens to enter tournaments and tweak your weekly lineup.',
       tokens: 200,
       fallbackPrice: '\$1.99',
       iconGradient: [Color(0xFF8A35E9), Color(0xFF5145E5)],
@@ -48,6 +54,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       slug: 'all_star',
       rcProductId: 'tokens_550_allstar',
       name: 'All-Star Pack',
+      description: '550 tokens — perfect for active players unlocking daily boosts.',
       tokens: 550,
       fallbackPrice: '\$4.99',
       iconGradient: [Color(0xFF5B8DEF), Color(0xFF3A5FCD)],
@@ -60,6 +67,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       slug: 'mvp',
       rcProductId: 'tokens_1200_mvp',
       name: 'MVP Pack',
+      description: '1,200 tokens for competitive managers competing for championships.',
       tokens: 1200,
       fallbackPrice: '\$9.99',
       iconGradient: [Color(0xFFE8632C), Color(0xFFD58564)],
@@ -72,6 +80,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       slug: 'hall_of_fame',
       rcProductId: 'tokens_2500_halloffame',
       name: 'Hall of Fame',
+      description: '2,500 tokens — ultimate power pack with maximum bonus capacity.',
       tokens: 2500,
       fallbackPrice: '\$19.99',
       iconGradient: [Color(0xFF2CCA87), Color(0xFF61D2A0)],
@@ -103,7 +112,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       curve: Curves.easeOutCubic,
     );
 
-    _loadOfferings();
+    _loadProductsAndOfferings();
   }
 
   @override
@@ -113,24 +122,33 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     super.dispose();
   }
 
-  Future<void> _loadOfferings() async {
+  Future<void> _loadProductsAndOfferings() async {
     try {
+      // 1. Fetch Offerings from RevenueCat
       final offerings = await RevenueCatService.instance.fetchOfferings();
       if (mounted) {
-        setState(() {
-          _offerings = offerings;
-          _isLoadingOfferings = false;
-        });
-        _fadeInController.forward();
+        _offerings = offerings;
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingOfferings = false;
-          // Still show the packs — we'll use fallback prices
-        });
-        _fadeInController.forward();
+    } catch (_) {
+      // Offerings might not be configured yet in early setup
+    }
+
+    try {
+      // 2. Also fetch store products directly by ID as an immediate fallback
+      final productIds = _packs.map((p) => p.rcProductId).toList();
+      final products = await RevenueCatService.instance.getProducts(productIds);
+      for (final p in products) {
+        _directProducts[p.identifier] = p;
       }
+    } catch (_) {
+      // Store not available or sandbox
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingOfferings = false;
+      });
+      _fadeInController.forward();
     }
   }
 
@@ -147,36 +165,56 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     return null;
   }
 
+  /// Finds a direct StoreProduct if no Package was found in the current offering.
+  StoreProduct? _storeProductFor(_PackDef packDef) {
+    return _directProducts[packDef.rcProductId];
+  }
+
   /// The price string to display on a pack card.
   String _priceFor(_PackDef packDef) {
     final pkg = _packageFor(packDef);
     if (pkg != null) return pkg.storeProduct.priceString;
+    final sp = _storeProductFor(packDef);
+    if (sp != null) return sp.priceString;
     return packDef.fallbackPrice;
   }
 
+  /// Initiates native store payment via RevenueCat
   Future<void> _handlePurchase(_PackDef packDef) async {
     if (_isPurchasing) return;
-    setState(() => _isPurchasing = true);
+    setState(() {
+      _isPurchasing = true;
+      _purchasingSlug = packDef.slug;
+      _errorMessage = null;
+    });
 
     try {
       final pkg = _packageFor(packDef);
+      final sp = _storeProductFor(packDef);
+
+      CustomerInfo? info;
+
       if (pkg != null) {
-        // ── Real store purchase via RevenueCat ──
-        final info =
-            await RevenueCatService.instance.purchasePackage(pkg);
-        if (info != null && mounted) {
-          // Credit the tokens on the backend so the wallet stays in sync
-          final c = Get.find<ShopController>();
-          await c.purchaseTokenPack(packDef.slug);
-          if (mounted) {
-            _showSuccessSnackbar(packDef);
-          }
-        }
+        // ── Real store purchase via RevenueCat Package ──
+        info = await RevenueCatService.instance.purchasePackage(pkg);
+      } else if (sp != null) {
+        // ── Real store purchase via direct StoreProduct ──
+        info = await RevenueCatService.instance.purchaseStoreProduct(sp);
       } else {
-        // ── No store product available → mock purchase (dev / sandbox) ──
+        // ── No store product configured yet → sandbox/mock fallback ──
         final c = Get.find<ShopController>();
         final ok = await c.purchaseTokenPack(packDef.slug);
         if (ok && mounted) {
+          _showSuccessSnackbar(packDef);
+        }
+        return;
+      }
+
+      if (info != null && mounted) {
+        // Credit the tokens on the backend so the wallet stays in sync
+        final c = Get.find<ShopController>();
+        await c.purchaseTokenPack(packDef.slug);
+        if (mounted) {
           _showSuccessSnackbar(packDef);
         }
       }
@@ -190,7 +228,12 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
         });
       }
     } finally {
-      if (mounted) setState(() => _isPurchasing = false);
+      if (mounted) {
+        setState(() {
+          _isPurchasing = false;
+          _purchasingSlug = null;
+        });
+      }
     }
   }
 
@@ -248,16 +291,16 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
         children: [
           // ── Background glow effect ─────────────────────────────────────
           Positioned(
-            top: -120.h,
-            left: -80.w,
+            top: -80.h,
+            right: -60.w,
             child: Container(
-              width: 300.r,
-              height: 300.r,
+              width: 220.r,
+              height: 220.r,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF8A35E9).withValues(alpha: 0.15),
+                    const Color(0xFF8A35E9).withValues(alpha: 0.18),
                     Colors.transparent,
                   ],
                 ),
@@ -265,16 +308,16 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
             ),
           ),
           Positioned(
-            top: -60.h,
-            right: -100.w,
+            top: 260.h,
+            left: -80.w,
             child: Container(
-              width: 250.r,
-              height: 250.r,
+              width: 200.r,
+              height: 200.r,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFF6B35).withValues(alpha: 0.10),
+                    const Color(0xFFFF6B35).withValues(alpha: 0.12),
                     Colors.transparent,
                   ],
                 ),
@@ -282,11 +325,11 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
             ),
           ),
 
-          // ── Main content ────────────────────────────────────────────────
+          // ── Main content ───────────────────────────────────────────────
           SafeArea(
             child: Column(
               children: [
-                _buildHeader(context),
+                _buildHeader(),
                 Expanded(
                   child: _isLoadingOfferings
                       ? _buildLoadingSkeleton()
@@ -298,55 +341,14 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
               ],
             ),
           ),
-
-          // ── Purchasing overlay ──────────────────────────────────────────
-          if (_isPurchasing)
-            Container(
-              color: Colors.black54,
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.all(32.r),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 40.r,
-                        height: 40.r,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFFFF6B35),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Text(
-                        'Processing...',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  // ── Header ─────────────────────────────────────────────────────────────
-  Widget _buildHeader(BuildContext context) {
-    return Container(
+  // ── Header ──────────────────────────────────────────────────────────────
+  Widget _buildHeader() {
+    return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
       child: Column(
         children: [
@@ -521,6 +523,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
   // ── Pack Card ──────────────────────────────────────────────────────────
   Widget _buildPackCard(_PackDef pack, {double delay = 0}) {
     final price = _priceFor(pack);
+    final isThisPackPurchasing = _purchasingSlug == pack.slug;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -589,13 +592,14 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top row: icon + name + badge
+                      // Top row: icon + name + token count + badge
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Icon container
                           Container(
-                            width: 44.r,
-                            height: 44.r,
+                            width: 46.r,
+                            height: 46.r,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -614,8 +618,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                             ),
                             child: Center(
                               child: Assets.icons.morecoin.image(
-                                width: 24.r,
-                                height: 24.r,
+                                width: 26.r,
+                                height: 26.r,
                                 fit: BoxFit.contain,
                               ),
                             ),
@@ -625,56 +629,74 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  pack.name,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        pack.name,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 17.sp,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                    ),
+                                    if (pack.badgeText != null)
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w,
+                                          vertical: 4.h,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: pack.badgeColor ??
+                                              const Color(0xFFFF6B35),
+                                          borderRadius:
+                                              BorderRadius.circular(20.r),
+                                        ),
+                                        child: Text(
+                                          pack.badgeText!,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10.sp,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 SizedBox(height: 2.h),
                                 Text(
                                   '${pack.tokens} TOKENS',
                                   style: TextStyle(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.5),
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.2,
+                                    color: Colors.white.withValues(alpha: 0.75),
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.1,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          if (pack.badgeText != null)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10.w,
-                                vertical: 5.h,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    pack.badgeColor ?? const Color(0xFFFF6B35),
-                                borderRadius: BorderRadius.circular(20.r),
-                              ),
-                              child: Text(
-                                pack.badgeText!,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10.sp,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
 
-                      SizedBox(height: 18.h),
+                      // Description (Frontend defined)
+                      SizedBox(height: 10.h),
+                      Text(
+                        pack.description,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.60),
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w400,
+                          height: 1.4,
+                        ),
+                      ),
 
-                      // Price button
+                      SizedBox(height: 16.h),
+
+                      // Price Button
                       Container(
                         width: double.infinity,
                         height: 48.h,
@@ -695,15 +717,35 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                           ],
                         ),
                         child: Center(
-                          child: Text(
-                            price,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
+                          child: isThisPackPurchasing
+                              ? SizedBox(
+                                  width: 22.r,
+                                  height: 22.r,
+                                  child: const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.bolt_rounded,
+                                      color: Colors.white,
+                                      size: 18.r,
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    Text(
+                                      'Buy $price',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ],
@@ -729,7 +771,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
             animation: _shimmerController,
             builder: (context, _) {
               return Container(
-                height: 120.h,
+                height: 140.h,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16.r),
                   gradient: LinearGradient(
@@ -764,6 +806,7 @@ class _PackDef {
   final String slug;
   final String rcProductId;
   final String name;
+  final String description;
   final int tokens;
   final String fallbackPrice;
   final List<Color> iconGradient;
@@ -776,6 +819,7 @@ class _PackDef {
     required this.slug,
     required this.rcProductId,
     required this.name,
+    required this.description,
     required this.tokens,
     required this.fallbackPrice,
     required this.iconGradient,

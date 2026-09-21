@@ -99,6 +99,35 @@ class RevenueCatService {
     }
   }
 
+  // ── Products ──────────────────────────────────────────────────────────────
+  Future<List<StoreProduct>> getProducts(List<String> productIdentifiers) async {
+    try {
+      final products = await Purchases.getProducts(productIdentifiers);
+      _log.i('📦 Products fetched directly — ${products.length} product(s)');
+      return products;
+    } catch (e) {
+      _log.w('⚠️ Direct product fetch fallback: $e');
+      return [];
+    }
+  }
+
+  /// Triggers the native payment sheet for a StoreProduct directly.
+  Future<CustomerInfo?> purchaseStoreProduct(StoreProduct product) async {
+    try {
+      final result = await Purchases.purchaseStoreProduct(product);
+      _log.i('💳 Purchase successful — ${product.identifier}');
+      return result.customerInfo;
+    } on PlatformException catch (e) {
+      final errorCode = PurchasesErrorHelper.getErrorCode(e);
+      if (errorCode == PurchasesErrorCode.purchaseCancelledError) {
+        _log.w('🚫 Purchase cancelled by user');
+        return null;
+      }
+      _log.e('❌ Purchase error: $errorCode');
+      rethrow;
+    }
+  }
+
   // ── Restore ───────────────────────────────────────────────────────────────
   Future<CustomerInfo> restorePurchases() async {
     final info = await Purchases.restorePurchases();
