@@ -60,8 +60,10 @@ class RevenueCatService {
     final userId = await SharedPrefsHelper.getString(AppConstants.userId);
     if (userId != null && userId.isNotEmpty) {
       final result = await Purchases.logIn(userId);
-      _log.i('🔑 RevenueCat user logged in — id=$userId, '
-          'created=${result.created}');
+      _log.i(
+        '🔑 RevenueCat user logged in — id=$userId, '
+        'created=${result.created}',
+      );
     }
   }
 
@@ -100,7 +102,9 @@ class RevenueCatService {
   }
 
   // ── Products ──────────────────────────────────────────────────────────────
-  Future<List<StoreProduct>> getProducts(List<String> productIdentifiers) async {
+  Future<List<StoreProduct>> getProducts(
+    List<String> productIdentifiers,
+  ) async {
     try {
       final products = await Purchases.getProducts(productIdentifiers);
       _log.i('📦 Products fetched directly — ${products.length} product(s)');
