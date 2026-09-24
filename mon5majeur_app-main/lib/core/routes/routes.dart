@@ -28,6 +28,7 @@ import 'route_path.dart';
 
 class AppRouter {
   static final GoRouter initRoute = GoRouter(
+    navigatorKey: Get.key,
     initialLocation: RoutePath.languageScreen.addBasePath,
     debugLogDiagnostics: true,
     routes: [

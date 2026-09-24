@@ -310,6 +310,54 @@ class ShopScreen extends StatelessWidget {
     ShopController c,
     _ShopOffer offer,
   ) {
+    if (c.tokenBalance.value < offer.cost) {
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1a1a1a),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r)),
+          title: Text(
+            'Insufficient Tokens'.tr,
+            style: TextStyle(color: Colors.white, fontSize: 16.sp),
+          ),
+          content: Text(
+            'You need @cost tokens to unlock @name.\n\nYour balance: @bal tokens.\nWould you like to buy tokens?'
+                .trParams({
+              'name': offer.name.tr,
+              'cost': '${offer.cost}',
+              'bal': '${c.tokenBalance.value}',
+            }),
+            style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('Cancel'.tr,
+                  style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF6B35),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r)),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                context.go(RoutePath.buyToken.addBasePath);
+              },
+              child: Text('Buy Tokens'.tr,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -339,15 +387,18 @@ class ShopScreen extends StatelessWidget {
             onPressed: () async {
               Navigator.of(ctx).pop();
               final ok = await c.purchaseBonus(offer.slug);
-              if (ok) {
-                Get.snackbar(
-                  'Purchased!'.tr,
-                  offer.slug == _liveScoringOffer.slug
-                      ? '${offer.name.tr} activated for 30 days'
-                      : '${offer.name.tr} added to your inventory',
-                  backgroundColor: const Color(0xFF1a3d1a),
-                  colorText: Colors.white,
-                  snackPosition: SnackPosition.BOTTOM,
+              if (ok && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      offer.slug == _liveScoringOffer.slug
+                          ? '${offer.name.tr} activated for 30 days'
+                          : '${offer.name.tr} added to your inventory',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: const Color(0xFF1a3d1a),
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               }
             },
