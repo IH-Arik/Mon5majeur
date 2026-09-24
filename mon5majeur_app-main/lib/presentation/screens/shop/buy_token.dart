@@ -129,8 +129,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       if (mounted) {
         _offerings = offerings;
       }
-    } catch (_) {
-      // Offerings might not be configured yet in early setup
+    } catch (e) {
+      debugPrint('⚠️ RevenueCat fetchOfferings error: $e');
     }
 
     try {
@@ -140,8 +140,9 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       for (final p in products) {
         _directProducts[p.identifier] = p;
       }
-    } catch (_) {
-      // Store not available or sandbox
+      debugPrint('📦 RevenueCat loaded ${products.length} direct products from store');
+    } catch (e) {
+      debugPrint('⚠️ RevenueCat getProducts error: $e');
     }
 
     if (mounted) {
@@ -189,8 +190,21 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     });
 
     try {
-      final pkg = _packageFor(packDef);
-      final sp = _storeProductFor(packDef);
+      var pkg = _packageFor(packDef);
+      var sp = _storeProductFor(packDef);
+
+      // If not yet available from initial load, try fetching directly from store
+      if (pkg == null && sp == null) {
+        try {
+          final fetched = await RevenueCatService.instance.getProducts([packDef.rcProductId]);
+          if (fetched.isNotEmpty) {
+            sp = fetched.first;
+            _directProducts[sp.identifier] = sp;
+          }
+        } catch (e) {
+          debugPrint('⚠️ On-demand getProducts failed: $e');
+        }
+      }
 
       CustomerInfo? info;
 
@@ -201,11 +215,20 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
         // ── Real store purchase via direct StoreProduct ──
         info = await RevenueCatService.instance.purchaseStoreProduct(sp);
       } else {
-        // ── No store product configured yet → sandbox/mock fallback ──
-        final c = Get.find<ShopController>();
-        final ok = await c.purchaseTokenPack(packDef.slug);
-        if (ok && mounted) {
-          _showSuccessSnackbar(packDef);
+        // ── Store product not found in Google Play Store ──
+        debugPrint('⚠️ Store product "${packDef.rcProductId}" not found in Google Play Store');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Google Play Store-এ "${packDef.rcProductId}" পাওয়া যায়নি। '
+                'Play Console-এ In-app product টি Active আছে কিনা এবং আপনার ইমেইল License Testing-এ যোগ করা আছে কিনা চেক করুন।',
+              ),
+              backgroundColor: const Color(0xFF6B1D2F),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
         return;
       }
@@ -238,15 +261,14 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
   }
 
   void _showSuccessSnackbar(_PackDef packDef) {
-    Get.snackbar(
-      '🎉 Tokens Added!',
-      '+${packDef.tokens} tokens added to your wallet',
-      backgroundColor: const Color(0xFF1a3d1a),
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: EdgeInsets.all(16.w),
-      borderRadius: 12.r,
-      duration: const Duration(seconds: 3),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🎉 +${packDef.tokens} tokens added to your wallet'),
+        backgroundColor: const Color(0xFF1a3d1a),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
@@ -255,26 +277,22 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     try {
       await RevenueCatService.instance.restorePurchases();
       if (mounted) {
-        Get.snackbar(
-          'Restored',
-          'Your purchases have been restored.',
-          backgroundColor: const Color(0xFF1a2744),
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-          margin: EdgeInsets.all(16.w),
-          borderRadius: 12.r,
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your purchases have been restored.'),
+            backgroundColor: Color(0xFF1a2744),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (_) {
       if (mounted) {
-        Get.snackbar(
-          'Error',
-          'Could not restore purchases. Try again later.',
-          backgroundColor: const Color(0xFF3a0000),
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-          margin: EdgeInsets.all(16.w),
-          borderRadius: 12.r,
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not restore purchases. Try again later.'),
+            backgroundColor: Color(0xFF3a0000),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -527,11 +545,11 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 600 + (delay * 1000).toInt()),
+      duration: Duration(milliseconds: 500 + (delay * 800).toInt()),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
+          offset: Offset(0, 16 * (1 - value)),
           child: Opacity(
             opacity: value.clamp(0, 1),
             child: child,
@@ -542,48 +560,48 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
         onTap: _isPurchasing ? null : () => _handlePurchase(pack),
         child: Container(
           decoration: BoxDecoration(
-            color: pack.cardBg,
-            borderRadius: BorderRadius.circular(16.r),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                pack.cardBg,
+                const Color(0xFF10131E),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18.r),
             border: Border.all(
-              color: pack.iconGradient.first.withValues(alpha: 0.25),
-              width: 1,
+              color: pack.iconGradient.first.withValues(alpha: 0.35),
+              width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: pack.iconGradient.first.withValues(alpha: 0.08),
-                blurRadius: 24,
+                color: pack.iconGradient.first.withValues(alpha: 0.12),
+                blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16.r),
+            borderRadius: BorderRadius.circular(18.r),
             child: Stack(
               children: [
-                // Subtle shimmer overlay
-                AnimatedBuilder(
-                  animation: _shimmerController,
-                  builder: (context, _) {
-                    return Positioned.fill(
-                      child: ShaderMask(
-                        shaderCallback: (bounds) {
-                          return LinearGradient(
-                            begin: Alignment(
-                                -2 + 4 * _shimmerController.value, 0),
-                            end: Alignment(
-                                -1 + 4 * _shimmerController.value, 0),
-                            colors: [
-                              Colors.transparent,
-                              Colors.white.withValues(alpha: 0.03),
-                              Colors.transparent,
-                            ],
-                          ).createShader(bounds);
-                        },
-                        blendMode: BlendMode.srcATop,
-                        child: Container(color: Colors.white),
+                // Soft ambient glow behind top-right
+                Positioned(
+                  top: -30.r,
+                  right: -30.r,
+                  child: Container(
+                    width: 120.r,
+                    height: 120.r,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          pack.iconGradient.first.withValues(alpha: 0.22),
+                          Colors.transparent,
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
 
                 // Content
@@ -594,19 +612,19 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                     children: [
                       // Top row: icon + name + token count + badge
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // Icon container
                           Container(
-                            width: 46.r,
-                            height: 46.r,
+                            width: 48.r,
+                            height: 48.r,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: pack.iconGradient,
                               ),
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(14.r),
                               boxShadow: [
                                 BoxShadow(
                                   color: pack.iconGradient.first
@@ -618,8 +636,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                             ),
                             child: Center(
                               child: Assets.icons.morecoin.image(
-                                width: 26.r,
-                                height: 26.r,
+                                width: 28.r,
+                                height: 28.r,
                                 fit: BoxFit.contain,
                               ),
                             ),
@@ -629,66 +647,77 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Text(
+                                  pack.name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                SizedBox(height: 3.h),
                                 Row(
                                   children: [
-                                    Expanded(
-                                      child: Text(
-                                        pack.name,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 17.sp,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: -0.2,
-                                        ),
+                                    Assets.icons.tokenIcon.image(
+                                      width: 14.r,
+                                      height: 14.r,
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      '${pack.tokens} TOKENS',
+                                      style: TextStyle(
+                                        color: const Color(0xFFFFB038),
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.8,
                                       ),
                                     ),
-                                    if (pack.badgeText != null)
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 10.w,
-                                          vertical: 4.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: pack.badgeColor ??
-                                              const Color(0xFFFF6B35),
-                                          borderRadius:
-                                              BorderRadius.circular(20.r),
-                                        ),
-                                        child: Text(
-                                          pack.badgeText!,
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10.sp,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ),
                                   ],
-                                ),
-                                SizedBox(height: 2.h),
-                                Text(
-                                  '${pack.tokens} TOKENS',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.1,
-                                  ),
                                 ),
                               ],
                             ),
                           ),
+                          if (pack.badgeText != null)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10.w,
+                                vertical: 5.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: pack.badgeColor ??
+                                    const Color(0xFFFF6B35),
+                                borderRadius: BorderRadius.circular(20.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (pack.badgeColor ??
+                                            const Color(0xFFFF6B35))
+                                        .withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                pack.badgeText!,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
 
-                      // Description (Frontend defined)
-                      SizedBox(height: 10.h),
+                      // Description
+                      SizedBox(height: 12.h),
                       Text(
                         pack.description,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.60),
-                          fontSize: 12.5.sp,
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w400,
                           height: 1.4,
                         ),

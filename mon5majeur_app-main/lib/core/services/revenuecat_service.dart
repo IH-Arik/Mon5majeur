@@ -24,33 +24,35 @@ class RevenueCatService {
 
   // ── API keys ──────────────────────────────────────────────────────────────
   static const _appleApiKey = 'appl_KAyxZwXTxwQrOmZozDfmKWyuvQW';
+  static const _googleApiKey = 'goog_nzsbzBmGkOlYwqzGdHeJdEdOjcj';
   static const _testApiKey = 'test_GpLhznVNgMabYduuksOyuvOZKqL';
 
   bool _initialized = false;
 
   // ── Init ───────────────────────────────────────────────────────────────────
-  Future<void> init() async {
+  Future<void> init({String? googleApiKey}) async {
     if (_initialized) return;
 
     await Purchases.setLogLevel(LogLevel.debug);
 
     late final PurchasesConfiguration config;
 
-    if (kDebugMode) {
-      // Use the test/sandbox key during development
-      config = PurchasesConfiguration(_testApiKey);
-    } else if (Platform.isIOS || Platform.isMacOS) {
+    if (Platform.isIOS || Platform.isMacOS) {
       config = PurchasesConfiguration(_appleApiKey);
+    } else if (Platform.isAndroid) {
+      final key = (googleApiKey != null && googleApiKey.isNotEmpty)
+          ? googleApiKey
+          : _googleApiKey;
+      config = PurchasesConfiguration(key);
     } else {
-      // Android production — uses the Apple key as the default public key
-      // (RevenueCat routes to the right store via the platform). Replace
-      // with a dedicated Google API key once created in the RC dashboard.
-      config = PurchasesConfiguration(_appleApiKey);
+      config = PurchasesConfiguration(_testApiKey);
     }
 
     await Purchases.configure(config);
     _initialized = true;
-    _log.i('✅ RevenueCat initialised (debug=$kDebugMode)');
+    _log.i(
+      '✅ RevenueCat initialised on ${Platform.operatingSystem} (debug=$kDebugMode)',
+    );
   }
 
   // ── User identification ───────────────────────────────────────────────────
@@ -58,7 +60,7 @@ class RevenueCatService {
   /// subscription history to the backend user id.
   Future<void> loginUser() async {
     final userId = await SharedPrefsHelper.getString(AppConstants.userId);
-    if (userId != null && userId.isNotEmpty) {
+    if (userId.isNotEmpty) {
       final result = await Purchases.logIn(userId);
       _log.i(
         '🔑 RevenueCat user logged in — id=$userId, '
@@ -87,7 +89,9 @@ class RevenueCatService {
   /// the user cancelled.
   Future<CustomerInfo?> purchasePackage(Package package) async {
     try {
-      final result = await Purchases.purchasePackage(package);
+      final result = await Purchases.purchase(
+        PurchaseParams.package(package),
+      );
       _log.i('💳 Purchase successful — ${package.identifier}');
       return result.customerInfo;
     } on PlatformException catch (e) {
@@ -103,10 +107,30 @@ class RevenueCatService {
 
   // ── Products ──────────────────────────────────────────────────────────────
   Future<List<StoreProduct>> getProducts(
-    List<String> productIdentifiers,
-  ) async {
+    List<String> productIdentifiers, {
+    ProductCategory productCategory = ProductCategory.nonSubscription,
+  }) async {
     try {
-      final products = await Purchases.getProducts(productIdentifiers);
+      var products = await Purchases.getProducts(
+        productIdentifiers,
+        productCategory: productCategory,
+      );
+
+      // On Android, if nonSubscription query returned empty, try fallback to subscription
+      if (products.isEmpty &&
+          Platform.isAndroid &&
+          productCategory == ProductCategory.nonSubscription) {
+        try {
+          final subsProducts = await Purchases.getProducts(
+            productIdentifiers,
+            productCategory: ProductCategory.subscription,
+          );
+          if (subsProducts.isNotEmpty) {
+            products = subsProducts;
+          }
+        } catch (_) {}
+      }
+
       _log.i('📦 Products fetched directly — ${products.length} product(s)');
       return products;
     } catch (e) {
@@ -118,7 +142,9 @@ class RevenueCatService {
   /// Triggers the native payment sheet for a StoreProduct directly.
   Future<CustomerInfo?> purchaseStoreProduct(StoreProduct product) async {
     try {
-      final result = await Purchases.purchaseStoreProduct(product);
+      final result = await Purchases.purchase(
+        PurchaseParams.storeProduct(product),
+      );
       _log.i('💳 Purchase successful — ${product.identifier}');
       return result.customerInfo;
     } on PlatformException catch (e) {
