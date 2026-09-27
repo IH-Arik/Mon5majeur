@@ -10,6 +10,18 @@ import '../../core/routes/routes.dart';
 import '../../core/utils/datetime_format.dart';
 import '../../core/utils/score_style.dart';
 import '../../data/models/my_match_today_model.dart';
+import '../screens/home/widgets/league_tab_bar.dart';
+
+/// Route of the league a night card belongs to, opened on its Standings tab
+/// (QA 24/09 #3: one tap from the home card straight into the league, instead
+/// of an isolated match screen). Uses the league's CURRENT match day so the
+/// team builder and results inside the league are the live ones, even when the
+/// card shows yesterday's result.
+String leagueRouteForMatch(MyMatchTodayModel match) {
+  final day = match.leagueCurrentMatchDay ?? match.matchDay;
+  return '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/${match.leagueId}'
+      '?matchDay=$day&isPrivate=${match.isPrivate}&tab=${LeagueTab.standings}';
+}
 
 /// Opens the match detail screen (both lineups, player scores, result) —
 /// QA 15/09/2026 items 4 & 8. Uses the private-league endpoint, which serves
@@ -175,12 +187,7 @@ class NightMatchCard extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => openMatchDetail(
-        context,
-        leagueId: match.leagueId,
-        matchDay: match.matchDay,
-        matchObjectId: pair?.matchObjectId,
-      ),
+      onTap: () => context.go(leagueRouteForMatch(match)),
       child: Container(
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(

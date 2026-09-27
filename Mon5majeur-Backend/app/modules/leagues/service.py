@@ -741,6 +741,8 @@ class LeagueService:
                 result_available=match.status in ("live", "completed") and not hidden,
                 scores_hidden=hidden,
                 scores_release_at=release_iso(match.nba_date) if hidden else None,
+                is_private=(league.type == LEAGUE_TYPE_PRIVATE) if league else True,
+                league_current_match_day=league.current_match_day if league else None,
             ))
         return result
 

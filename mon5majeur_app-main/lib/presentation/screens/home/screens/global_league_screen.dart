@@ -14,6 +14,7 @@ import '../tabs/build_your_team_global_tab.dart';
 import '../tabs/global_leaderboard_tab.dart';
 import '../tabs/my_team_tab.dart';
 import '../tabs/rules_tab.dart';
+import '../widgets/league_tab_bar.dart';
 
 class GlobalLeagueScreen extends StatefulWidget {
   const GlobalLeagueScreen({super.key});
@@ -50,7 +51,11 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildTabBar(),
+            LeagueTabBar(
+              selected: _selectedTab,
+              onSelect: (i) => setState(() => _selectedTab = i),
+              onLive: () => context.push(RoutePath.liveScoreScreen.addBasePath),
+            ),
             Expanded(
               child: IndexedStack(
                 index: _selectedTab,
@@ -221,95 +226,4 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
     );
   }
 
-  Widget _buildTabBar() {
-    // QA4 #2: the client explicitly does not want a scrollable tab bar -
-    // all tabs must be visible at once, on every screen size. Removing the
-    // redundant "My Team" tab (its content moved into Résultats, see
-    // build()) brings this down to 5 tabs, which fit in a plain Row
-    // without scrolling.
-    return Container(
-      color: const Color(0xFF1A1C2A),
-      padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTab(AppString.createTeam.tr, Icons.add, 0),
-          _buildTab(AppString.result.tr, Icons.scoreboard, 1),
-          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 2),
-          _buildTab(AppString.rules.tr, Icons.menu_book, 3),
-          _buildLiveTab(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiveTab() {
-    // Pushed instead of switched into the IndexedStack — it polls the
-    // backend every 60s and shouldn't keep doing that in the background
-    // while another tab is active.
-    return GestureDetector(
-      onTap: () => context.push(RoutePath.liveScoreScreen.addBasePath),
-      child: Container(
-        color: Colors.transparent,
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-        child: Column(
-          children: [
-            Icon(Icons.bolt, color: Colors.white54, size: 24.r),
-            SizedBox(height: 4.h),
-            // Short label so all 5 tabs fit ("Score en direct" was cut off
-            // as "Score en Dire..." - QA 15/09/2026 item 9).
-            Text(
-              AppString.liveTabLabel.tr,
-              maxLines: 1,
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 4.h),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTab(String label, IconData icon, int index) {
-    final isActive = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: Container(
-        color: Colors.transparent,
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isActive ? const Color(0xFFFF8C42) : Colors.white54,
-              size: 24.r,
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? const Color(0xFFFF8C42) : Colors.white54,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            if (isActive)
-              Container(
-                width: 40.w,
-                height: 3.h,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF8C42),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }

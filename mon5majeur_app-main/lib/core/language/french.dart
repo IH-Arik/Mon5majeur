@@ -570,6 +570,7 @@ class FrenchTranslation {
     AppString.semifinalRound: "Demi-finale",
     AppString.finalRound: "Finale",
     // Messages whose key IS the English text (see i18n_literals pass).
+    "No live match for this matchday yet.": "Pas encore de match en direct pour cette journée.",
     "Buy @price": "Acheter @price",
     "@n TOKENS": "@n JETONS",
     "POPULAR": "POPULAIRE",

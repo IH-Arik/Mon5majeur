@@ -10,6 +10,14 @@ import '../tabs/build_your_team_tab.dart';
 import '../tabs/leaderboard_tab.dart';
 import '../tabs/result_tab.dart';
 import '../tabs/rules_tab.dart';
+import '../widgets/league_tab_bar.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/local_db/local_db.dart';
+import '../../../../core/routes/route_path.dart';
+import '../../../../core/routes/routes.dart';
+import '../../../../data/models/match_result_model.dart';
+import '../../../../data/services/api_service.dart';
+import '../../../../data/services/api_url.dart';
 
 /// A single reusable fantasy-league shell used by private, public, and
 /// joined-league screens. Pass [leagueId] + [matchDay] when the league has
@@ -21,6 +29,9 @@ class LeagueFantasyScreen extends StatefulWidget {
   final String backRoute;
   final String leagueTypeLabel;
   final bool showBudgetBonus;
+  // Tab to open on (see LeagueTab). QA 24/09 #3: the home "Résultats de la
+  // nuit" card opens the league straight on its Standings tab.
+  final int initialTab;
 
   const LeagueFantasyScreen({
     super.key,
@@ -30,6 +41,7 @@ class LeagueFantasyScreen extends StatefulWidget {
     required this.backRoute,
     required this.leagueTypeLabel,
     this.showBudgetBonus = false,
+    this.initialTab = LeagueTab.createTeam,
   });
 
   @override
@@ -37,8 +49,50 @@ class LeagueFantasyScreen extends StatefulWidget {
 }
 
 class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
-  int _selectedTab = 0;
+  late int _selectedTab = widget.initialTab;
   Key _resultKey = UniqueKey();
+  bool _openingLive = false;
+
+  /// "Live" tab: the live score of MY duel in this league on the current
+  /// match day (Global League's Live shows every player instead). The duel id
+  /// comes from the match result; without one there is nothing live to show.
+  Future<void> _openLive() async {
+    if (_openingLive) return;
+    final leagueId = widget.leagueId;
+    final matchDay = widget.matchDay;
+    String? matchId;
+    if (leagueId != null && matchDay != null && matchDay > 0) {
+      setState(() => _openingLive = true);
+      try {
+        final endpoint = widget.isPrivate
+            ? ApiUrl.privateMatchResult(leagueId, matchDay)
+            : ApiUrl.publicMatchResult(leagueId, matchDay);
+        final response = await ApiClient().get(url: '${ApiUrl.baseUrl}$endpoint');
+        if (response.statusCode == 200) {
+          final result = MatchResultModel.fromJson(response.body);
+          final me = int.tryParse(await SharedPrefsHelper.getString(AppConstants.userId));
+          for (final pair in result.pairs) {
+            if (me != null && (pair.playerAId == me || pair.playerBId == me)) {
+              matchId = pair.matchObjectId;
+              break;
+            }
+          }
+        }
+      } catch (_) {
+        // fall through to the "no live match" message
+      } finally {
+        if (mounted) setState(() => _openingLive = false);
+      }
+    }
+    if (!mounted) return;
+    if (matchId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No live match for this matchday yet.'.tr)),
+      );
+      return;
+    }
+    context.push('${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchId');
+  }
 
   void _onTeamSaved() {
     setState(() {
@@ -54,7 +108,11 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            _buildTabBar(),
+            LeagueTabBar(
+              selected: _selectedTab,
+              onSelect: (i) => setState(() => _selectedTab = i),
+              onLive: _openLive,
+            ),
             Expanded(
               child: IndexedStack(
                 index: _selectedTab,
@@ -199,62 +257,4 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
     );
   }
 
-  Widget _buildTabBar() {
-    // QA4 #2: no scrollable tab bar - all tabs must be visible at once.
-    // "My Team" was removed (redundant with Results, which already shows
-    // the match directly), bringing this down to 4 tabs that fit in a
-    // plain Row without scrolling.
-    return Container(
-      color: const Color(0xFF1A1C2A),
-      padding: EdgeInsets.symmetric(vertical: 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildTab(AppString.createTeam.tr, Icons.add, 0),
-          _buildTab(AppString.result.tr, Icons.receipt, 1),
-          _buildTab(AppString.leaderboard.tr, Icons.leaderboard, 2),
-          _buildTab(AppString.rules.tr, Icons.menu_book, 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTab(String label, IconData icon, int index) {
-    final isActive = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: Container(
-        color: Colors.transparent,
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isActive ? const Color(0xFFFF8C42) : Colors.white54,
-              size: 24.r,
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? const Color(0xFFFF8C42) : Colors.white54,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            if (isActive)
-              Container(
-                width: 40.w,
-                height: 3.h,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF8C42),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 }

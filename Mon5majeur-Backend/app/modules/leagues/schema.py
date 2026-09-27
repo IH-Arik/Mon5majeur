@@ -328,6 +328,10 @@ class MyMatchTodayCompatResponse(BaseSchema):
     # until `scores_release_at` (09:00 Paris the morning after the night).
     scores_hidden: bool = False
     scores_release_at: str | None = None
+    # Where the app sends a tap on the card (QA 24/09 #3): the league itself,
+    # on the match day it is currently on.
+    is_private: bool = True
+    league_current_match_day: int | None = None
 
 
 # ── Match Result (Flutter Result tab) ────────────────────────────────────────

@@ -318,11 +318,13 @@ class AppRouter {
           );
           final isPrivate =
               state.uri.queryParameters['isPrivate'] == 'true'; // ADD THIS
+          final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
 
           return LeagueFantasyScreen(
             leagueId: leagueId,
             matchDay: matchDay,
             isPrivate: isPrivate,
+            initialTab: tab.clamp(0, 3),
             backRoute: RoutePath.home.addBasePath,
             leagueTypeLabel: isPrivate
                 ? AppString.privateLeague.tr

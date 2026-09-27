@@ -16,6 +16,10 @@ class MyMatchTodayModel {
   // Score paywall (QA 15/09/2026 item 4) — enforced by the API, which sends
   // zeros while true; the UI must show "Score dispo à 9h" instead.
   final bool scoresHidden;
+  // Where tapping the card goes (QA 24/09 #3): the league itself, on the
+  // match day it is currently on (the card may show an older result).
+  final bool isPrivate;
+  final int? leagueCurrentMatchDay;
 
   MyMatchTodayModel({
     required this.id,
@@ -31,6 +35,8 @@ class MyMatchTodayModel {
     this.isLiveForUser = false,
     this.resultAvailable = false,
     this.scoresHidden = false,
+    this.isPrivate = true,
+    this.leagueCurrentMatchDay,
   });
 
   factory MyMatchTodayModel.fromJson(Map<String, dynamic> json) {
@@ -52,6 +58,8 @@ class MyMatchTodayModel {
       isLiveForUser: json['is_live_for_user'] ?? false,
       resultAvailable: json['result_available'] ?? false,
       scoresHidden: json['scores_hidden'] ?? false,
+      isPrivate: json['is_private'] ?? true,
+      leagueCurrentMatchDay: json['league_current_match_day'],
     );
   }
 
@@ -70,6 +78,8 @@ class MyMatchTodayModel {
       'is_live_for_user': isLiveForUser,
       'result_available': resultAvailable,
       'scores_hidden': scoresHidden,
+      'is_private': isPrivate,
+      'league_current_match_day': leagueCurrentMatchDay,
     };
   }
 
