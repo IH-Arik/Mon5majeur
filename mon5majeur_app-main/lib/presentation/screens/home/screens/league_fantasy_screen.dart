@@ -16,6 +16,7 @@ import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/match_result_model.dart';
+import '../../../../data/models/standings_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 
@@ -94,6 +95,33 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
     context.push('${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchId');
   }
 
+  String _leagueName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLeagueName();
+  }
+
+  // Every entry route passes only the league id, so the name comes from the
+  // standings endpoint (the header used to show a hardcoded "Elite Ballers").
+  Future<void> _loadLeagueName() async {
+    final leagueId = widget.leagueId;
+    if (leagueId == null || leagueId <= 0) return;
+    try {
+      final endpoint = widget.isPrivate
+          ? ApiUrl.privateStandings(leagueId)
+          : ApiUrl.publicStandings(leagueId);
+      final response = await ApiClient().get(url: '${ApiUrl.baseUrl}$endpoint');
+      if (response.statusCode == 200 && mounted) {
+        final name = StandingsModel.fromJson(response.body).leagueName;
+        setState(() => _leagueName = name);
+      }
+    } catch (_) {
+      // header keeps the league type label only
+    }
+  }
+
   void _onTeamSaved() {
     setState(() {
       _resultKey = UniqueKey();
@@ -144,58 +172,72 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   }
 
   Widget _buildHeader() {
-    // QA 24/09 #5: same uniform dark header as the Global League (no orange
-    // gradient banner).
+    // Same header as the Global League: uniform dark background (QA 24/09 #5),
+    // title centered on the full width, name 14sp, 10sp line under it.
+    final matchDay = widget.matchDay ?? 0;
+    final title = _leagueName.isEmpty ? widget.leagueTypeLabel : _leagueName;
+    final subtitle = [
+      if (_leagueName.isNotEmpty) widget.leagueTypeLabel,
+      if (matchDay > 0) '${AppString.matchday.tr} $matchDay',
+    ].join(' · ');
     return Container(
       width: double.infinity,
       color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.all(16.w),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () => context.go(widget.backRoute),
-                child: SizedBox(
-                  width: 30.w,
-                  height: 30.h,
-                  child: Assets.icons.backButton.image(fit: BoxFit.contain),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildLeagueLogo(),
-                    SizedBox(height: 4.h),
-                    Text(
-                      AppString.eliteBallers.tr,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.sp,
-                        fontFamily: 'Lato',
-                        fontWeight: FontWeight.w600,
+          SizedBox(
+            width: double.infinity,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Padding(
+                  // keeps a long league name clear of the back button
+                  padding: EdgeInsets.symmetric(horizontal: 36.w),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildLeagueLogo(),
+                      SizedBox(height: 4.h),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                          fontFamily: 'Lato',
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      widget.leagueTypeLabel,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8.sp,
-                        fontFamily: 'Lato',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                      if (subtitle.isNotEmpty) ...[
+                        SizedBox(height: 2.h),
+                        Text(
+                          subtitle,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10.sp,
+                            fontFamily: 'Lato',
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(width: 30.w),
-            ],
+                Positioned(
+                  left: 0,
+                  child: GestureDetector(
+                    onTap: () => context.go(widget.backRoute),
+                    child: SizedBox(
+                      width: 30.w,
+                      height: 30.h,
+                      child: Assets.icons.backButton.image(fit: BoxFit.contain),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           if (kAdsEnabled && widget.showBudgetBonus && _selectedTab == 0) ...[
             SizedBox(height: 12.h),
