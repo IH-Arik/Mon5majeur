@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from app.exceptions.errors import BadRequestException
 from app.modules.auth.dependencies import get_current_user
 from app.modules.bonuses import catalog as bonus_catalog
+from app.modules.bonuses.live_access import sync_live_scoring
 from app.modules.bonuses.model import UserBonusInventory
 from app.modules.tokens.service import TokenService
 from app.modules.users.model import User
@@ -90,6 +91,7 @@ async def my_inventory(
     current_user: User = Depends(get_current_user),
 ) -> InventoryResponse:
     inv = await _get_inventory(current_user)
+    await sync_live_scoring(current_user, inv)
     return _to_response(inv)
 
 

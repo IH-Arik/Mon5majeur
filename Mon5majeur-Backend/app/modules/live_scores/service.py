@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from beanie import PydanticObjectId
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
+from app.modules.bonuses.live_access import sync_live_scoring
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.live_scores.schema import (
     LiveGlobalScore,
@@ -26,9 +27,20 @@ def _is_premium(user: User) -> bool:
     return premium_until > datetime.now(timezone.utc)
 
 
+async def _ensure_premium(user: User) -> None:
+    # The Shop's Live Scoring expiry lives on the bonus inventory; if it is
+    # ahead of premium_until, catch up before refusing (QA 24/09 #6).
+    if not _is_premium(user):
+        await sync_live_scoring(user)
+    if not _is_premium(user):
+        raise ForbiddenException("Live scores require a premium subscription")
+
+
 class LiveScoreService:
 
-    def get_premium_status(self, user: User) -> PremiumStatusResponse:
+    async def get_premium_status(self, user: User) -> PremiumStatusResponse:
+        if not _is_premium(user):
+            await sync_live_scoring(user)
         return PremiumStatusResponse(
             is_premium=_is_premium(user),
             premium_until=user.premium_until,
@@ -37,10 +49,7 @@ class LiveScoreService:
     async def get_live_match(
         self, user: User, match_id: PydanticObjectId
     ) -> LiveMatchScore:
-        if not _is_premium(user):
-            raise ForbiddenException(
-                "Live scores require a premium subscription"
-            )
+        await _ensure_premium(user)
 
         match = await LeagueMatch.get(match_id)
         if not match:
@@ -84,10 +93,7 @@ class LiveScoreService:
         """Live score for the user's Global League selection (spec §4.5:
         live score must also cover the Global League, not just duel leagues).
         No opponent, no bonuses — the Global League has neither."""
-        if not _is_premium(user):
-            raise ForbiddenException(
-                "Live scores require a premium subscription"
-            )
+        await _ensure_premium(user)
 
         from app.modules.players.compat_router import _nba_today
 
@@ -135,6 +141,7 @@ class LiveScoreService:
         base = max(existing or now, now)
         user.premium_until = base + timedelta(days=days)
         await user.save()
+        await sync_live_scoring(user)  # Shop shows the same expiry
         return user
 
 

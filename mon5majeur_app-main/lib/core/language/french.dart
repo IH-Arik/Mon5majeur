@@ -676,6 +676,7 @@ class FrenchTranslation {
     "Failed to get active leagues": "Impossible de charger les ligues actives",
     "An error occurred while fetching active leagues": "Une erreur est survenue lors du chargement des ligues actives",
     "Could not load live scores": "Impossible de charger les scores en direct",
+    "You are not in this match": "Vous ne participez pas à ce match",
     "No active public leagues available": "Aucune ligue publique active",
     "League ID is missing": "Identifiant de ligue manquant",
     "No live match data available": "Aucune donnée de match en direct",

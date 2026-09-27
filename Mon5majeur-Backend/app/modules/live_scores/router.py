@@ -26,7 +26,7 @@ async def premium_status(
     user: User = Depends(get_current_user),
     service: LiveScoreService = Depends(get_live_service),
 ) -> PremiumStatusResponse:
-    return service.get_premium_status(user)
+    return await service.get_premium_status(user)
 
 
 @router.get(

@@ -70,7 +70,17 @@ class LiveScoreController extends GetxController {
           globalScore.value = LiveGlobalScore.fromJson(data);
         }
       } else if (response.statusCode == 403) {
-        isForbidden.value = true;
+        // Only the premium refusal shows the paywall; the duel endpoint also
+        // 403s for "You are not in this match" (QA 24/09 #6: a subscribed
+        // user saw the lock screen).
+        final detail =
+            response.body is Map ? response.body['detail']?.toString() : null;
+        if (detail == null || detail.toLowerCase().contains('premium')) {
+          isForbidden.value = true;
+        } else {
+          isForbidden.value = false;
+          errorMessage.value = detail.tr;
+        }
       } else {
         errorMessage.value =
             (response.body is Map ? response.body['detail'] : null) ??
