@@ -86,15 +86,11 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   }
 
   Widget _buildHeader() {
+    // QA 24/09 #5: same uniform dark header as the Global League (no orange
+    // gradient banner).
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment(0.50, 0.00),
-          end: Alignment(0.50, 1.00),
-          colors: [Color(0xFFE8632C), Color(0xFFFF944D)],
-        ),
-      ),
+      color: const Color(0xFF1A1C2A),
       padding: EdgeInsets.all(16.w),
       child: Column(
         children: [

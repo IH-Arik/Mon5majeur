@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
+  // Both action cards share one font size, so their labels stay on one line
+  // and line up (QA 24/09 #1: the longer French label used to wrap).
+  final AutoSizeGroup _actionGroup = AutoSizeGroup();
   late AnimationController _logoController;
   late AnimationController _pulseController;
   late AnimationController _slideController;
@@ -352,8 +356,9 @@ class _HomeScreenState extends State<HomeScreen>
                               Row(
                                 children: [
                                   Expanded(
-                                    child: _AnimatedActionCard(
+                                    child: HomeActionCard(
                                       title: AppString.joinLeague.tr,
+                                      group: _actionGroup,
                                       delay: 100,
                                       onTap: () => context.go(
                                         RoutePath
@@ -364,8 +369,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                   SizedBox(width: 16.w),
                                   Expanded(
-                                    child: _AnimatedActionCard(
+                                    child: HomeActionCard(
                                       title: AppString.createALeague.tr,
+                                      group: _actionGroup,
                                       delay: 200,
                                       onTap: () => context.go(
                                         RoutePath
@@ -758,23 +764,26 @@ String _formatClockTime(DateTime t) {
   return '$hour12:$minute $period';
 }
 
-/// Animated Action Card (Join/Create League)
-class _AnimatedActionCard extends StatefulWidget {
+/// Animated Action Card (Join/Create League). Public so its alignment can be
+/// widget-tested (QA 24/09 #1).
+class HomeActionCard extends StatefulWidget {
   final String title;
+  final AutoSizeGroup group;
   final int delay;
   final VoidCallback onTap;
 
-  const _AnimatedActionCard({
+  const HomeActionCard({
     required this.title,
+    required this.group,
     required this.delay,
     required this.onTap,
   });
 
   @override
-  State<_AnimatedActionCard> createState() => _AnimatedActionCardState();
+  State<HomeActionCard> createState() => HomeActionCardState();
 }
 
-class _AnimatedActionCardState extends State<_AnimatedActionCard> {
+class HomeActionCardState extends State<HomeActionCard> {
   bool _isPressed = false;
 
   @override
@@ -813,12 +822,19 @@ class _AnimatedActionCardState extends State<_AnimatedActionCard> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w),
+                    child: AutoSizeText(
+                      widget.title,
+                      group: widget.group,
+                      maxLines: 1,
+                      minFontSize: 10,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   SizedBox(height: 12.h),

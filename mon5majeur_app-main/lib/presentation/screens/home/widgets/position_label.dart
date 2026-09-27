@@ -24,11 +24,13 @@ class PositionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      alignment: Alignment.center,
+      // No `alignment:` here - on a Container it makes the pill expand to the
+      // full width of its parent (the whole jersey slot), which is what made
+      // the badges look far too big (QA 24/09 #2). Without it the pill hugs its text.
+      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.5.h),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(6.r),
+        borderRadius: BorderRadius.circular(4.r),
         border: Border.all(color: Colors.white, width: 0.5.r),
       ),
       child: Text(
@@ -38,7 +40,7 @@ class PositionLabel extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: textColor,
-          fontSize: 9.sp,
+          fontSize: 7.sp,
           fontFamily: 'Roboto',
           fontWeight: FontWeight.w600,
           height: 1.15,

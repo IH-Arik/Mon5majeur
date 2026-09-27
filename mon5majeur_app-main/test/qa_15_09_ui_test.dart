@@ -13,7 +13,9 @@ import 'package:mon5majeur_app/core/utils/datetime_format.dart';
 import 'package:mon5majeur_app/data/models/match_result_model.dart' as mr;
 import 'package:mon5majeur_app/data/models/my_match_today_model.dart';
 import 'package:mon5majeur_app/data/models/playoff_bracket_model.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:mon5majeur_app/presentation/screens/home/controllers/home_controller.dart';
+import 'package:mon5majeur_app/presentation/screens/home/home_screen.dart' show HomeActionCard;
 import 'package:mon5majeur_app/presentation/screens/home/tabs/match_results_dialog.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/match_lineups_field.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/position_label.dart';
@@ -112,13 +114,23 @@ void main() {
     expect(find.text('Matchday 16'), findsOneWidget);
   });
 
-  testWidgets('position label shows the full "PG/SG"', (t) async {
+  testWidgets('position label shows the full "PG/SG" in a compact pill', (t) async {
+    // Phone-shaped viewport (ScreenUtil scales .sp by width, .h by height).
+    t.view.physicalSize = const Size(390, 844);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
     await t.pumpWidget(_host(const Center(child: PositionLabel('PG/SG'))));
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
     expect(find.text('PG/SG'), findsOneWidget);
     final box = t.getSize(find.byType(PositionLabel));
-    expect(box.height, greaterThan(12)); // room above and below the text
+    // QA 24/09 #2: the pill had grown too big. Still room above/below the
+    // text (> 9), but compact (<= 16 tall) and hugging its text - well under
+    // the 114 px jersey slot it sits in (it used to stretch to the full slot
+    // width). The test font is wider than Roboto, hence the generous bound.
+    expect(box.height, greaterThan(9));
+    expect(box.height, lessThanOrEqualTo(16));
+    expect(box.width, lessThanOrEqualTo(60));
   });
 
   testWidgets('lineups field: scores hidden shows locks, not numbers', (t) async {
@@ -229,5 +241,71 @@ void main() {
     );
     expect(matchRefreshInterval([_match(status: 'completed')]), const Duration(minutes: 2));
     expect(matchRefreshInterval([]), const Duration(minutes: 2));
+  });
+
+  test('shop pack texts have the French wording provided in QA 24/09 #7', () {
+    Get.addTranslations(Language().keys);
+    Get.locale = const Locale('fr', 'FR');
+    const nb = ' ';
+    expect('Buy @price'.trParams({'price': '1,99 €'}), 'Acheter 1,99 €');
+    expect('@n TOKENS'.trParams({'n': '200'}), '200 JETONS');
+    expect('POPULAR'.tr, 'POPULAIRE');
+    expect('BEST VALUE'.tr, 'MEILLEURE OFFRE');
+    expect('Restore Purchases'.tr, 'Restaurer les achats');
+    expect(
+      '200 tokens to enter tournaments and tweak your weekly lineup.'.tr,
+      '200 jetons pour participer aux tournois et ajuster ton équipe de la semaine.',
+    );
+    expect(
+      '550 tokens — perfect for active players unlocking daily boosts.'.tr,
+      '550 jetons — parfait pour les joueurs actifs qui veulent débloquer des boosts au quotidien.',
+    );
+    expect(
+      '1,200 tokens for competitive managers competing for championships.'.tr,
+      '1${nb}200 jetons pour les managers compétitifs qui visent les titres.',
+    );
+    expect(
+      '2,500 tokens — ultimate power pack with maximum bonus capacity.'.tr,
+      '2${nb}500 jetons — le pack ultime, avec la capacité de bonus maximale.',
+    );
+    // English is untouched
+    Get.locale = const Locale('en', 'US');
+    expect('Buy @price'.trParams({'price': '\$4.99'}), 'Buy \$4.99');
+    expect('@n TOKENS'.trParams({'n': '550'}), '550 TOKENS');
+    expect('Restore Purchases'.tr, 'Restore Purchases');
+  });
+
+  testWidgets('home "Rejoindre / Créer une ligue" cards: same size, one line, aligned', (t) async {
+    t.view.physicalSize = const Size(360, 800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    // the titles are resolved when the widgets are built, before the app exists
+    Get.addTranslations(Language().keys);
+    Get.locale = const Locale('fr', 'FR');
+    final group = AutoSizeGroup();
+    await t.pumpWidget(_host(Row(
+      children: [
+        Expanded(child: HomeActionCard(title: AppString.joinLeague.tr, group: group, delay: 0, onTap: () {})),
+        const SizedBox(width: 16),
+        Expanded(child: HomeActionCard(title: AppString.createALeague.tr, group: group, delay: 0, onTap: () {})),
+      ],
+    )));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+
+    final join = find.text('Rejoindre une ligue', findRichText: true);
+    final create = find.text('Créer une ligue', findRichText: true);
+    expect(join, findsOneWidget);
+    expect(create, findsOneWidget);
+    // one line each and identical size -> labels sit at the same height
+    final joinBox = t.getRect(join);
+    final createBox = t.getRect(create);
+    expect(joinBox.height, closeTo(createBox.height, 0.5));
+    expect(joinBox.center.dy, closeTo(createBox.center.dy, 0.5));
+    // the two "+" icons are aligned too
+    final icons = t.widgetList<Icon>(find.byIcon(Icons.add_circle)).length;
+    expect(icons, 2);
+    expect(t.getRect(find.byIcon(Icons.add_circle).first).center.dy,
+        closeTo(t.getRect(find.byIcon(Icons.add_circle).last).center.dy, 0.5));
   });
 }

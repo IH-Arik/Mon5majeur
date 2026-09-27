@@ -45,7 +45,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       name: 'Rookie Pack',
       description: '200 tokens to enter tournaments and tweak your weekly lineup.',
       tokens: 200,
-      fallbackPrice: '\$1.99',
+      fallbackEur: 1.99,
       iconGradient: [Color(0xFF8A35E9), Color(0xFF5145E5)],
       cardBg: Color(0xFF1A2243),
       iconBgColor: Color(0xFF7F38E8),
@@ -56,7 +56,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       name: 'All-Star Pack',
       description: '550 tokens — perfect for active players unlocking daily boosts.',
       tokens: 550,
-      fallbackPrice: '\$4.99',
+      fallbackEur: 4.99,
       iconGradient: [Color(0xFF5B8DEF), Color(0xFF3A5FCD)],
       cardBg: Color(0xFF182240),
       iconBgColor: Color(0xFF5A43E6),
@@ -69,7 +69,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       name: 'MVP Pack',
       description: '1,200 tokens for competitive managers competing for championships.',
       tokens: 1200,
-      fallbackPrice: '\$9.99',
+      fallbackEur: 9.99,
       iconGradient: [Color(0xFFE8632C), Color(0xFFD58564)],
       cardBg: Color(0xFF2D1D20),
       iconBgColor: Color(0xFFDD784E),
@@ -82,7 +82,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       name: 'Hall of Fame',
       description: '2,500 tokens — ultimate power pack with maximum bonus capacity.',
       tokens: 2500,
-      fallbackPrice: '\$19.99',
+      fallbackEur: 19.99,
       iconGradient: [Color(0xFF2CCA87), Color(0xFF61D2A0)],
       cardBg: Color(0xFF123431),
       iconBgColor: Color(0xFF4BCF96),
@@ -177,7 +177,27 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     if (pkg != null) return pkg.storeProduct.priceString;
     final sp = _storeProductFor(packDef);
     if (sp != null) return sp.priceString;
-    return packDef.fallbackPrice;
+    return _formatEuro(packDef.fallbackEur);
+  }
+
+  /// "1,99 €" in French, "€1.99" in English.
+  String _formatEuro(double v) {
+    final fixed = v.toStringAsFixed(2);
+    return Get.locale?.languageCode == 'fr'
+        ? '${fixed.replaceAll('.', ',')} €'
+        : '€$fixed';
+  }
+
+  /// French groups thousands ("1 200"), English prints the plain number.
+  String _formatTokenCount(int n) {
+    if (Get.locale?.languageCode != 'fr') return '$n';
+    final digits = n.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write('\u00A0');
+      buf.write(digits[i]);
+    }
+    return buf.toString();
   }
 
   /// Initiates native store payment via RevenueCat
@@ -221,8 +241,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Google Play Store-এ "${packDef.rcProductId}" পাওয়া যায়নি। '
-                'Play Console-এ In-app product টি Active আছে কিনা এবং আপনার ইমেইল License Testing-এ যোগ করা আছে কিনা চেক করুন।',
+                'This pack is not available on the store right now. Please try again later.'
+                    .tr,
               ),
               backgroundColor: const Color(0xFF6B1D2F),
               duration: const Duration(seconds: 5),
@@ -244,7 +264,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Purchase failed. Please try again.';
+          _errorMessage = 'Purchase failed. Please try again.'.tr;
         });
         Future.delayed(const Duration(seconds: 3), () {
           if (mounted) setState(() => _errorMessage = null);
@@ -264,7 +284,9 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🎉 +${packDef.tokens} tokens added to your wallet'),
+        content: Text(
+          '🎉 +@n tokens added to your wallet'.trParams({'n': '${packDef.tokens}'}),
+        ),
         backgroundColor: const Color(0xFF1a3d1a),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
@@ -278,8 +300,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       await RevenueCatService.instance.restorePurchases();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Your purchases have been restored.'),
+          SnackBar(
+            content: Text('Your purchases have been restored.'.tr),
             backgroundColor: Color(0xFF1a2744),
             behavior: SnackBarBehavior.floating,
           ),
@@ -288,8 +310,8 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not restore purchases. Try again later.'),
+          SnackBar(
+            content: Text('Could not restore purchases. Try again later.'.tr),
             backgroundColor: Color(0xFF3a0000),
             behavior: SnackBarBehavior.floating,
           ),
@@ -444,7 +466,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                   ),
                   SizedBox(width: 4.w),
                   Text(
-                    'tokens',
+                    'tokens'.tr,
                     style: TextStyle(
                       color: Colors.white60,
                       fontSize: 12.sp,
@@ -521,7 +543,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
           child: TextButton(
             onPressed: _isPurchasing ? null : _handleRestore,
             child: Text(
-              'Restore Purchases',
+              'Restore Purchases'.tr,
               style: TextStyle(
                 color: Colors.white38,
                 fontSize: 13.sp,
@@ -665,7 +687,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                                     ),
                                     SizedBox(width: 4.w),
                                     Text(
-                                      '${pack.tokens} TOKENS',
+                                      '@n TOKENS'.trParams({'n': _formatTokenCount(pack.tokens)}),
                                       style: TextStyle(
                                         color: const Color(0xFFFFB038),
                                         fontSize: 13.sp,
@@ -699,7 +721,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                                 ],
                               ),
                               child: Text(
-                                pack.badgeText!,
+                                pack.badgeText!.tr,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 10.sp,
@@ -714,7 +736,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                       // Description
                       SizedBox(height: 12.h),
                       Text(
-                        pack.description,
+                        pack.description.tr,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 13.sp,
@@ -765,7 +787,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
                                     ),
                                     SizedBox(width: 6.w),
                                     Text(
-                                      'Buy $price',
+                                      'Buy @price'.trParams({'price': price}),
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 16.sp,
@@ -837,7 +859,8 @@ class _PackDef {
   final String name;
   final String description;
   final int tokens;
-  final String fallbackPrice;
+  // Shown only when the store gave us no price (never a made-up US$ amount).
+  final double fallbackEur;
   final List<Color> iconGradient;
   final Color cardBg;
   final Color iconBgColor;
@@ -850,7 +873,7 @@ class _PackDef {
     required this.name,
     required this.description,
     required this.tokens,
-    required this.fallbackPrice,
+    required this.fallbackEur,
     required this.iconGradient,
     required this.cardBg,
     required this.iconBgColor,
