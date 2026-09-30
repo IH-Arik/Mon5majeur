@@ -27,6 +27,7 @@ class ApiUrl {
   // Profile endpoints
   static const userProfiles = "/api/UserProfiles/";
   static String updateProfile(int profileId) => "/api/UserProfiles/$profileId/";
+  static const jersey = "/api/UserProfiles/jersey/";
   static const tokenBalance = "/api/UserProfiles/token-balance/";
   static const profileStats = "/api/UserProfiles/stats/";
 

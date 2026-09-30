@@ -85,7 +85,11 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                     ) {
                       squad[i] = _controller.selectedPlayers[i];
                     }
-                    return MyTeamTab(key: _resultKey, savedPlayers: squad);
+                    return MyTeamTab(
+                      key: _resultKey,
+                      savedPlayers: squad,
+                      ownJersey: true,
+                    );
                   }),
                   const LeaderboardTab(),
                   const RulesTab(isGlobal: true),

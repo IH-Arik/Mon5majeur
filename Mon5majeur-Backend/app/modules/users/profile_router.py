@@ -16,7 +16,7 @@ The `id` field = user.auto_id, used by the waiting room to identify the creator.
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.modules.auth.dependencies import get_current_user
 from app.modules.users.dependencies import get_user_service
@@ -322,6 +322,38 @@ async def delete_account(
     so the retention dashboard can still count churn afterwards.
     """
     await service.delete_user(current_user.id)
+
+
+JERSEY_COUNT = 6  # the app ships six jerseys
+
+
+class JerseyPayload(BaseModel):
+    jersey_index: int = Field(ge=0, lt=JERSEY_COUNT)
+
+
+@router.get(
+    "/jersey/",
+    response_model=JerseyPayload,
+    summary="Get the user's chosen jersey (Flutter: team composition screens)",
+)
+async def get_jersey(current_user: User = Depends(get_current_user)) -> JerseyPayload:
+    # clamp: a stale value can never crash the app's jersey list
+    idx = current_user.jersey_index
+    return JerseyPayload(jersey_index=idx if 0 <= idx < JERSEY_COUNT else 0)
+
+
+# Declared before PATCH /{profile_id}/ so "jersey" is never parsed as an id.
+@router.patch(
+    "/jersey/",
+    response_model=JerseyPayload,
+    summary="Save the user's chosen jersey on the account",
+)
+async def set_jersey(
+    payload: JerseyPayload,
+    current_user: User = Depends(get_current_user),
+) -> JerseyPayload:
+    await current_user.save_updated(jersey_index=payload.jersey_index)
+    return payload
 
 
 @router.patch(

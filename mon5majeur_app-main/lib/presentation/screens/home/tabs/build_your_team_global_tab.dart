@@ -20,6 +20,7 @@ import '../../tutorial/tutorial_skip_button.dart';
 import '../screens/select_player_screen.dart';
 import '../widgets/lineup_widgets.dart';
 import '../widgets/position_label.dart';
+import '../../../../data/services/jersey_service.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
 
@@ -95,6 +96,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       _syncWithSelection,
     );
     _fetchPlayers();
+    _loadJersey();
     _fetchTodaysGames();
     _syncWithSelection(_controller.globalLeagueSelection.value);
     // Every _selectPlayer() call (regardless of slot index) chains
@@ -391,7 +393,13 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       setState(() {
         selectedJerseyIndex = result;
       });
+      JerseyService.save(result); // kept on the account (QA 28/09 #5)
     }
+  }
+
+  Future<void> _loadJersey() async {
+    final index = await JerseyService.load();
+    if (mounted) setState(() => selectedJerseyIndex = index);
   }
 
   Future<void> _saveTeam() async {

@@ -51,6 +51,11 @@ class User(BaseDocument):
     notification_types: list[str] = []     # e.g. ["team_reminder", "results"]
     is_profile_complete: bool = False
 
+    # Chosen team jersey (index into the app's jersey list, 0-5). QA 28/09 #7
+    # item 5: it lived only in screen state, so it reset on every restart,
+    # league switch or matchday change.
+    jersey_index: int = 0
+
     # Usage-statistics opt-out (QA 15/09/2026 item 3 — CNIL audience-
     # measurement exemption). True (default) = counted in the admin
     # dashboard; False = excluded from every analytics figure.

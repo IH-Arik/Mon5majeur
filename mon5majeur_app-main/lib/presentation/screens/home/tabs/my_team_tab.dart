@@ -6,6 +6,7 @@ import '../../../../data/models/player.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/jersey_service.dart';
 
 class MyTeamTab extends StatefulWidget {
   final List<Player?>? savedPlayers;
@@ -17,6 +18,9 @@ class MyTeamTab extends StatefulWidget {
   // League leaderboard) isn't "today", so the default "My Team Points for
   // today" header would be factually wrong there.
   final String? headerText;
+  // True when this is the signed-in user's own squad: shows the jersey saved
+  // on their account (QA 28/09 #5). Another player's squad keeps the default.
+  final bool ownJersey;
 
   const MyTeamTab({
     super.key,
@@ -26,6 +30,7 @@ class MyTeamTab extends StatefulWidget {
     this.matchDay,
     this.isPrivate = false, // ADD THIS
     this.headerText,
+    this.ownJersey = false,
   });
 
   @override
@@ -61,6 +66,11 @@ class _MyTeamTabState extends State<MyTeamTab> {
     super.initState();
     selectedPlayers = widget.savedPlayers ?? List.filled(5, null);
     selectedJerseyIndex = widget.savedJerseyIndex ?? 0;
+    if (widget.ownJersey) {
+      JerseyService.load().then((i) {
+        if (mounted) setState(() => selectedJerseyIndex = i);
+      });
+    }
 
     // Fetch saved team if leagueId and matchDay are provided
     if (widget.leagueId != null &&
