@@ -979,7 +979,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       // Bonus options menu - on top layer
       floating: [
         if (showBonusOptions)
-          Positioned(top: 80.h, right: 36.w, child: _buildBonusOptionsMenu()),
+          Positioned(top: 94.h, right: 20.w, child: _buildBonusOptionsMenu()),
       ],
     );
   }
@@ -1127,8 +1127,11 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
   }
 
+  // QA 28/09 #3: the button was small dark grey and blended into the court.
+  // Bigger, orange accent and a bolt icon so it is seen at first glance.
   Widget _buildBonusButton() {
     final activeIcon = _activeBonusIcon;
+    const orange = Color(0xFFFF8C42);
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -1136,43 +1139,47 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         });
       },
       child: Container(
-        width: 42.w,
-        height: 42.h,
-        decoration: ShapeDecoration(
-          color: showBonusOptions
-              ? const Color(0xFF777777)
-              : const Color(0xFF1A1A1A),
-          shape: RoundedRectangleBorder(
-            side: BorderSide(width: 1.r, color: Color(0xFF2C2C2C)),
-            borderRadius: BorderRadius.circular(6.r),
+        width: 64.w,
+        height: 56.h,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: showBonusOptions
+                ? const [Color(0xFFFF6B35), Color(0xFFE85A24)]
+                : const [Color(0xFF2A1A10), Color(0xFF1A1A1A)],
           ),
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: orange, width: 1.5.r),
+          boxShadow: [
+            BoxShadow(
+              color: orange.withValues(alpha: 0.45),
+              blurRadius: 10.r,
+            ),
+          ],
         ),
         // When a bonus is active, show its icon; tap to change the bonus.
-        child: activeIcon != null
-            ? Center(child: activeIcon.image(width: 24.w, height: 24.h))
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    AppString.plus,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                  Text(
-                    AppString.bonuses.tr,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 8.sp,
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (activeIcon != null)
+              activeIcon.image(width: 24.w, height: 24.h)
+            else
+              Icon(Icons.bolt, color: orange, size: 24.r),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                AppString.bonuses.tr,
+                maxLines: 1,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
