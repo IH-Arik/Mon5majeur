@@ -134,8 +134,12 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     }
 
     try {
-      // 2. Also fetch store products directly by ID as an immediate fallback
-      final productIds = _packs.map((p) => p.rcProductId).toList();
+      // 2. Also fetch store products directly by ID as an immediate fallback.
+      // Query both plain IDs and bundle-prefixed IDs to handle any store configuration.
+      final productIds = [
+        ..._packs.map((p) => p.rcProductId),
+        ..._packs.map((p) => 'com.mon5majeur.app.${p.rcProductId}'),
+      ];
       final products = await RevenueCatService.instance.getProducts(productIds);
       for (final p in products) {
         _directProducts[p.identifier] = p;
@@ -156,11 +160,25 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
   /// Tries to find the RevenueCat package that matches [packDef].
   Package? _packageFor(_PackDef packDef) {
     if (_offerings == null) return null;
-    final current = _offerings!.current;
-    if (current == null) return null;
-    for (final pkg in current.availablePackages) {
-      if (pkg.storeProduct.identifier == packDef.rcProductId) {
-        return pkg;
+    // Check current offering, or fallback to default or first available offering
+    final offeringsToCheck = <Offering>[
+      if (_offerings!.current != null) _offerings!.current!,
+      if (_offerings!.all.containsKey('default')) _offerings!.all['default']!,
+      ..._offerings!.all.values,
+    ];
+
+    for (final offering in offeringsToCheck) {
+      for (final pkg in offering.availablePackages) {
+        final storeId = pkg.storeProduct.identifier;
+        final pkgId = pkg.identifier;
+        if (storeId == packDef.rcProductId ||
+            storeId == 'com.mon5majeur.app.${packDef.rcProductId}' ||
+            storeId.endsWith(packDef.rcProductId) ||
+            pkgId == packDef.slug ||
+            pkgId == packDef.rcProductId ||
+            pkgId == 'tokens_${packDef.slug}') {
+          return pkg;
+        }
       }
     }
     return null;
@@ -168,24 +186,38 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
 
   /// Finds a direct StoreProduct if no Package was found in the current offering.
   StoreProduct? _storeProductFor(_PackDef packDef) {
-    return _directProducts[packDef.rcProductId];
+    return _directProducts[packDef.rcProductId] ??
+        _directProducts['com.mon5majeur.app.${packDef.rcProductId}'] ??
+        _directProducts.values.cast<StoreProduct?>().firstWhere(
+          (p) =>
+              p != null &&
+              (p.identifier == packDef.rcProductId ||
+                  p.identifier.endsWith(packDef.rcProductId)),
+          orElse: () => null,
+        );
   }
 
   /// The price string to display on a pack card.
+  /// Prioritises the native localized price string returned by App Store / Google Play,
+  /// falling back to standard euro formatting only when the store has not yet responded.
   String _priceFor(_PackDef packDef) {
     final pkg = _packageFor(packDef);
-    if (pkg != null) return pkg.storeProduct.priceString;
+    if (pkg != null && pkg.storeProduct.priceString.isNotEmpty) {
+      return pkg.storeProduct.priceString;
+    }
     final sp = _storeProductFor(packDef);
-    if (sp != null) return sp.priceString;
+    if (sp != null && sp.priceString.isNotEmpty) {
+      return sp.priceString;
+    }
     return _formatEuro(packDef.fallbackEur);
   }
 
-  /// "1,99 €" in French, "€1.99" in English.
+  /// "1,99 €" in French, "1.99 €" in English. Always in euros, never in $US.
   String _formatEuro(double v) {
     final fixed = v.toStringAsFixed(2);
     return Get.locale?.languageCode == 'fr'
         ? '${fixed.replaceAll('.', ',')} €'
-        : '€$fixed';
+        : '$fixed €';
   }
 
   /// French groups thousands ("1 200"), English prints the plain number.
@@ -216,10 +248,14 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
       // If not yet available from initial load, try fetching directly from store
       if (pkg == null && sp == null) {
         try {
-          final fetched = await RevenueCatService.instance.getProducts([packDef.rcProductId]);
+          final fetched = await RevenueCatService.instance.getProducts([
+            packDef.rcProductId,
+            'com.mon5majeur.app.${packDef.rcProductId}',
+          ]);
           if (fetched.isNotEmpty) {
             sp = fetched.first;
             _directProducts[sp.identifier] = sp;
+            if (mounted) setState(() {});
           }
         } catch (e) {
           debugPrint('⚠️ On-demand getProducts failed: $e');

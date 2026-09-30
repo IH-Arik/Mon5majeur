@@ -268,9 +268,21 @@ void main() {
       '2,500 tokens — ultimate power pack with maximum bonus capacity.'.tr,
       '2${nb}500 jetons — le pack ultime, avec la capacité de bonus maximale.',
     );
-    // English is untouched
+    // Target pack prices in French (1,99 € / 4,99 € / 9,99 € / 19,99 €)
+    Get.locale = const Locale('fr', 'FR');
+    expect(AppString.rookiePrice.tr, '1,99 €');
+    expect(AppString.allStarPrice.tr, '4,99 €');
+    expect(AppString.mvpPrice.tr, '9,99 €');
+    expect(AppString.hallOfFamePrice.tr, '19,99 €');
+    expect('Buy @price'.trParams({'price': '4,99 €'}), 'Acheter 4,99 €');
+
+    // Target pack prices in English (euros, not $US)
     Get.locale = const Locale('en', 'US');
-    expect('Buy @price'.trParams({'price': '\$4.99'}), 'Buy \$4.99');
+    expect(AppString.rookiePrice.tr, '1.99 €');
+    expect(AppString.allStarPrice.tr, '4.99 €');
+    expect(AppString.mvpPrice.tr, '9.99 €');
+    expect(AppString.hallOfFamePrice.tr, '19.99 €');
+    expect('Buy @price'.trParams({'price': '4.99 €'}), 'Buy 4.99 €');
     expect('@n TOKENS'.trParams({'n': '550'}), '550 TOKENS');
     expect('Restore Purchases'.tr, 'Restore Purchases');
   });
