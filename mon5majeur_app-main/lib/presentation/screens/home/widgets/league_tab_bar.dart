@@ -21,12 +21,16 @@ class LeagueTabBar extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelect;
   final VoidCallback onLive;
+  // On the Live screen itself: "Live" is the highlighted tab and none of the
+  // four switchable ones is.
+  final bool liveActive;
 
   const LeagueTabBar({
     super.key,
     required this.selected,
     required this.onSelect,
     required this.onLive,
+    this.liveActive = false,
   });
 
   static const icons = <IconData>[
@@ -55,8 +59,9 @@ class LeagueTabBar extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < labels.length; i++)
-            _tab(labels[i], icons[i], selected == i, () => onSelect(i)),
-          _tab(AppString.liveTabLabel.tr, liveIcon, false, onLive),
+            _tab(labels[i], icons[i], !liveActive && selected == i,
+                () => onSelect(i)),
+          _tab(AppString.liveTabLabel.tr, liveIcon, liveActive, onLive),
         ],
       ),
     );

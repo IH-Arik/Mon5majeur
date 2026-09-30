@@ -528,6 +528,9 @@ class FrenchTranslation {
     AppString.staleDataNotice: 'Les scores peuvent avoir quelques minutes de retard',
     AppString.sixthManDropped: 'Non comptabilisé (6ème homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
+    AppString.noLiveMatchNow: 'Aucun match en direct pour le moment',
+    AppString.noLiveMatchHint:
+        'Tire pour actualiser. Les scores en direct apparaissent ici pendant les matchs.',
     AppString.budgetExceeded: 'Budget dépassé',
 
     // Onboarding tutorial (spec Part 3) — copy taken from the approved

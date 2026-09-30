@@ -110,6 +110,7 @@ class LiveScoreService:
                 league_name=league.name,
                 total_score=0.0,
                 players=[],
+                has_live_games=await _has_live_games(today),
                 is_stale=False,
                 refreshed_at=datetime.now(timezone.utc),
             )
@@ -128,6 +129,7 @@ class LiveScoreService:
             league_name=league.name,
             total_score=round(total, 2),
             players=players,
+            has_live_games=await _has_live_games(today),
             is_stale=await _is_stale_for_date(today),
             refreshed_at=datetime.now(timezone.utc),
         )
@@ -257,6 +259,13 @@ async def _build_live_players(
         result.append(LivePlayerScore(is_counted=is_counted, **e))
 
     return result, total
+
+
+async def _has_live_games(nba_date: date) -> bool:
+    return await NBAGame.find(
+        NBAGame.nba_date == nba_date,
+        NBAGame.status == "live",
+    ).count() > 0
 
 
 async def _is_stale_for_date(nba_date: date) -> bool:

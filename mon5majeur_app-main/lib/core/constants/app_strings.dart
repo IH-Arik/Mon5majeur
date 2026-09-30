@@ -640,6 +640,9 @@ class AppString {
   static const String staleDataNotice = 'Scores may be a few minutes behind';
   static const String sixthManDropped = 'Not counted (6th Man)';
   static const String noLineupSubmitted = 'No lineup submitted';
+  static const String noLiveMatchNow = 'No live match right now';
+  static const String noLiveMatchHint =
+      'Pull down to refresh. Live scores appear here while games are being played.';
   static const String budgetExceeded = 'Budget exceeded';
 
   // Onboarding tutorial (spec Part 3)

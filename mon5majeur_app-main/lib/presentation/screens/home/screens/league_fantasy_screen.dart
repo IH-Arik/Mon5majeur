@@ -88,11 +88,14 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
     if (!mounted) return;
     if (matchId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No live match for this matchday yet.'.tr)),
+        SnackBar(content: Text(AppString.noLiveMatchNow.tr)),
       );
       return;
     }
-    context.push('${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchId');
+    // The live screen returns the league tab the user tapped, if any.
+    final tab = await context
+        .push<int>('${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchId');
+    if (tab != null && mounted) setState(() => _selectedTab = tab);
   }
 
   String _leagueName = '';

@@ -60,6 +60,9 @@ class LiveGlobalScore(BaseSchema):
     total_score: float
     players: list[LivePlayerScore]
 
+    # True while at least one NBA game of the day is in progress. The app
+    # shows "no live game" instead of a 0-point lineup when it is False.
+    has_live_games: bool = False
     is_stale: bool = False
     refreshed_at: datetime
 

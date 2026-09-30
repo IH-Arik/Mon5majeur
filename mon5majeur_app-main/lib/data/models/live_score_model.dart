@@ -137,6 +137,9 @@ class LiveGlobalScore {
   final String leagueName;
   final double totalScore;
   final List<LivePlayerScore> players;
+  // Any NBA game in progress right now. Defaults to true when an older
+  // backend does not send it, so data is never hidden by mistake.
+  final bool hasLiveGames;
   final bool isStale;
   final DateTime refreshedAt;
 
@@ -145,6 +148,7 @@ class LiveGlobalScore {
     required this.leagueName,
     required this.totalScore,
     required this.players,
+    this.hasLiveGames = true,
     required this.isStale,
     required this.refreshedAt,
   });
@@ -159,6 +163,7 @@ class LiveGlobalScore {
               ?.map((e) => LivePlayerScore.fromJson(e))
               .toList() ??
           [],
+      hasLiveGames: json['has_live_games'] as bool? ?? true,
       isStale: json['is_stale'] as bool? ?? false,
       refreshedAt:
           DateTime.tryParse(json['refreshed_at'] ?? '') ?? DateTime.now(),

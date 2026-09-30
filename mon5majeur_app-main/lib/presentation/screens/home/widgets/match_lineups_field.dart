@@ -15,18 +15,21 @@ class MatchLineupsField extends StatelessWidget {
   final PlayerScore? teamA;
   final PlayerScore? teamB;
   final bool scoresHidden;
+  // Global League live view: only the user's own five, no opponent.
+  final bool showOpponent;
 
   const MatchLineupsField({
     super.key,
     required this.teamA,
     required this.teamB,
     this.scoresHidden = false,
+    this.showOpponent = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final teamAPlayers = teamA?.selection ?? [];
-    final teamBPlayers = teamB?.selection ?? [];
+    final teamBPlayers = showOpponent ? (teamB?.selection ?? []) : <PlayerSelection>[];
 
     return Container(
       margin: EdgeInsets.only(top: 12.h),
@@ -79,7 +82,7 @@ class MatchLineupsField extends StatelessWidget {
                   Assets.icons.jerseyFlower,
                   isTopTeam: false,
                 ),
-            ] else if (teamAPlayers.isNotEmpty)
+            ] else if (showOpponent && teamAPlayers.isNotEmpty)
               _teamNotReady(
                 teamB?.teamName ?? 'Team B',
                 Colors.blue,

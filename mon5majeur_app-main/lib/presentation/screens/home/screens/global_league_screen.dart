@@ -54,7 +54,12 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
             LeagueTabBar(
               selected: _selectedTab,
               onSelect: (i) => setState(() => _selectedTab = i),
-              onLive: () => context.push(RoutePath.liveScoreScreen.addBasePath),
+              onLive: () async {
+                // The live screen returns the league tab the user tapped.
+                final tab = await context
+                    .push<int>(RoutePath.liveScoreScreen.addBasePath);
+                if (tab != null && mounted) setState(() => _selectedTab = tab);
+              },
             ),
             Expanded(
               child: IndexedStack(
