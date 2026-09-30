@@ -121,11 +121,11 @@ class CreateLeagueController extends GetxController {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              title.tr,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 4),
-            Text(message),
+            Text(message.tr),
           ],
         ),
         backgroundColor: isError ? Colors.red : Colors.green,

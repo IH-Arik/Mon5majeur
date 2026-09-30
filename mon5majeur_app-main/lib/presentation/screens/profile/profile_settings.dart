@@ -198,7 +198,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _showSnack(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(message.tr),
         backgroundColor: isError ? const Color(0xFFD32F2F) : const Color(0xFF4CAF50),
       ),
     );
@@ -900,7 +900,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg),
+            content: Text(errorMsg.tr),
             backgroundColor: const Color(0xFFD32F2F),
           ),
         );

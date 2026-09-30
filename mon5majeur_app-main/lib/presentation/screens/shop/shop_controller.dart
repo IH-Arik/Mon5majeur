@@ -76,7 +76,7 @@ class ShopController extends GetxController {
       }
       final detail =
           (response.body?['detail'] as String?) ?? 'Purchase failed'.tr;
-      Get.snackbar('Error'.tr, detail,
+      Get.snackbar('Error'.tr, _localizeServerMessage(detail),
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);
@@ -112,7 +112,7 @@ class ShopController extends GetxController {
         return true;
       }
       final detail = (response.body?['detail'] as String?) ?? 'Purchase failed'.tr;
-      Get.snackbar('Error'.tr, detail,
+      Get.snackbar('Error'.tr, _localizeServerMessage(detail),
           backgroundColor: const Color(0xFF3a0000),
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM);
@@ -145,7 +145,7 @@ class ShopController extends GetxController {
       } else {
         final detail =
             (response.body?['detail'] as String?) ?? 'Could not earn tokens'.tr;
-        Get.snackbar('Not available'.tr, detail,
+        Get.snackbar('Not available'.tr, _localizeServerMessage(detail),
             backgroundColor: const Color(0xFF2a2a2a),
             colorText: Colors.white,
             snackPosition: SnackPosition.BOTTOM);
@@ -158,5 +158,28 @@ class ShopController extends GetxController {
     } finally {
       isEarningVideo.value = false;
     }
+  }
+
+  /// The backend answers in English, with numbers/names baked into the text,
+  /// so those messages cannot be looked up as a whole (QA 28/09 #2).
+  String _localizeServerMessage(String detail) {
+    final insufficient =
+        RegExp(r'^Insufficient tokens: have (\d+), need (\d+)$').firstMatch(detail);
+    if (insufficient != null) {
+      return 'Insufficient tokens: have @have, need @need'.trParams({
+        'have': insufficient.group(1)!,
+        'need': insufficient.group(2)!,
+      });
+    }
+    final unavailable =
+        RegExp(r"^(?:Bonus|Token pack) '(.+)' is currently unavailable$").firstMatch(detail);
+    if (unavailable != null) return 'This item is currently unavailable'.tr;
+    final daily =
+        RegExp(r'^Daily video already claimed\. Try again in (\d+)h (\d+)m\.$').firstMatch(detail);
+    if (daily != null) {
+      return 'Daily video already claimed. Try again in @h h @m m.'
+          .trParams({'h': daily.group(1)!, 'm': daily.group(2)!});
+    }
+    return detail.tr;
   }
 }

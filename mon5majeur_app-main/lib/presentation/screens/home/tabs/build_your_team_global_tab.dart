@@ -398,7 +398,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     if (!isTeamComplete) {
       Get.snackbar(
         'Incomplete Team'.tr,
-        'Please select all 5 players before saving',
+        'Please select all 5 players before saving'.tr,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,

@@ -117,10 +117,10 @@ class ProfileSetupController extends GetxController {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              title,
+              title.tr,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            Text(message),
+            Text(message.tr),
           ],
         ),
         backgroundColor: isError ? Colors.red.shade400 : Colors.green.shade400,

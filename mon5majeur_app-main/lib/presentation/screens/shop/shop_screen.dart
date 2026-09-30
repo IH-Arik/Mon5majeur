@@ -391,9 +391,12 @@ class ShopScreen extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      offer.slug == _liveScoringOffer.slug
-                          ? '${offer.name.tr} activated for 30 days'
-                          : '${offer.name.tr} added to your inventory',
+                      // Interpolating before .tr would never match a French
+                      // key, so the bonus name goes in as a parameter (QA 28/09 #2).
+                      (offer.slug == _liveScoringOffer.slug
+                              ? '@name activated for 30 days'
+                              : '@name added to your inventory')
+                          .trParams({'name': offer.name.tr}),
                       style: const TextStyle(color: Colors.white),
                     ),
                     backgroundColor: const Color(0xFF1a3d1a),
