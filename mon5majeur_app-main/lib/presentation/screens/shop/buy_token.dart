@@ -41,7 +41,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
   static const _packs = [
     _PackDef(
       slug: 'rookie',
-      rcProductId: 'tokens_200_rookie',
+      rcProductId: 'com.mon5majeur.app.tokens_200',
       name: 'Rookie Pack',
       description: '200 tokens to enter tournaments and tweak your weekly lineup.',
       tokens: 200,
@@ -52,7 +52,7 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     ),
     _PackDef(
       slug: 'all_star',
-      rcProductId: 'tokens_550_allstar',
+      rcProductId: 'token_550_allstar',
       name: 'All-Star Pack',
       description: '550 tokens — perfect for active players unlocking daily boosts.',
       tokens: 550,
@@ -123,12 +123,39 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
   }
 
   Future<void> _loadProductsAndOfferings() async {
+    // ── 0. Fetch storefront country code for diagnostics ──
+    try {
+      final storefront = await Purchases.storefront;
+      debugPrint('🌍 RevenueCat storefront country: ${storefront?.countryCode}');
+    } catch (e) {
+      debugPrint('⚠️ Could not fetch storefront country: $e');
+    }
+
     try {
       // 1. Fetch Offerings from RevenueCat
       final offerings = await RevenueCatService.instance.fetchOfferings();
       if (mounted) {
         _offerings = offerings;
       }
+
+      // ── Diagnostic: log every offering/package/product the store returned ──
+      debugPrint('═══════════════════════════════════════════════════════');
+      debugPrint('📦 RevenueCat Offerings (${offerings.all.length} total):');
+      for (final entry in offerings.all.entries) {
+        final offering = entry.value;
+        debugPrint('  ┌ Offering "${entry.key}" '
+            '(${offering.availablePackages.length} packages)');
+        for (final pkg in offering.availablePackages) {
+          final sp = pkg.storeProduct;
+          debugPrint('  │  Package: "${pkg.identifier}" → '
+              'product="${sp.identifier}", '
+              'price=${sp.priceString}, '
+              'currency=${sp.currencyCode}, '
+              'title="${sp.title}"');
+        }
+        debugPrint('  └─────────────────────────────────');
+      }
+      debugPrint('═══════════════════════════════════════════════════════');
     } catch (e) {
       debugPrint('⚠️ RevenueCat fetchOfferings error: $e');
     }
@@ -140,11 +167,26 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
         ..._packs.map((p) => p.rcProductId),
         ..._packs.map((p) => 'com.mon5majeur.app.${p.rcProductId}'),
       ];
+      debugPrint('🔍 Requesting direct products: $productIds');
       final products = await RevenueCatService.instance.getProducts(productIds);
       for (final p in products) {
         _directProducts[p.identifier] = p;
       }
-      debugPrint('📦 RevenueCat loaded ${products.length} direct products from store');
+      debugPrint('📦 Direct products returned (${products.length}):');
+      for (final p in products) {
+        debugPrint('   ✅ "${p.identifier}" → ${p.priceString} '
+            '(${p.currencyCode})');
+      }
+
+      // ── Show which packs are still unresolved ──
+      for (final pack in _packs) {
+        final pkg = _packageFor(pack);
+        final sp = _storeProductFor(pack);
+        if (pkg == null && sp == null) {
+          debugPrint('   ❌ MISSING: "${pack.rcProductId}" (${pack.name}) '
+              '— not found in offerings or direct products');
+        }
+      }
     } catch (e) {
       debugPrint('⚠️ RevenueCat getProducts error: $e');
     }
@@ -157,9 +199,30 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
     }
   }
 
+  /// Normalises a product identifier for fuzzy matching.
+  /// Strips known bundle prefixes and lowercases to handle ID mismatches.
+  static String _normalise(String id) {
+    var norm = id.toLowerCase();
+    // Strip common bundle ID prefixes
+    const prefixes = [
+      'com.mon5majeur.app.',
+      'com.mon5majeur.',
+    ];
+    for (final prefix in prefixes) {
+      if (norm.startsWith(prefix)) {
+        norm = norm.substring(prefix.length);
+        break;
+      }
+    }
+    return norm;
+  }
+
   /// Tries to find the RevenueCat package that matches [packDef].
   Package? _packageFor(_PackDef packDef) {
     if (_offerings == null) return null;
+    final target = _normalise(packDef.rcProductId);
+    final slugNorm = packDef.slug.toLowerCase();
+
     // Check current offering, or fallback to default or first available offering
     final offeringsToCheck = <Offering>[
       if (_offerings!.current != null) _offerings!.current!,
@@ -169,14 +232,17 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
 
     for (final offering in offeringsToCheck) {
       for (final pkg in offering.availablePackages) {
-        final storeId = pkg.storeProduct.identifier;
-        final pkgId = pkg.identifier;
-        if (storeId == packDef.rcProductId ||
-            storeId == 'com.mon5majeur.app.${packDef.rcProductId}' ||
-            storeId.endsWith(packDef.rcProductId) ||
-            pkgId == packDef.slug ||
-            pkgId == packDef.rcProductId ||
-            pkgId == 'tokens_${packDef.slug}') {
+        final storeNorm = _normalise(pkg.storeProduct.identifier);
+        final pkgNorm = pkg.identifier.toLowerCase();
+
+        if (storeNorm == target ||
+            storeNorm.endsWith(target) ||
+            target.endsWith(storeNorm) ||
+            pkgNorm == slugNorm ||
+            pkgNorm == target ||
+            pkgNorm == 'tokens_$slugNorm' ||
+            // Also check if the store ID contains the slug
+            storeNorm.contains(slugNorm)) {
           return pkg;
         }
       }
@@ -186,15 +252,25 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
 
   /// Finds a direct StoreProduct if no Package was found in the current offering.
   StoreProduct? _storeProductFor(_PackDef packDef) {
-    return _directProducts[packDef.rcProductId] ??
-        _directProducts['com.mon5majeur.app.${packDef.rcProductId}'] ??
-        _directProducts.values.cast<StoreProduct?>().firstWhere(
-          (p) =>
-              p != null &&
-              (p.identifier == packDef.rcProductId ||
-                  p.identifier.endsWith(packDef.rcProductId)),
-          orElse: () => null,
-        );
+    // 1. Exact key lookup
+    final exact = _directProducts[packDef.rcProductId] ??
+        _directProducts['com.mon5majeur.app.${packDef.rcProductId}'];
+    if (exact != null) return exact;
+
+    // 2. Normalised fuzzy match across all loaded products
+    final target = _normalise(packDef.rcProductId);
+    final slugNorm = packDef.slug.toLowerCase();
+
+    for (final p in _directProducts.values) {
+      final norm = _normalise(p.identifier);
+      if (norm == target ||
+          norm.endsWith(target) ||
+          target.endsWith(norm) ||
+          norm.contains(slugNorm)) {
+        return p;
+      }
+    }
+    return null;
   }
 
   /// The price string to display on a pack card.
@@ -271,8 +347,20 @@ class _BuyTokenScreenState extends State<BuyTokenScreen>
         // ── Real store purchase via direct StoreProduct ──
         info = await RevenueCatService.instance.purchaseStoreProduct(sp);
       } else {
-        // ── Store product not found in Google Play Store ──
-        debugPrint('⚠️ Store product "${packDef.rcProductId}" not found in Google Play Store');
+        // ── Store product not found ──
+        final allOfferingIds = <String>[];
+        if (_offerings != null) {
+          for (final o in _offerings!.all.values) {
+            for (final pkg in o.availablePackages) {
+              allOfferingIds.add(pkg.storeProduct.identifier);
+            }
+          }
+        }
+        debugPrint('═══════════════════════════════════════════════════════');
+        debugPrint('❌ PRODUCT NOT FOUND: "${packDef.rcProductId}" (${packDef.name})');
+        debugPrint('   Available from offerings: $allOfferingIds');
+        debugPrint('   Available from direct: ${_directProducts.keys.toList()}');
+        debugPrint('═══════════════════════════════════════════════════════');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
