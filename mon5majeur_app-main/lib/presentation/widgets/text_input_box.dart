@@ -21,6 +21,14 @@ class TextInputBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      // Both uses are e-mail fields. Without these the phone keyboard
+      // capitalised the first letter ("Name@..."), which the server did not
+      // match, so the first login attempt failed (QA 30/09 #8 #1).
+      keyboardType: TextInputType.emailAddress,
+      textCapitalization: TextCapitalization.none,
+      autocorrect: false,
+      enableSuggestions: false,
+      autofillHints: const [AutofillHints.email],
       style: TextStyle(color: const Color(0xFFB1B1B1), fontSize: 14.sp),
       validator: validator,
       decoration: InputDecoration(

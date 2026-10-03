@@ -295,7 +295,7 @@ class AuthController extends GetxController {
       final apiClient = ApiClient();
 
       final body = {
-        "email": emailController.text.trim(),
+        "email": emailController.text.trim().toLowerCase(),
         "password": passwordController.text,
         "password2": confirmPasswordController.text,
       };
@@ -314,7 +314,7 @@ class AuthController extends GetxController {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.body;
-        lastRegisteredEmail = emailController.text.trim();
+        lastRegisteredEmail = emailController.text.trim().toLowerCase();
 
         showSnackbar(
           context,
@@ -331,7 +331,7 @@ class AuthController extends GetxController {
         Future.delayed(const Duration(seconds: 1), () {
           GoRouter.of(context).pushNamed(
             RoutePath.verifyRegistration,
-            extra: {'email': emailController.text.trim(), 'from': 'signup'},
+            extra: {'email': emailController.text.trim().toLowerCase(), 'from': 'signup'},
           );
         });
       } else {
@@ -471,7 +471,7 @@ class AuthController extends GetxController {
       final apiClient = ApiClient();
 
       final body = {
-        "email": email ?? lastRegisteredEmail ?? emailController.text.trim(),
+        "email": email ?? lastRegisteredEmail ?? emailController.text.trim().toLowerCase(),
         "password": passwordController.text,
         "password2": confirmPasswordController.text,
       };
@@ -514,7 +514,7 @@ class AuthController extends GetxController {
   Future<void> login(BuildContext context) async {
     if (isLoading.value) return;
 
-    String email = emailController.text.trim();
+    String email = emailController.text.trim().toLowerCase();
     String password = passwordController.text.trim();
 
     // Basic validation
