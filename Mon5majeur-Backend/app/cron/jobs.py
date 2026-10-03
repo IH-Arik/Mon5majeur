@@ -23,6 +23,15 @@ logger = logging.getLogger(__name__)
 
 MAX_CATCH_UP_NIGHTS = 30
 
+# A pending night this many days old that Goalserve still cannot supply is
+# given up on instead of blocking every later night. Without this, leftover
+# duels from 2026-06-14 (no real stats behind them) made the close break on
+# that night every single day and never reach a real one (found 2026-10-03).
+STALE_NIGHT_DAYS = 3
+
+# How many days ahead the schedule sync loads games.
+SCHEDULE_AHEAD_DAYS = 7
+
 
 async def _nights_pending_close(today: date) -> list[date]:
     """Nights BEFORE `today` that still have unscored duels in an active
@@ -119,6 +128,14 @@ async def daily_close_job() -> None:
             try:
                 await _prepare_night_data(night)
             except GoalserveEmptyResponseError as exc:
+                if (today - night).days > STALE_NIGHT_DAYS:
+                    # Too old to ever be recovered: do not let it hold back
+                    # the nights that can be closed.
+                    logger.error(
+                        "CRON daily_close_job: giving up on stale night %s (%s)",
+                        night, exc,
+                    )
+                    continue
                 # Stop here: later nights must not be scored before this one.
                 # The duels stay pending and are retried by the next run.
                 logger.critical("CRON daily_close_job: %s", exc)
@@ -146,6 +163,9 @@ async def daily_close_job() -> None:
                 "CRON daily_close_job: night %s not closed - skipping prices/archive/push",
                 latest,
             )
+            # Free the lock: a failed close must be re-runnable today, not
+            # silently skipped until the TTL runs out.
+            await release(lock_key)
             return
 
         # 3. Recompute player prices
@@ -395,10 +415,16 @@ async def sync_today_schedule_job() -> None:
     from app.modules.players.service import PlayerService
     from app.modules.players.repository import PlayerRepository
 
-    logger.info("CRON sync_today_schedule_job: fetching today's NBA schedule")
+    logger.info("CRON sync_today_schedule_job: fetching the NBA schedule")
     try:
         svc = PlayerService(PlayerRepository())
-        count = await svc.sync_schedule(None)  # None → today (UTC)
+        # Today AND the coming week (one cached download serves every date):
+        # syncing only today meant a game was never in the app before the
+        # morning of its own day.
+        today = datetime.now(timezone.utc).date()
+        count = 0
+        for offset in range(SCHEDULE_AHEAD_DAYS + 1):
+            count += await svc.sync_schedule(today + timedelta(days=offset))
         logger.info("CRON: synced %d games from Goalserve schedule", count)
     except Exception as exc:
         logger.error("CRON sync_today_schedule_job failed: %s", exc, exc_info=True)
