@@ -34,9 +34,12 @@ class NotificationsController extends GetxController {
 
       if (response.statusCode == 200 && response.body != null) {
         final data = response.body['data'] as List? ?? [];
+        // Newest first. The server sorts too; sorting here keeps the order
+        // right even against a backend that does not yet.
         notifications.value = data
             .map((json) => NotificationModel.fromJson(json))
-            .toList();
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       } else {
         _logger.e('Failed to load notifications: ${response.statusCode}');
       }
@@ -96,6 +99,43 @@ class NotificationsController extends GetxController {
     } catch (e) {
       _logger.e('Error marking notification read: $e');
     }
+  }
+
+  /// Deletes one notification. Removed from the list at once; put back if the
+  /// server refuses (QA 30/09 #8 #2).
+  Future<bool> deleteNotification(String id) async {
+    final index = notifications.indexWhere((n) => n.id == id);
+    if (index == -1) return false;
+    final removed = notifications[index];
+    notifications.removeAt(index);
+    try {
+      final ok = await ApiClient().delete(
+        url: ApiUrl.baseUrl + ApiUrl.deleteNotification(id),
+        code: 204,
+      );
+      if (ok) return true;
+    } catch (e) {
+      _logger.e('Error deleting notification: $e');
+    }
+    notifications.insert(index.clamp(0, notifications.length), removed);
+    return false;
+  }
+
+  /// Deletes every notification of the user.
+  Future<bool> clearAll() async {
+    final backup = List<NotificationModel>.from(notifications);
+    notifications.clear();
+    try {
+      final ok = await ApiClient().delete(
+        url: ApiUrl.baseUrl + ApiUrl.clearNotifications,
+        code: 204,
+      );
+      if (ok) return true;
+    } catch (e) {
+      _logger.e('Error clearing notifications: $e');
+    }
+    notifications.assignAll(backup);
+    return false;
   }
 
   @override

@@ -36,3 +36,20 @@ async def mark_all_notifications_read(
     service: NotificationService = Depends(get_notification_service),
 ) -> None:
     await service.mark_all_read(current_user.id)
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+async def clear_my_notifications(
+    current_user: User = Depends(get_current_user),
+    service: NotificationService = Depends(get_notification_service),
+) -> None:
+    await service.delete_all(current_user.id)
+
+
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_notification(
+    notification_id: PydanticObjectId,
+    current_user: User = Depends(get_current_user),
+    service: NotificationService = Depends(get_notification_service),
+) -> None:
+    await service.delete(notification_id, current_user.id)

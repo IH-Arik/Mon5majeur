@@ -27,6 +27,15 @@ class NotificationService:
     async def mark_all_read(self, user_id: PydanticObjectId) -> None:
         await self.repo.mark_all_read(user_id)
 
+    async def delete(self, notification_id: PydanticObjectId, user_id: PydanticObjectId) -> None:
+        n = await self.repo.get(notification_id)
+        if not n or n.recipient_id != user_id:
+            raise NotFoundException("Notification not found")
+        await n.delete()
+
+    async def delete_all(self, user_id: PydanticObjectId) -> None:
+        await self.repo.delete_all(user_id)
+
     async def send_push_to_user(
         self,
         user_id: PydanticObjectId,

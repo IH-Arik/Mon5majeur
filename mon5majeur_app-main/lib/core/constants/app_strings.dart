@@ -432,6 +432,9 @@ class AppString {
 
   static const String markAllRead = 'Mark all read';
   static const String noNotifications = 'No notifications yet';
+  static const String clearAllTitle = 'Delete all notifications?';
+  static const String clearAllBody = 'This cannot be undone.';
+  static const String notificationDeleted = 'Notification deleted';
   static const String myLeaguesTitle = 'My leagues';
   static const String searchHint = 'Search your leagues by name';
   static const String noActivePublicLeaguesAvailable =

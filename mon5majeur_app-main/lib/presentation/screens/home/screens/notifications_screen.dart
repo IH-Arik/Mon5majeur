@@ -27,24 +27,41 @@ class NotificationsScreen extends StatelessWidget {
               routePath: RoutePath.home.addBasePath,
             ),
             SizedBox(height: 8.h),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                child: Obx(
-                  () => controller.hasUnread
-                      ? TextButton(
-                          onPressed: controller.markAllRead,
-                          child: Text(
-                            AppString.markAllRead.tr,
-                            style: TextStyle(
-                              color: const Color(0xFFFF6B35),
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Obx(
+                () => Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    controller.notifications.isEmpty
+                        ? const SizedBox.shrink()
+                        : TextButton.icon(
+                            onPressed: () => _confirmClearAll(context, controller),
+                            icon: Icon(Icons.delete_outline,
+                                color: Colors.white70, size: 16.r),
+                            label: Text(
+                              AppString.clearAll.tr,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        )
-                      : const SizedBox.shrink(),
+                    controller.hasUnread
+                        ? TextButton(
+                            onPressed: controller.markAllRead,
+                            child: Text(
+                              AppString.markAllRead.tr,
+                              style: TextStyle(
+                                color: const Color(0xFFFF6B35),
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ],
                 ),
               ),
             ),
@@ -93,9 +110,25 @@ class NotificationsScreen extends StatelessWidget {
                       final n = controller.notifications[index];
                       return Padding(
                         padding: EdgeInsets.only(bottom: 12.h),
-                        child: _NotificationCard(
-                          notification: n,
-                          onTap: () => controller.markRead(n.id),
+                        child: Dismissible(
+                          key: ValueKey(n.id),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: EdgeInsets.only(right: 20.w),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B1E1E),
+                              borderRadius: BorderRadius.circular(16.r),
+                            ),
+                            child: Icon(Icons.delete_outline,
+                                color: Colors.white, size: 24.r),
+                          ),
+                          onDismissed: (_) => controller.deleteNotification(n.id),
+                          child: _NotificationCard(
+                            notification: n,
+                            onTap: () => controller.markRead(n.id),
+                            onDelete: () => controller.deleteNotification(n.id),
+                          ),
                         ),
                       );
                     },
@@ -113,8 +146,13 @@ class NotificationsScreen extends StatelessWidget {
 class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
-  const _NotificationCard({required this.notification, required this.onTap});
+  const _NotificationCard({
+    required this.notification,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   IconData get _icon {
     switch (notification.notificationType) {
@@ -190,6 +228,16 @@ class _NotificationCard extends StatelessWidget {
                             color: Color(0xFFFF6B35),
                           ),
                         ),
+                      SizedBox(width: 6.w),
+                      GestureDetector(
+                        onTap: onDelete,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: EdgeInsets.all(2.r),
+                          child: Icon(Icons.close,
+                              color: const Color(0xFF777777), size: 18.r),
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: 4.h),
@@ -221,8 +269,43 @@ class _NotificationCard extends StatelessWidget {
 String _timeAgo(DateTime dt) {
   final diff = DateTime.now().toUtc().difference(dt.toUtc());
   if (diff.inMinutes < 1) return 'Just now'.tr;
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
+  if (diff.inMinutes < 60) {
+    return '@n min ago'.trParams({'n': '${diff.inMinutes}'});
+  }
+  if (diff.inHours < 24) return '@n h ago'.trParams({'n': '${diff.inHours}'});
+  if (diff.inDays < 7) return '@n d ago'.trParams({'n': '${diff.inDays}'});
   return '${dt.day}/${dt.month}/${dt.year}';
+}
+
+Future<void> _confirmClearAll(
+  BuildContext context,
+  NotificationsController controller,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1A1A),
+      title: Text(
+        AppString.clearAllTitle.tr,
+        style: TextStyle(color: Colors.white, fontSize: 16.sp),
+      ),
+      content: Text(
+        AppString.clearAllBody.tr,
+        style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(AppString.cancel.tr,
+              style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(AppString.delete.tr,
+              style: TextStyle(color: const Color(0xFFFF6B35), fontSize: 13.sp)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) await controller.clearAll();
 }
