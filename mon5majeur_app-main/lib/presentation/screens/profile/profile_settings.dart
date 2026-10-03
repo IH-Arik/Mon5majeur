@@ -1,3 +1,4 @@
+import '../../../core/utils/server_message.dart';
 import 'package:flutter/material.dart';
 import '../../../core/services/revenuecat_service.dart';
 import 'package:get/get.dart';
@@ -198,7 +199,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _showSnack(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message.tr),
+        content: Text(localizeServerMessage(message)),
         backgroundColor: isError ? const Color(0xFFD32F2F) : const Color(0xFF4CAF50),
       ),
     );
@@ -900,7 +901,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMsg.tr),
+            content: Text(localizeServerMessage(errorMsg)),
             backgroundColor: const Color(0xFFD32F2F),
           ),
         );

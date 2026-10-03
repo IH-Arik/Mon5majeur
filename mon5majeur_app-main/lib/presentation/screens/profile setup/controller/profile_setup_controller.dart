@@ -1,4 +1,5 @@
 // lib/presentation/screens/profile setup/controller/profile_setup_controller.dart
+import '../../../../core/utils/server_message.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -120,7 +121,7 @@ class ProfileSetupController extends GetxController {
               title.tr,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            Text(message.tr),
+            Text(localizeServerMessage(message)),
           ],
         ),
         backgroundColor: isError ? Colors.red.shade400 : Colors.green.shade400,

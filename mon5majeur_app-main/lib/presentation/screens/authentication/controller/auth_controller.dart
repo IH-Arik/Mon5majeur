@@ -1,4 +1,5 @@
 // lib/controllers/auth_controller.dart - Complete implementation
+import '../../../../core/utils/server_message.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -263,7 +264,7 @@ class AuthController extends GetxController {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 4),
-            Text(message.tr),
+            Text(localizeServerMessage(message)),
           ],
         ),
         backgroundColor: isError ? Colors.red.shade400 : Colors.green.shade400,

@@ -1,3 +1,4 @@
+import '../../../../core/utils/server_message.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -125,7 +126,7 @@ class CreateLeagueController extends GetxController {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 4),
-            Text(message.tr),
+            Text(localizeServerMessage(message)),
           ],
         ),
         backgroundColor: isError ? Colors.red : Colors.green,
