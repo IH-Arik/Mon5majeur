@@ -10,6 +10,7 @@ class ApiUrl {
   static const register = "/api/auth/register/";
   static const verifyOtp = "/api/auth/verify-otp/";
   static const login = "/api/auth/login/";
+  static const refresh = "/api/v1/auth/refresh";
 
   // Forgot password endpoints
   static const forgotPassword = "/api/auth/forgot-password/";

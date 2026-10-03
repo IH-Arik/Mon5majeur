@@ -17,6 +17,7 @@ import '../../../../core/routes/routes.dart';
 import '../../../../data/services/api_service.dart';
 // import '../../../../data/services/api_url.dart' hide ApiUrl;
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/session_service.dart';
 import '../../../../controllers/global_league_controller.dart';
 import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../controllers/my_match_today_controller.dart';
@@ -157,13 +158,20 @@ class AuthController extends GetxController {
     RevenueCatService.instance.loginUser();
   }
 
-  Future<bool> _refreshSessionAndCheckProfile() async {
+  /// Where the freshly signed-in user goes. The profile request is retried:
+  /// a single slow or failed call used to send an existing user to Profile
+  /// Setup, which looked like the first login attempt had failed (QA 30/09
+  /// #8 #1).
+  Future<SessionDestination> _refreshSessionAndCheckProfile() async {
     final homeController = Get.isRegistered<HomeController>()
         ? Get.find<HomeController>()
         : Get.put(HomeController());
     homeController.resetSessionState();
-    await homeController.fetchUserProfile();
-    return await homeController.checkProfileExists();
+    final destination = await SessionService.resolve(attempts: 3);
+    if (destination == SessionDestination.home) {
+      await homeController.fetchUserProfile();
+    }
+    return destination;
   }
 
   // Start OTP countdown timer
@@ -413,7 +421,8 @@ class AuthController extends GetxController {
               _resetUserScopedControllers();
               await _persistAuthSession(loginResponse.body);
 
-              final hasProfile = await _refreshSessionAndCheckProfile();
+              final hasProfile =
+                  await _refreshSessionAndCheckProfile() == SessionDestination.home;
               if (!context.mounted) return;
 
               emailController.clear();
@@ -559,23 +568,36 @@ class AuthController extends GetxController {
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
             try {
-              final hasProfile = await _refreshSessionAndCheckProfile();
+              final destination = await _refreshSessionAndCheckProfile();
+              if (!context.mounted) return;
 
-              if (hasProfile) {
-                logger.i('✅ Profile exists, navigating to home');
-                if (context.mounted) {
+              switch (destination) {
+                case SessionDestination.home:
+                  logger.i('✅ Profile exists, navigating to home');
                   context.go(RoutePath.home.addBasePath);
-                }
-              } else {
-                logger.i('ℹ️ No profile found, navigating to profile setup');
-                if (context.mounted) {
+                case SessionDestination.profileSetup:
+                  logger.i('ℹ️ No profile found, navigating to profile setup');
                   context.go(RoutePath.profileSetup.addBasePath);
-                }
+                case SessionDestination.signedOut:
+                  // the server rejected the token it had just issued
+                  showSnackbar(
+                    context,
+                    AppString.errorGeneric.tr,
+                    "Connection error. Make sure you have internet.".tr,
+                    isError: true,
+                  );
               }
             } catch (e) {
+              // Never guess "no profile" on an error: that sent existing
+              // users to Profile Setup. Stay here and let them retry.
               logger.e('❌ Navigation error: $e');
               if (context.mounted) {
-                context.go(RoutePath.profileSetup.addBasePath);
+                showSnackbar(
+                  context,
+                  AppString.errorGeneric.tr,
+                  "Connection error. Make sure you have internet.".tr,
+                  isError: true,
+                );
               }
             }
           }
@@ -963,7 +985,8 @@ class AuthController extends GetxController {
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
             try {
-              final hasProfile = await _refreshSessionAndCheckProfile();
+              final hasProfile =
+                  await _refreshSessionAndCheckProfile() == SessionDestination.home;
               if (context.mounted) {
                 context.go(
                   hasProfile
@@ -1096,7 +1119,8 @@ class AuthController extends GetxController {
         Future.delayed(const Duration(milliseconds: 100), () async {
           if (context.mounted) {
             try {
-              final hasProfile = await _refreshSessionAndCheckProfile();
+              final hasProfile =
+                  await _refreshSessionAndCheckProfile() == SessionDestination.home;
               if (context.mounted) {
                 context.go(
                   hasProfile

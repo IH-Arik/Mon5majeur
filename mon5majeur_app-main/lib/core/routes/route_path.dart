@@ -2,6 +2,7 @@ class RoutePath {
   static const String basePath = '/';
 
   //=================== Initial screens ===================
+  static const String splashScreen = 'splashScreen';
   static const String languageScreen = 'languageScreen';
 
   //=================== Auth screens ===================

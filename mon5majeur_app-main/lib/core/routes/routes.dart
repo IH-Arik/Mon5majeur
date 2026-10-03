@@ -7,6 +7,7 @@ import '../../data/services/api_url.dart';
 import '../../presentation/screens/authentication/forget_password_screen.dart';
 import '../../presentation/screens/authentication/language_selection.dart';
 import '../../presentation/screens/authentication/otp_screen.dart';
+import '../../presentation/screens/authentication/splash_screen.dart';
 import '../../presentation/screens/authentication/password_updated_success_screen.dart';
 import '../../presentation/screens/authentication/sign_in_screen.dart';
 import '../../presentation/screens/authentication/sign_up_screen.dart';
@@ -29,10 +30,15 @@ import 'route_path.dart';
 class AppRouter {
   static final GoRouter initRoute = GoRouter(
     navigatorKey: Get.key,
-    initialLocation: RoutePath.languageScreen.addBasePath,
+    initialLocation: RoutePath.splashScreen.addBasePath,
     debugLogDiagnostics: true,
     routes: [
       /// Authentication
+      GoRoute(
+        name: RoutePath.splashScreen,
+        path: RoutePath.splashScreen.addBasePath,
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         name: RoutePath.languageScreen,
         path: RoutePath.languageScreen.addBasePath,
