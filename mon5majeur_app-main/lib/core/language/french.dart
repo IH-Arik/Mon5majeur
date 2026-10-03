@@ -528,6 +528,7 @@ class FrenchTranslation {
     AppString.staleDataNotice: 'Les scores peuvent avoir quelques minutes de retard',
     AppString.sixthManDropped: 'Non comptabilisé (6ème homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
+    AppString.removeBonus: 'Retirer',
     AppString.noLiveMatchNow: 'Aucun match en direct pour le moment',
     AppString.noLiveMatchHint:
         'Tire pour actualiser. Les scores en direct apparaissent ici pendant les matchs.',

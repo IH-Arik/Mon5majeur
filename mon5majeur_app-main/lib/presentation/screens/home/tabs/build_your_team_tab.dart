@@ -512,6 +512,19 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     if (type == BonusType.sixthMan) _selectSixthMan();
   }
 
+  // QA 30/09 #8 #5: a placed bonus can be taken off again. The charge is
+  // given back, exactly as when switching to another bonus.
+  void _removeBonus() {
+    final previous = activeBonus;
+    if (previous == null) return;
+    setState(() {
+      _adjustCharge(previous, 1);
+      activeBonus = null;
+      showBonusOptions = false;
+      if (previous == BonusType.sixthMan) sixthManPlayer = null;
+    });
+  }
+
   bool isSubmitting = false; // Add this
 
   // Add this method to submit players
@@ -1030,6 +1043,35 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             isActivated: luxuryTaxActivated,
             onTap: () => _selectBonus(BonusType.luxuryTax),
           ),
+          if (activeBonus != null) ...[
+            SizedBox(height: 14.h),
+            GestureDetector(
+              onTap: _removeBonus,
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 8.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: const Color(0xFFFF6B35)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.close, color: const Color(0xFFFF6B35), size: 14.r),
+                    SizedBox(width: 4.w),
+                    Text(
+                      AppString.removeBonus.tr,
+                      style: TextStyle(
+                        color: const Color(0xFFFF6B35),
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1167,27 +1209,27 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           ],
         ),
         // When a bonus is active, show its icon; tap to change the bonus.
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (activeIcon != null)
-              activeIcon.image(width: 24.w, height: 24.h)
-            else
-              Icon(Icons.bolt, color: orange, size: 24.r),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                AppString.bonuses.tr,
-                maxLines: 1,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w800,
-                ),
+        // Placed bonus: no "Bonus" text, just its image, large.
+        child: activeIcon != null
+            ? Center(child: activeIcon.image(width: 40.w, height: 40.h))
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.bolt, color: orange, size: 24.r),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      AppString.bonuses.tr,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -530,6 +530,7 @@ class EnglishTranslation {
     AppString.staleDataNotice: 'Scores may be a few minutes behind',
     AppString.sixthManDropped: 'Not counted (6th Man)',
     AppString.noLineupSubmitted: 'No lineup submitted',
+    AppString.removeBonus: 'Remove',
     AppString.noLiveMatchNow: 'No live match right now',
     AppString.noLiveMatchHint:
         'Pull down to refresh. Live scores appear here while games are being played.',
