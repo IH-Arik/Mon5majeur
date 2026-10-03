@@ -888,7 +888,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          icon.image(width: 24.w, height: 24.h),
+          icon.image(width: 24.w, height: 24.h, fit: BoxFit.contain),
           SizedBox(width: 8.w),
           Text(
             label,
@@ -1099,7 +1099,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
               border: Border.all(color: const Color(0xFF2C2C2C), width: 1.r),
             ),
             child: Center(
-              child: icon.image(width: 16.w, height: 16.h),
+              child: icon.image(width: 16.w, height: 16.h, fit: BoxFit.contain),
             ),
           ),
           SizedBox(width: 4.w),
@@ -1211,7 +1211,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         // When a bonus is active, show its icon; tap to change the bonus.
         // Placed bonus: no "Bonus" text, just its image, large.
         child: activeIcon != null
-            ? Center(child: activeIcon.image(width: 40.w, height: 40.h))
+            ? Center(child: activeIcon.image(width: 40.w, height: 40.h, fit: BoxFit.contain))
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

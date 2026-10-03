@@ -194,6 +194,7 @@ class ShopScreen extends StatelessWidget {
                       backgroundColor: const Color(0xFF3d2f2f),
                       borderColor: const Color(0xFFFF6B35),
                       iconAsset: Assets.icons.chefcurry,
+                      iconFit: BoxFit.contain,
                       title: AppString.chefCurry.tr,
                       subtitle: AppString.doublePoints.tr,
                       description: AppString.chefCurryDesc.tr,
