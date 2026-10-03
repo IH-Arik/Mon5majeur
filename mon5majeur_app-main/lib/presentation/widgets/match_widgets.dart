@@ -56,7 +56,11 @@ class MatchStatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Assets.icons.livescoring.image(width: 18.r, height: 18.r),
+          Assets.icons.livematch.image(
+            width: 20.r,
+            height: 20.r,
+            fit: BoxFit.contain,
+          ),
           SizedBox(height: 3.h),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),

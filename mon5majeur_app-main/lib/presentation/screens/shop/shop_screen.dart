@@ -250,7 +250,8 @@ class ShopScreen extends StatelessWidget {
                     _BonusCard(
                       backgroundColor: const Color(0xFF2d2444),
                       borderColor: const Color(0xFF4a3d6b),
-                      iconAsset: Assets.icons.livescoring,
+                      iconAsset: Assets.icons.livematch,
+                      iconFit: BoxFit.contain,
                       title: AppString.liveScoring.tr,
                       subtitle: AppString.realTimeUpdate.tr,
                       description: AppString.liveScoringDesc.tr,
@@ -424,6 +425,7 @@ class _BonusCard extends StatelessWidget {
   final Color backgroundColor;
   final Color borderColor;
   final AssetGenImage iconAsset;
+  final BoxFit iconFit;
   final String title;
   final String subtitle;
   final String description;
@@ -441,6 +443,7 @@ class _BonusCard extends StatelessWidget {
     required this.backgroundColor,
     required this.borderColor,
     required this.iconAsset,
+    this.iconFit = BoxFit.cover,
     required this.title,
     required this.subtitle,
     required this.description,
@@ -480,7 +483,7 @@ class _BonusCard extends StatelessWidget {
                 child: Center(
                   child: Padding(
                     padding: EdgeInsets.all(2.w),
-                    child: iconAsset.image(fit: BoxFit.cover),
+                    child: iconAsset.image(fit: iconFit),
                   ),
                 ),
               ),

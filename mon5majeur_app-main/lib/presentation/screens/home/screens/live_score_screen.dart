@@ -330,7 +330,11 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Assets.icons.livescoring.image(width: 40.r, height: 40.r),
+                  Assets.icons.livematch.image(
+                    width: 56.r,
+                    height: 56.r,
+                    fit: BoxFit.contain,
+                  ),
                   SizedBox(height: 16.h),
                   Text(
                     AppString.noLiveMatchNow.tr,
