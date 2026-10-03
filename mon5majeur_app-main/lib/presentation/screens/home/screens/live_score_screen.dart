@@ -27,8 +27,18 @@ import '../widgets/match_lineups_field.dart';
 class LiveScoreScreen extends StatefulWidget {
   final LiveScoreMode mode;
   final String? matchId;
+  final int? leagueId;
+  final int? matchDay;
+  final bool isPrivate;
 
-  const LiveScoreScreen({super.key, required this.mode, this.matchId});
+  const LiveScoreScreen({
+    super.key,
+    required this.mode,
+    this.matchId,
+    this.leagueId,
+    this.matchDay,
+    this.isPrivate = false,
+  });
 
   @override
   State<LiveScoreScreen> createState() => _LiveScoreScreenState();
@@ -42,10 +52,16 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   void initState() {
     super.initState();
     _tag = widget.mode == LiveScoreMode.duel
-        ? 'live_${widget.matchId}'
+        ? 'live_${widget.matchId ?? '${widget.leagueId}_${widget.matchDay}'}'
         : 'live_global';
     controller = Get.put(
-      LiveScoreController(mode: widget.mode, matchId: widget.matchId),
+      LiveScoreController(
+        mode: widget.mode,
+        matchId: widget.matchId,
+        leagueId: widget.leagueId,
+        matchDay: widget.matchDay,
+        isPrivate: widget.isPrivate,
+      ),
       tag: _tag,
     );
   }
@@ -104,8 +120,13 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   // Same header as the league screens: logo, league name 14sp, 10sp line
   // under it, back button on the left.
   Widget _buildHeader() {
+    // Both observables are always read: an Obx that reads none throws, and in
+    // a release build that is the plain grey screen QA 28/09/#8 #7 reported
+    // on the Global League (only the duel branch used to touch an Rx).
+    final duelName = controller.matchScore.value?.leagueName;
+    final resolvedName = controller.leagueName.value;
     final name = _isDuel
-        ? controller.matchScore.value?.leagueName ?? ''
+        ? (duelName != null && duelName.isNotEmpty ? duelName : resolvedName)
         : AppString.globalLeague.tr;
     return Container(
       width: double.infinity,

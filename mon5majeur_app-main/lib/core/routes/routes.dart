@@ -351,10 +351,17 @@ class AppRouter {
         name: RoutePath.liveScoreScreen,
         path: RoutePath.liveScoreScreen.addBasePath,
         builder: (BuildContext context, GoRouterState state) {
-          final matchId = state.uri.queryParameters['matchId'];
+          final q = state.uri.queryParameters;
+          final matchId = q['matchId'];
+          final leagueId = int.tryParse(q['leagueId'] ?? '');
           return LiveScoreScreen(
-            mode: matchId != null ? LiveScoreMode.duel : LiveScoreMode.global,
+            mode: (matchId != null || leagueId != null)
+                ? LiveScoreMode.duel
+                : LiveScoreMode.global,
             matchId: matchId,
+            leagueId: leagueId,
+            matchDay: int.tryParse(q['matchDay'] ?? ''),
+            isPrivate: q['isPrivate'] == 'true',
           );
         },
       ),

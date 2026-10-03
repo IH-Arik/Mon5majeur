@@ -4,7 +4,10 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/local_db/local_db.dart';
 import '../../../../data/models/live_score_model.dart';
+import '../../../../data/models/match_result_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 
@@ -21,8 +24,24 @@ enum LiveScoreMode { duel, global }
 class LiveScoreController extends GetxController {
   final LiveScoreMode mode;
   final String? matchId;
+  // A league tab opens this screen right away with only the league and match
+  // day; the duel id is looked up here, behind the loading state, instead of
+  // freezing the tab for a second before the screen appears (QA 28/09/#8 #7).
+  final int? leagueId;
+  final int? matchDay;
+  final bool isPrivate;
 
-  LiveScoreController({required this.mode, this.matchId});
+  LiveScoreController({
+    required this.mode,
+    this.matchId,
+    this.leagueId,
+    this.matchDay,
+    this.isPrivate = false,
+  });
+
+  String? _resolvedMatchId;
+  // League name known before any live data (from the match-result lookup).
+  final leagueName = ''.obs;
 
   final isLoading = true.obs;
   final isForbidden = false.obs; // no active premium/live-score subscription
@@ -54,9 +73,17 @@ class LiveScoreController extends GetxController {
 
     try {
       final apiClient = ApiClient();
-      final endpoint = mode == LiveScoreMode.duel
-          ? ApiUrl.liveMatch(matchId!)
-          : ApiUrl.liveGlobal;
+      String? duelId;
+      if (mode == LiveScoreMode.duel) {
+        duelId = matchId ?? _resolvedMatchId ?? await _resolveMatchId();
+        if (duelId == null) {
+          // No duel this match day: the screen shows "no live match".
+          isLoading.value = false;
+          return;
+        }
+      }
+      final endpoint =
+          mode == LiveScoreMode.duel ? ApiUrl.liveMatch(duelId!) : ApiUrl.liveGlobal;
       final url = '${ApiUrl.baseUrl}$endpoint';
 
       final response = await apiClient.get(url: url, showResult: true);
@@ -92,5 +119,32 @@ class LiveScoreController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// My duel of this match day in this league, from the match result.
+  Future<String?> _resolveMatchId() async {
+    final league = leagueId;
+    final day = matchDay;
+    if (league == null || day == null || day <= 0) return null;
+    try {
+      final endpoint = isPrivate
+          ? ApiUrl.privateMatchResult(league, day)
+          : ApiUrl.publicMatchResult(league, day);
+      final response =
+          await ApiClient().get(url: '${ApiUrl.baseUrl}$endpoint');
+      if (response.statusCode != 200) return null;
+      final result = MatchResultModel.fromJson(response.body);
+      leagueName.value = result.leagueName;
+      final me =
+          int.tryParse(await SharedPrefsHelper.getString(AppConstants.userId));
+      for (final pair in result.pairs) {
+        if (me != null && (pair.playerAId == me || pair.playerBId == me)) {
+          return _resolvedMatchId = pair.matchObjectId;
+        }
+      }
+    } catch (e) {
+      _logger.e('Live match lookup failed: $e');
+    }
+    return null;
   }
 }

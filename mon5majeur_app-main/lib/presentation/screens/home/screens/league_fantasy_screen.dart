@@ -11,11 +11,8 @@ import '../tabs/leaderboard_tab.dart';
 import '../tabs/result_tab.dart';
 import '../tabs/rules_tab.dart';
 import '../widgets/league_tab_bar.dart';
-import '../../../../core/constants/api_constants.dart';
-import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
-import '../../../../data/models/match_result_model.dart';
 import '../../../../data/models/standings_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
@@ -52,49 +49,24 @@ class LeagueFantasyScreen extends StatefulWidget {
 class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   late int _selectedTab = widget.initialTab;
   Key _resultKey = UniqueKey();
-  bool _openingLive = false;
 
   /// "Live" tab: the live score of MY duel in this league on the current
-  /// match day (Global League's Live shows every player instead). The duel id
-  /// comes from the match result; without one there is nothing live to show.
+  /// match day (Global League's Live shows every player instead). The screen
+  /// opens at once and looks the duel up itself behind a loading state.
   Future<void> _openLive() async {
-    if (_openingLive) return;
     final leagueId = widget.leagueId;
     final matchDay = widget.matchDay;
-    String? matchId;
-    if (leagueId != null && matchDay != null && matchDay > 0) {
-      setState(() => _openingLive = true);
-      try {
-        final endpoint = widget.isPrivate
-            ? ApiUrl.privateMatchResult(leagueId, matchDay)
-            : ApiUrl.publicMatchResult(leagueId, matchDay);
-        final response = await ApiClient().get(url: '${ApiUrl.baseUrl}$endpoint');
-        if (response.statusCode == 200) {
-          final result = MatchResultModel.fromJson(response.body);
-          final me = int.tryParse(await SharedPrefsHelper.getString(AppConstants.userId));
-          for (final pair in result.pairs) {
-            if (me != null && (pair.playerAId == me || pair.playerBId == me)) {
-              matchId = pair.matchObjectId;
-              break;
-            }
-          }
-        }
-      } catch (_) {
-        // fall through to the "no live match" message
-      } finally {
-        if (mounted) setState(() => _openingLive = false);
-      }
-    }
-    if (!mounted) return;
-    if (matchId == null) {
+    if (leagueId == null || matchDay == null || matchDay <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppString.noLiveMatchNow.tr)),
       );
       return;
     }
     // The live screen returns the league tab the user tapped, if any.
-    final tab = await context
-        .push<int>('${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchId');
+    final tab = await context.push<int>(
+      '${RoutePath.liveScoreScreen.addBasePath}'
+      '?leagueId=$leagueId&matchDay=$matchDay&isPrivate=${widget.isPrivate}',
+    );
     if (tab != null && mounted) setState(() => _selectedTab = tab);
   }
 
