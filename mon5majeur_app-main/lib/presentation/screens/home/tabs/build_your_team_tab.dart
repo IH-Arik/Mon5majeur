@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/utils/datetime_format.dart';
+import '../../../../core/utils/server_message.dart';
 import '../../../../data/models/bonus_inventory_model.dart';
 import '../../../../data/models/game_model.dart';
 import '../../../../data/models/player.dart';
@@ -622,15 +623,22 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           widget.onTeamSaved?.call(); // ADD THIS LINE
         }
       } else if (response.statusCode == 403) {
-        // Night locked server-side (first tip-off already passed).
+        // The server answers 403 for every refused lineup: invalid
+        // positions, budget, bonus AND the real lock. Only the lock message
+        // may switch the screen to "locked" (QA #9 9.2: a refused composition
+        // showed "Verrouillé" while the games had not started).
         final errorBody = response.body;
         final detail = (errorBody is Map && errorBody['detail'] != null)
             ? errorBody['detail'].toString()
-            : 'Night is locked — the first game has already tipped off.';
+            : 'Night is locked — the first game has already tipped off';
+        final reallyLocked = detail.toLowerCase().contains('locked');
         if (mounted) {
-          setState(() => lockInSeconds = 0);
+          if (reallyLocked) setState(() => lockInSeconds = 0);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(detail), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(localizeServerMessage(detail)),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else if (response.statusCode == 404) {
