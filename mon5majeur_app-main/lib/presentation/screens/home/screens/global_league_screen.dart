@@ -9,10 +9,9 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../controllers/global_league_controller.dart';
-import '../../../../data/models/player.dart';
 import '../tabs/build_your_team_global_tab.dart';
 import '../tabs/global_leaderboard_tab.dart';
-import '../tabs/my_team_tab.dart';
+import '../widgets/global_published_result.dart';
 import '../tabs/rules_tab.dart';
 import '../widgets/league_tab_bar.dart';
 
@@ -68,34 +67,11 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
                   BuildYourTeamTabGlobal(
                     onTeamSaved: _onTeamSaved, // ADD THIS
                   ),
-                  // QA4 #4: this tab used to render ResultTab(isGlobal: true),
-                  // which showed a user ranking - exactly the Classement
-                  // tab's content, duplicated. Résultats must show the
-                  // player's OWN lineup with per-player and nightly points
-                  // instead, so it now renders the same squad view that
-                  // used to live behind a separate, redundant "My Team" tab
-                  // (removed per QA4 #2). MyTeamTab only fetches a saved
-                  // team when given a leagueId + matchDay (the private/
-                  // public league path) - the Global League has neither, so
-                  // the squad GlobalLeagueController already fetches on
-                  // join is handed in directly, padded to 5 slots so
-                  // _buildPlayerWithPoints's fixed indices (0-4) never run
-                  // off the end of a shorter list.
-                  Obx(() {
-                    final squad = List<Player?>.filled(5, null);
-                    for (
-                      var i = 0;
-                      i < _controller.selectedPlayers.length && i < 5;
-                      i++
-                    ) {
-                      squad[i] = _controller.selectedPlayers[i];
-                    }
-                    return MyTeamTab(
-                      key: _resultKey,
-                      savedPlayers: squad,
-                      ownJersey: true,
-                    );
-                  }),
+                  // QA #9 7.1: the Results tab shows the lineup that produced the
+                  // latest PUBLISHED results with its points (no hourglass); the
+                  // lineup of the night in progress stays in "Créer une équipe"
+                  // and in Live. Arrows go back through earlier nights.
+                  GlobalPublishedResult(key: _resultKey),
                   const LeaderboardTab(),
                   const RulesTab(isGlobal: true),
                 ],

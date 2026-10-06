@@ -536,6 +536,8 @@ class FrenchTranslation {
     AppString.sixthManDropped: 'Non comptabilisé (6ème homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
     AppString.removeBonus: 'Retirer',
+    AppString.noPublishedResult: 'Aucun résultat publié pour le moment',
+    "Could not load the result": "Impossible de charger le résultat",
     AppString.bonusLabel: 'Bonus',
     AppString.noBonus: 'Aucun bonus',
     AppString.bonusHidden: 'Bonus révélé avec les résultats',

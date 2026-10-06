@@ -570,3 +570,63 @@ async def get_global_leaderboard_team_detail(
         total_points=int(round(last_score.total_points)),
         selected_players=enriched,
     )
+
+
+@router.get(
+    "/result/",
+    summary="A Global League lineup with its published points, browsable night by night (Results tab + 'Voir l'équipe', QA #9 7.1 / 7.3)",
+)
+async def get_global_published_result(
+    user_auto_id: int | None = Query(None, description="Whose lineup; default = me"),
+    offset: int = Query(0, ge=0, description="0 = last published night, 1 = the one before ..."),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Only nights already PUBLISHED (archived at the 09:00 close) are ever
+    returned, so the lineup of the night in progress - not played yet, no
+    score - can never appear here, for the user or for anybody else."""
+    league = await _get_global_league()
+
+    target = current_user
+    if user_auto_id is not None and user_auto_id != current_user.auto_id:
+        target = await User.find_one(User.auto_id == user_auto_id)
+        if not target:
+            raise NotFoundException("Player not found")
+
+    scores = await GlobalLeagueDailyScore.find(
+        GlobalLeagueDailyScore.user_id == target.id,
+        GlobalLeagueDailyScore.league_id == league.id,
+    ).sort(-GlobalLeagueDailyScore.nba_date).to_list()
+
+    base = {
+        "team_name": target.team_name or (target.email.split("@")[0] if target.email else "Unknown"),
+        "team_logo": target.team_logo or "",
+        "jersey_index": target.jersey_index,
+        "is_me": target.id == current_user.id,
+    }
+    if not scores or offset >= len(scores):
+        return {**base, "available": False, "has_older": False, "has_newer": offset > 0,
+                "offset": offset, "nba_date": None, "total_points": 0, "selection": []}
+
+    score = scores[offset]
+    sel = await FlutterPlayerSelection.find_one(
+        FlutterPlayerSelection.user_id == target.id,
+        FlutterPlayerSelection.league_auto_id == league.auto_id,
+        FlutterPlayerSelection.nba_date == score.nba_date,
+    )
+    items = (
+        await _global_selection_items(
+            target.id, league.auto_id or 0, sel.match_day, score.nba_date, True
+        )
+        if sel
+        else []
+    )
+    return {
+        **base,
+        "available": True,
+        "offset": offset,
+        "has_older": offset + 1 < len(scores),
+        "has_newer": offset > 0,
+        "nba_date": str(score.nba_date),
+        "total_points": int(round(score.total_points)),
+        "selection": items,
+    }

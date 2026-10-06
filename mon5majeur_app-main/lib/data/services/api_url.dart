@@ -161,5 +161,6 @@ class ApiUrl {
       "/api/v1/notifications/$id/read";
   static String deleteNotification(String id) => "/api/v1/notifications/$id";
   static const clearNotifications = "/api/v1/notifications";
+  static const globalPublishedResult = "/api/global-leagues/result/";
   static const markAllNotificationsRead = "/api/v1/notifications/read-all";
 }

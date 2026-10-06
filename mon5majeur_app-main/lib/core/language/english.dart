@@ -535,6 +535,7 @@ class EnglishTranslation {
     AppString.sixthManDropped: 'Not counted (6th Man)',
     AppString.noLineupSubmitted: 'No lineup submitted',
     AppString.removeBonus: 'Remove',
+    AppString.noPublishedResult: 'No published result yet',
     AppString.bonusLabel: 'Bonus',
     AppString.noBonus: 'No bonus',
     AppString.bonusHidden: 'Bonus revealed with the results',
