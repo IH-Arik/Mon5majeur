@@ -193,6 +193,8 @@ class LineupCourt extends StatelessWidget {
   final Widget changeJerseyButton;
   final List<Widget> inside;
   final List<Widget> floating;
+  // Taller court when the 6th man needs his own row under the starters.
+  final double? height;
 
   const LineupCourt({
     super.key,
@@ -200,6 +202,7 @@ class LineupCourt extends StatelessWidget {
     required this.changeJerseyButton,
     this.inside = const [],
     this.floating = const [],
+    this.height,
   });
 
   @override
@@ -208,7 +211,7 @@ class LineupCourt extends StatelessWidget {
       children: [
         Container(
           margin: EdgeInsets.symmetric(horizontal: 16.w),
-          height: 600.h,
+          height: height ?? 600.h,
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12.r),

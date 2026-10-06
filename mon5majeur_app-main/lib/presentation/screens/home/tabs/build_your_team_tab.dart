@@ -487,10 +487,11 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // Activate or change the active bonus. Only one bonus is active at a time;
   // switching refunds the previously active bonus's charge and consumes the new one.
   void _selectBonus(BonusType type) {
-    // Tapping the already-active bonus: just close the menu (re-pick 6th man player).
+    // Tapping the already-active bonus takes it off again (QA #9 9.1: it only
+    // lit up and could not be removed). The 6th man keeps a way to re-pick the
+    // substitute: tap his slot on the court.
     if (activeBonus == type) {
-      setState(() => showBonusOptions = false);
-      if (type == BonusType.sixthMan) _selectSixthMan();
+      _removeBonus();
       return;
     }
 
@@ -995,6 +996,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
   Widget _buildCourtField() {
     return LineupCourt(
+      height: sixthManActivated ? 720.h : null,
       slotBuilder: _buildPlayerSlot,
       changeJerseyButton: LineupChangeJerseyButton(
         jersey: jerseys[selectedJerseyIndex],
@@ -1002,8 +1004,15 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       ),
       inside: [
         Positioned(top: 30.h, right: 20.w, child: _buildBonusButton()),
+        // Own row under the starters, centred: it used to sit over the right
+        // guard and hide his name and price (QA #9 9.3).
         if (sixthManActivated)
-          Positioned(bottom: 20.h, right: 40.w, child: _buildSixthManSlot()),
+          Positioned(
+            bottom: 12.h,
+            left: 0,
+            right: 0,
+            child: Center(child: _buildSixthManSlot()),
+          ),
       ],
       // Bonus options menu - on top layer
       floating: [
