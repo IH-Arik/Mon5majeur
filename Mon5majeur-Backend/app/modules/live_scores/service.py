@@ -69,11 +69,17 @@ class LiveScoreService:
 
         league = await League.get(match.league_id)
 
+        # An opponent's Chef Curry (+3 from the first point) would give his
+        # bonus away before the 09:00 reveal, so it is left out of the score
+        # shown for any team that is not the viewer's own; the published
+        # result adds it. (QA #9 10.1 point of attention.)
         home_players, home_score = await _get_live_players_for_user(
-            match.home_user_id, league, match.match_day, match.nba_date
+            match.home_user_id, league, match.match_day, match.nba_date,
+            show_chef_curry=user.id == match.home_user_id,
         )
         away_players, away_score = await _get_live_players_for_user(
-            match.away_user_id, league, match.match_day, match.nba_date
+            match.away_user_id, league, match.match_day, match.nba_date,
+            show_chef_curry=user.id == match.away_user_id,
         )
 
         home_user = await User.get(match.home_user_id)
@@ -88,6 +94,8 @@ class LiveScoreService:
             away_user_id=match.away_user_id,
             home_team_name=home_user.team_name if home_user else None,
             away_team_name=away_user.team_name if away_user else None,
+            home_jersey_index=home_user.jersey_index if home_user else 0,
+            away_jersey_index=away_user.jersey_index if away_user else 0,
             home_score=round(home_score, 2),
             away_score=round(away_score, 2),
             match_status=match.status,
@@ -175,6 +183,7 @@ async def _get_live_players_for_user(
     league: League | None,
     match_day: int,
     nba_date: date,
+    show_chef_curry: bool = True,
 ) -> tuple[list[LivePlayerScore], float]:
     """A duel-league participant's live players + bonus-aware total, read
     from FlutterPlayerSelection — the store the team builder actually saves
@@ -190,7 +199,7 @@ async def _get_live_players_for_user(
     players, total = await _build_live_players(
         sel.selected_players, sel.sixth_man_player, nba_date
     )
-    if sel.chef_curry:
+    if sel.chef_curry and show_chef_curry:
         total += 3
     return players, total
 
