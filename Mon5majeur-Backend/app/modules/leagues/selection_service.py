@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 from beanie import PydanticObjectId
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
+from app.modules.leagues.positions import can_fill_lineup
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.users.model import User
@@ -138,10 +139,6 @@ async def get_player_selection(
     }
 
 
-_BACKCOURT = {"PG", "SG", "G"}
-_WING = {"SF", "PF", "F"}
-
-
 async def _validate_selection(selected_players: list[dict], nba_date: date | None) -> None:
     """Spec §4.1 validation rules 1-4 (budget/lock are handled separately by
     the caller). Rejects with ForbiddenException on the first violation."""
@@ -166,12 +163,10 @@ async def _validate_selection(selected_players: list[dict], nba_date: date | Non
             raise ForbiddenException(f"Player {rid} not found")
         players.append(player)
 
-    # 2 backcourt (PG/SG) + 2 wings (SF/PF) + 1 center — order-independent,
-    # since the Flutter payload doesn't carry explicit slot names.
-    backcourt = sum(1 for p in players if p.position in _BACKCOURT)
-    wing = sum(1 for p in players if p.position in _WING)
-    center = sum(1 for p in players if p.position == "C")
-    if (backcourt, wing, center) != (2, 2, 1):
+    # 2 backcourt (PG/SG) + 2 wings (SF/PF) + 1 center, where a player with
+    # several positions (G-F, F-C ...) may fill any of them: accept as soon as
+    # one valid assignment exists. The 6th man is NOT part of these five.
+    if not can_fill_lineup([p.position for p in players]):
         raise ForbiddenException(
             "Lineup must be 2 backcourt (PG/SG) + 2 wings (SF/PF) + 1 center"
         )

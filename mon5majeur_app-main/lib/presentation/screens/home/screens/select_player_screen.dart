@@ -109,7 +109,11 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
       // Apply position filter
       if (widget.positionCategory != null) {
         final pos = player.position.toUpperCase();
-        if (widget.positionCategory == 'C' && pos != 'C') return false;
+        // hybrids (F-C, C-F) can play center: test each label token
+        if (widget.positionCategory == 'C' &&
+            !pos.split(RegExp(r'[-/ ,]+')).contains('C')) {
+          return false;
+        }
         if (widget.positionCategory == 'G' && !pos.contains('G')) return false;
         if (widget.positionCategory == 'F' && !pos.contains('F')) return false;
       }
