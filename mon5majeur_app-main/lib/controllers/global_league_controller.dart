@@ -1,4 +1,5 @@
 // lib/controllers/global_league_controller.dart
+import '../core/utils/server_message.dart';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 import '../data/models/player.dart';
@@ -275,7 +276,11 @@ class GlobalLeagueController extends GetxController {
       } else {
         hasError.value = true;
         final detail = response.body?['detail'] as String? ?? 'Unknown error'.tr;
-        errorMessage.value = 'Failed to save team (@code): @detail'.trParams({'code': '${response.statusCode}', 'detail': detail});
+        // A refused lineup shows its own translated reason (position, OUT
+        // player, not playing tonight ...), not an English "(403): ...".
+        errorMessage.value = response.statusCode == 403
+            ? localizeServerMessage(detail)
+            : 'Failed to save team (@code): @detail'.trParams({'code': '${response.statusCode}', 'detail': detail});
         logger.e('Failed to submit player selection: ${response.statusCode} - $detail');
         return false;
       }
