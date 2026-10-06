@@ -30,7 +30,9 @@ class MyMatchController extends GetxController {
 
   Future<void> _fetchTodaysGames() async {
     try {
-      final resp = await _api.get(url: ApiUrl.baseUrl + ApiUrl.gamesToday);
+      // The last night that has started: last night's results stay until the
+      // new day's first tip-off (QA #9 3.2).
+      final resp = await _api.get(url: '${ApiUrl.baseUrl}${ApiUrl.gamesToday}?results=true');
       if (resp.statusCode == 200 && resp.body is List) {
         todaysGames.value = (resp.body as List)
             .map((e) => Game.fromJson(Map<String, dynamic>.from(e)))

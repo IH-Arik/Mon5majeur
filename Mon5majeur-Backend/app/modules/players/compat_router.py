@@ -128,9 +128,19 @@ def _player_to_compat(player: Player, teams=None, has_stats: bool = True) -> Pla
 )
 async def games_today(
     nba_date: str | None = Query(None, description="Override date YYYY-MM-DD, default=NBA current date"),
+    results: bool = Query(
+        False,
+        description="Results screen: the last night that has started (last "
+        "night's results stay until the new day's first tip-off) instead of "
+        "tonight's schedule",
+    ),
     _: User = Depends(get_current_user),
 ) -> list[GameCompatResponse]:
-    if nba_date:
+    if results and not nba_date:
+        from app.modules.players.nba_night import results_night
+
+        today = await results_night() or await _nba_today()
+    elif nba_date:
         try:
             today = date.fromisoformat(nba_date)
         except ValueError:
@@ -237,7 +247,12 @@ async def games_history(
 async def players_today_scores(
     _: User = Depends(get_current_user),
 ) -> PlayersTodayScoresResponse:
-    today = await _nba_today()
+    # The scores of the last PUBLISHED night (09:00 Paris after it), so the
+    # block fills at 9:00 and keeps the same night until the next 9:00
+    # (QA #9 3.1).
+    from app.modules.players.nba_night import published_night
+
+    today = await published_night() or await _nba_today()
 
     stats = await PlayerGameStats.find(
         PlayerGameStats.nba_date == today,

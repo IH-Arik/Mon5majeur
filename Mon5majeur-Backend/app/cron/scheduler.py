@@ -46,6 +46,7 @@ def start_scheduler() -> None:
     from app.cron.jobs import (
         cleanup_stale_leagues_job,
         daily_close_job,
+        prepare_night_job,
         reminder_push_job,
         sync_live_games_job,
         sync_player_roster_job,
@@ -80,6 +81,17 @@ def start_scheduler() -> None:
         replace_existing=True,
         misfire_grace_time=60,
         max_instances=1,   # a slow Goalserve reply must not stack up pollers
+    )
+
+    # 08:30 Paris — fetch and score the night that just ended, so the 09:00
+    # close is quick and the results are out at 09:00 sharp
+    scheduler.add_job(
+        prepare_night_job,
+        CronTrigger(hour=8, minute=30, timezone=PARIS_TZ),
+        id="prepare_night",
+        replace_existing=True,
+        misfire_grace_time=300,
+        max_instances=1,
     )
 
     # 09:00 Paris — daily close (scores → standings → prices)

@@ -240,6 +240,7 @@ def _stub_night(monkeypatch, *, games, stat_rows, sync_calls):
 
     class _Stats:
         nba_date = _Field("nba_date")
+        score_computed = _Field("score_computed")
 
         @staticmethod
         def find(*_):

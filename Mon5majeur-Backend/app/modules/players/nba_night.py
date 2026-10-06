@@ -72,3 +72,48 @@ def season_start(today: date) -> date:
     full statistics although no official game had been played)."""
     year = today.year if today.month >= 10 else today.year - 1
     return date(year, 10, 1)
+
+
+async def _recent_nights(now: datetime, limit: int = 30) -> list[tuple[date, datetime | None]]:
+    """(night, first tip-off) of the latest nights up to today, newest first."""
+    games = (
+        await NBAGame.find(NBAGame.nba_date <= now.date())
+        .sort(-NBAGame.nba_date)
+        .limit(limit * 16)
+        .to_list()
+    )
+    first_tip: dict[date, datetime | None] = {}
+    for g in games:
+        tip = g.tip_off_time
+        if tip is not None and tip.tzinfo is None:
+            tip = tip.replace(tzinfo=timezone.utc)
+        if g.nba_date not in first_tip:
+            first_tip[g.nba_date] = tip
+        elif tip is not None and (first_tip[g.nba_date] is None or tip < first_tip[g.nba_date]):
+            first_tip[g.nba_date] = tip
+    return list(first_tip.items())[:limit]
+
+
+def _started(night_first_tip: datetime | None, now: datetime) -> bool:
+    return night_first_tip is not None and night_first_tip <= now
+
+
+async def results_night(now: datetime | None = None) -> date | None:
+    """The night the "NBA results" block shows: the last night that has
+    started. Last night's results therefore stay up until the first tip-off of
+    the new day, and only then does the new day appear (QA #9 3.2)."""
+    now = now or datetime.now(timezone.utc)
+    for night, tip in await _recent_nights(now):
+        if _started(tip, now):
+            return night
+    return None
+
+
+async def published_night(now: datetime | None = None) -> date | None:
+    """The latest night whose results are published (09:00 Paris after the
+    night): what the "fantasy scores of the day" block shows (QA #9 3.1)."""
+    now = now or datetime.now(timezone.utc)
+    for night, tip in await _recent_nights(now):
+        if _started(tip, now) and now >= publication_cutoff(night):
+            return night
+    return None

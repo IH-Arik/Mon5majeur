@@ -132,3 +132,52 @@ def test_schedule_sync_covers_today_and_the_coming_week(monkeypatch):
     assert asked[0] == date(2026, 10, 3)
     assert asked[-1] == date(2026, 10, 10)
     assert len(asked) == 8
+
+
+def test_a_night_already_fetched_and_scored_is_not_fetched_again(monkeypatch):
+    """QA #9 3.3: the 09:00 close must not wait for Goalserve when the 08:30
+    job (or the live poller) already has the night final and scored."""
+    from types import SimpleNamespace
+
+    from app.modules.players import model as pm
+    from app.modules.players import service as ps
+
+    games = [SimpleNamespace(goalserve_id="g1", status="final")]
+    synced = []
+
+    async def _async(v):
+        return v
+
+    class _Field:
+        def __init__(self, n):
+            self.n = n
+
+        def __eq__(self, o):
+            return ("eq", self.n, o)
+
+    class _NBAGame:
+        nba_date = _Field("nba_date")
+
+        @staticmethod
+        def find(*_):
+            return SimpleNamespace(to_list=lambda: _async(games))
+
+    class _Stats:
+        nba_date = _Field("nba_date")
+        score_computed = _Field("score_computed")
+
+        @staticmethod
+        def find(*args):
+            # the "pending" query has a second condition: nothing pending
+            return SimpleNamespace(count=lambda: _async(0 if len(args) == 2 else 240))
+
+    async def _sync(self, night):
+        synced.append(night)
+
+    monkeypatch.setattr(pm, "NBAGame", _NBAGame)
+    monkeypatch.setattr(pm, "PlayerGameStats", _Stats)
+    monkeypatch.setattr(ps.PlayerService, "sync_scores_for_date", _sync)
+
+    asyncio.run(jobs._prepare_night_data(date(2026, 10, 4)))
+
+    assert synced == []

@@ -66,6 +66,39 @@ async def _nights_pending_close(today: date) -> list[date]:
     return [r["_id"].date() if isinstance(r["_id"], datetime) else r["_id"] for r in rows]
 
 
+async def _night_ready(night: date, games: list) -> bool:
+    """Every game final, box scores in, fantasy scores computed."""
+    from app.modules.players.model import PlayerGameStats
+
+    if not games or any(g.status != "final" for g in games):
+        return False
+    rows = await PlayerGameStats.find(PlayerGameStats.nba_date == night).count()
+    if rows == 0:
+        return False
+    pending = await PlayerGameStats.find(
+        PlayerGameStats.nba_date == night,
+        PlayerGameStats.score_computed == False,  # noqa: E712
+    ).count()
+    return pending == 0
+
+
+async def prepare_night_job() -> None:
+    """08:30 Paris: fetch and score the night that just ended, so the 09:00
+    close only has to score duels. Failures are only logged: the 09:00 close
+    still does the full work itself."""
+    from app.modules.players.nba_night import latest_finished_night
+
+    today = datetime.now(timezone.utc).date()
+    try:
+        night = await latest_finished_night(today)
+        if night is None:
+            return
+        await _prepare_night_data(night)
+        logger.info("CRON prepare_night_job: night %s ready", night)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("CRON prepare_night_job: night not ready yet (%s)", exc)
+
+
 async def _prepare_night_data(night: date) -> None:
     """Make sure the night's box scores are really in before anything is scored.
 
@@ -82,6 +115,12 @@ async def _prepare_night_data(night: date) -> None:
     games = await NBAGame.find(NBAGame.nba_date == night).to_list()
     if not games:
         return  # no NBA games that night: nothing to fetch, duels are forfeits
+
+    # Already fetched, finished and scored (by the 08:30 pre-close job or the
+    # live poller): the 09:00 close must not wait for Goalserve again, so the
+    # results are out at 09:00 sharp (QA #9 3.3: they arrived at 09:05).
+    if await _night_ready(night, games):
+        return
 
     svc = PlayerService(PlayerRepository())
     await svc.sync_scores_for_date(night)
