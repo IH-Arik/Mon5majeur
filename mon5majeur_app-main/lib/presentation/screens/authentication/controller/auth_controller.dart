@@ -23,6 +23,7 @@ import '../../../../controllers/global_league_controller.dart';
 import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../controllers/my_match_today_controller.dart';
 import '../../../../controllers/notifications_controller.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/revenuecat_service.dart';
 
 import '../../home/controllers/home_controller.dart';
@@ -153,6 +154,10 @@ class AuthController extends GetxController {
     if (Get.isRegistered<LanguageController>()) {
       Get.find<LanguageController>().syncCurrentLanguageToBackend();
     }
+
+    // The FCM token is sent to the backend for THIS account (at app start
+    // there was no session yet, so that first registration was refused).
+    syncFcmTokenIfPermissionGranted();
 
     // ── RevenueCat: link this auth session to the RC subscriber ID ──
     // Fire-and-forget; a failure here is non-fatal.

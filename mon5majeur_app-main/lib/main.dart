@@ -46,6 +46,16 @@ Future<void> main() async {
   // validation prompt (team_confirm_controls.dart) — this just keeps the
   // token in sync on every app start once permission already exists.
   unawaited(syncFcmTokenIfPermissionGranted());
+  // Tokens rotate: send the new one to the backend whenever it changes, and
+  // show pushes that arrive while the app is open (iOS hides them otherwise).
+  FirebaseMessaging.instance.onTokenRefresh.listen((_) => registerFcmToken());
+  unawaited(
+    FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    ),
+  );
 
   // ── RevenueCat ──
   // Initialise the SDK early so the paywall can fetch offerings immediately.

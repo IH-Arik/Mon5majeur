@@ -48,15 +48,31 @@ async def send_push(
     try:
         from firebase_admin import messaging
 
+        # Explicit Android/iOS delivery settings: high priority so the push
+        # reaches a phone whose app is closed or asleep, and the default
+        # sound on iOS (QA #9 2.7: pushes were not received on the phone).
         msg = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
             data={k: str(v) for k, v in (data or {}).items()},
             token=token,
+            android=messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(sound="default"),
+            ),
+            apns=messaging.APNSConfig(
+                headers={"apns-priority": "10"},
+                payload=messaging.APNSPayload(aps=messaging.Aps(sound="default")),
+            ),
         )
-        messaging.send(msg)
+        # firebase-admin is synchronous: keep it off the event loop.
+        import asyncio
+
+        await asyncio.to_thread(messaging.send, msg)
         return True
     except Exception as exc:
-        logger.warning("FCM send failed (token=%s...): %s", token[:8], exc)
+        # A refused token (unregistered, wrong APNs key...) is the usual reason
+        # a phone never receives anything: keep it visible in the logs.
+        logger.warning("FCM send failed (token=%s...): %s: %s", token[:8], type(exc).__name__, exc)
         return False
 
 

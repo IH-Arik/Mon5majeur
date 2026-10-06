@@ -50,6 +50,11 @@ class NotificationService:
         """
         from app.modules.users.model import User
         from app.modules.notifications.fcm import send_push
+        from app.modules.notifications.i18n import localize
+
+        user = await User.get(user_id)
+        # The in-app entry and the push are written in the user's language.
+        title, body = localize(title, body, user.language if user else None)
 
         # Save in-app notification
         await Notification(
@@ -60,7 +65,6 @@ class NotificationService:
         ).insert()
 
         # Send push
-        user = await User.get(user_id)
         if user and user.fcm_token and user.push_notifications_enabled:
             notification_types = user.notification_types or []
             if data and data.get("type") in notification_types or not notification_types:

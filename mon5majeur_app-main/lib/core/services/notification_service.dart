@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../data/services/api_service.dart';
+import '../local_db/local_db.dart';
 import '../../data/services/api_url.dart';
 
 /// Triggers the OS notification-permission prompt, and if granted,
@@ -31,6 +32,21 @@ Future<void> registerFcmToken() async {
     // Best-effort — a failed registration just means this device won't
     // receive pushes until the next successful sync; never block the UI.
   }
+}
+
+/// Asks the OS permission once, at first launch (QA #9 2.7: the prompt only
+/// came after the first team validation, so most players never saw it). A
+/// refusal is final: it is not asked again. The token is registered as soon as
+/// the permission is granted.
+Future<void> askNotificationPermissionOnce() async {
+  const key = 'notification_permission_asked';
+  final asked = await SharedPrefsHelper.getBool(key) ?? false;
+  if (asked) {
+    await syncFcmTokenIfPermissionGranted();
+    return;
+  }
+  await SharedPrefsHelper.setBool(key, true);
+  await requestNotificationPermission();
 }
 
 /// Called once at app startup: if the user already granted notification

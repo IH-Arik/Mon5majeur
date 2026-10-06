@@ -1,3 +1,4 @@
+import '../../../core/services/notification_service.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -56,6 +57,10 @@ class _HomeScreenState extends State<HomeScreen>
     });
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _tutorial.checkHomeReadiness(),
+    );
+    // Push permission at first launch (QA #9 2.7), asked only once.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => askNotificationPermissionOnce(),
     );
 
     // Logo bounce animation
