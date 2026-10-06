@@ -39,6 +39,9 @@ class LiveMatchScore(BaseSchema):
     away_user_id: PydanticObjectId
     home_team_name: str | None
     away_team_name: str | None
+    # each team's saved jersey, so the court wears the right one
+    home_jersey_index: int = 0
+    away_jersey_index: int = 0
 
     home_score: float
     away_score: float

@@ -391,6 +391,16 @@ async def post_global_selection(
     # countdown above is computed against, keeping the two consistent.
     night = await _nba_today()
 
+    # Same checks as the duel leagues (5 distinct players, 2-2-1 positions,
+    # each plays tonight and is not OUT). With no game scheduled tonight there
+    # is nothing to check "plays tonight" against, so that part is skipped.
+    from app.modules.leagues.selection_service import _validate_selection
+
+    games_tonight = await NBAGame.find(NBAGame.nba_date == night).count()
+    await _validate_selection(
+        payload.selected_players, night if games_tonight else None
+    )
+
     if doc:
         doc.selected_players = payload.selected_players
         doc.nba_date = night

@@ -73,6 +73,8 @@ class LiveMatchScore {
   final String awayUserId;
   final String? homeTeamName;
   final String? awayTeamName;
+  final int homeJerseyIndex;
+  final int awayJerseyIndex;
 
   final double homeScore;
   final double awayScore;
@@ -95,6 +97,8 @@ class LiveMatchScore {
     required this.awayUserId,
     this.homeTeamName,
     this.awayTeamName,
+    this.homeJerseyIndex = 0,
+    this.awayJerseyIndex = 0,
     required this.homeScore,
     required this.awayScore,
     required this.matchStatus,
@@ -115,6 +119,8 @@ class LiveMatchScore {
       awayUserId: json['away_user_id']?.toString() ?? '',
       homeTeamName: json['home_team_name'],
       awayTeamName: json['away_team_name'],
+      homeJerseyIndex: (json['home_jersey_index'] as num?)?.toInt() ?? 0,
+      awayJerseyIndex: (json['away_jersey_index'] as num?)?.toInt() ?? 0,
       homeScore: (json['home_score'] as num?)?.toDouble() ?? 0.0,
       awayScore: (json['away_score'] as num?)?.toDouble() ?? 0.0,
       matchStatus: json['match_status'] ?? 'upcoming',
