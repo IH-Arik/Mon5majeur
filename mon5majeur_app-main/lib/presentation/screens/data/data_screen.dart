@@ -13,7 +13,7 @@ class Player {
   final String? id;
   final String name;
   final String position;
-  final int avg;
+  final int? avg; // null until the player has played a game this season
   final double price;
   final String team;
   final String? teamId;
@@ -23,7 +23,7 @@ class Player {
     this.id,
     required this.name,
     required this.position,
-    required this.avg,
+    this.avg,
     required this.price,
     required this.team,
     this.teamId,
@@ -42,8 +42,7 @@ class Player {
       id: json['id']?.toString(),
       name: json['name'] ?? '',
       position: json['position'] ?? '',
-      avg:
-          0, // API doesn't provide avg, you might need to calculate or use a default
+      avg: (json['avg'] as num?)?.round(),
       price: parsedPrice,
       team: json['team'] ?? '',
       teamId: json['team_id']?.toString(),
@@ -51,6 +50,20 @@ class Player {
     );
   }
 }
+
+// All 30 franchises: the team filter must list every team, not only the ones
+// playing tonight (QA #9 4.2).
+const _nbaTeams = [
+  'Atlanta Hawks', 'Boston Celtics', 'Brooklyn Nets', 'Charlotte Hornets',
+  'Chicago Bulls', 'Cleveland Cavaliers', 'Dallas Mavericks', 'Denver Nuggets',
+  'Detroit Pistons', 'Golden State Warriors', 'Houston Rockets',
+  'Indiana Pacers', 'LA Clippers', 'Los Angeles Lakers', 'Memphis Grizzlies',
+  'Miami Heat', 'Milwaukee Bucks', 'Minnesota Timberwolves',
+  'New Orleans Pelicans', 'New York Knicks', 'Oklahoma City Thunder',
+  'Orlando Magic', 'Philadelphia 76ers', 'Phoenix Suns',
+  'Portland Trail Blazers', 'Sacramento Kings', 'San Antonio Spurs',
+  'Toronto Raptors', 'Utah Jazz', 'Washington Wizards',
+];
 
 class DataScreen extends StatefulWidget {
   const DataScreen({super.key});
@@ -84,7 +97,7 @@ class _DataScreenState extends State<DataScreen> {
 
   // Available positions and teams from API
   final Set<String> _availablePositions = {};
-  final Set<String> _availableTeams = {};
+  final Set<String> _availableTeams = {..._nbaTeams};
 
   @override
   void initState() {
@@ -122,7 +135,9 @@ class _DataScreenState extends State<DataScreen> {
         });
       }
 
-      final url = '${ApiUrl.baseUrl}/api/players-today/';
+      // all=true: the complete player database, not only tonight's teams
+      // (QA #9 4.1).
+      final url = '${ApiUrl.baseUrl}/api/players-today/?all=true';
 
       final response = await _apiClient.get(url: url, showResult: true);
 
@@ -149,6 +164,9 @@ class _DataScreenState extends State<DataScreen> {
             _allPlayers = players;
             _isLoading = false;
           });
+          // Sorting, search and filters must cover EVERY player, not only the
+          // first page on screen (QA #9 4.2): fetch the other pages now.
+          _loadAllRemaining();
         }
       } else {
         setState(() {
@@ -162,6 +180,14 @@ class _DataScreenState extends State<DataScreen> {
         _isLoading = false;
       });
       debugPrint('Error fetching players: $e');
+    }
+  }
+
+  Future<void> _loadAllRemaining() async {
+    while (mounted && _hasMorePages && _nextPageUrl != null) {
+      final before = _allPlayers.length;
+      await _loadMorePlayers();
+      if (_allPlayers.length == before) break; // a page failed: stop, no loop
     }
   }
 
@@ -238,7 +264,8 @@ class _DataScreenState extends State<DataScreen> {
 
     // Sort by average score
     filtered.sort((a, b) {
-      return _sortAscending ? a.avg.compareTo(b.avg) : b.avg.compareTo(a.avg);
+      final x = a.avg ?? -1, y = b.avg ?? -1; // no game yet: below everyone
+      return _sortAscending ? x.compareTo(y) : y.compareTo(x);
     });
 
     return filtered;
@@ -617,6 +644,7 @@ class _DataScreenState extends State<DataScreen> {
 
                           final player = filteredPlayers[index];
                           return _buildPlayerCard(
+                            player.id,
                             player.name,
                             player.position,
                             player.avg,
@@ -632,7 +660,8 @@ class _DataScreenState extends State<DataScreen> {
           /// Filter Menu Overlay
           if (_showFilterMenu)
             Positioned(
-              top: 80.h,
+              top: 8.h,
+              bottom: 12.h,
               right: 16.w,
               child: Container(
                 width: 250.w,
@@ -938,6 +967,8 @@ class _DataScreenState extends State<DataScreen> {
                             ],
                           ),
                         ),
+                      // room under the last option
+                      SizedBox(height: 32.h),
                     ],
                   ),
                 ),
@@ -969,9 +1000,10 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildPlayerCard(
+    String? id,
     String name,
     String position,
-    int avg,
+    int? avg,
     String price,
     String team,
   ) {
@@ -981,6 +1013,7 @@ class _DataScreenState extends State<DataScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => PlayerInfoScreen(
+              playerId: id,
               name: name,
               position: position,
               avg: avg,
@@ -1055,7 +1088,7 @@ class _DataScreenState extends State<DataScreen> {
               child: Column(
                 children: [
                   Text(
-                    avg.toString(),
+                    avg?.toString() ?? '-',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -1070,13 +1103,19 @@ class _DataScreenState extends State<DataScreen> {
             /// Price
             Expanded(
               flex: 1,
-              child: Text(
-                price,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
+              // One line whatever the amount ("40.0M" used to wrap).
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  price,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),

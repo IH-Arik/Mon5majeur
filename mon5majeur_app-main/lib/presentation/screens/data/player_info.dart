@@ -1,26 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:math';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
-// Import AppString
+import '../../../data/services/api_service.dart';
+import '../../../data/services/api_url.dart';
 
-class PlayerInfoScreen extends StatelessWidget {
+/// Player sheet, fed by GET /api/players/{id}/info/ (QA #9 4.4: the values used
+/// to be random numbers, hence "Points -6.0" and 69 % selected). While the
+/// player has no game this season everything reads "-" consistently.
+class PlayerInfoScreen extends StatefulWidget {
+  final String? playerId;
   final String name;
   final String position;
-  final int avg;
+  final int? avg;
   final String price;
   final String team;
 
   const PlayerInfoScreen({
     super.key,
+    this.playerId,
     required this.name,
     required this.position,
-    required this.avg,
+    this.avg,
     required this.price,
     required this.team,
   });
+
+  @override
+  State<PlayerInfoScreen> createState() => _PlayerInfoScreenState();
+}
+
+class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
+  String get name => widget.name;
+  String get position => widget.position;
+  String get price => widget.price;
+  String get team => widget.team;
+
+  Map<String, dynamic>? _info;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final id = widget.playerId;
+    if (id == null || id.isEmpty) return;
+    try {
+      final response = await ApiClient().get(
+        url: '${ApiUrl.baseUrl}/api/players/$id/info/',
+      );
+      if (response.statusCode == 200 && response.body is Map && mounted) {
+        setState(() => _info = Map<String, dynamic>.from(response.body as Map));
+      }
+    } catch (_) {
+      // the sheet keeps its dashes
+    }
+  }
+
+  // One display rule for every figure: a number, or "-" when unknown.
+  String _num(dynamic v, {int digits = 1}) =>
+      v is num ? v.toStringAsFixed(digits) : '-';
 
   // Function to get team border color
   Color _getTeamColor() {
@@ -40,15 +82,16 @@ class PlayerInfoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Generate random stats for season performance
-    final points = (avg + Random().nextInt(20) - 10).toDouble();
-    final rebounds = (Random().nextInt(10) + 3).toDouble();
-    final assists = (Random().nextInt(8) + 2).toDouble();
-    final steals = (Random().nextDouble() * 3).toStringAsFixed(1);
-    final turnovers = (Random().nextDouble() * 4 + 1).toStringAsFixed(1);
-    final fantasy = (avg * 1.2 + Random().nextInt(10)).toStringAsFixed(1);
-    final selectedPercentage = Random().nextInt(100);
-    final rating = (avg / 10).toStringAsFixed(1);
+    final averages = (_info?['season_averages'] as Map?) ?? const {};
+    final points = _num(averages['points']);
+    final rebounds = _num(averages['rebounds']);
+    final assists = _num(averages['assists']);
+    final steals = _num(averages['steals']);
+    final turnovers = _num(averages['turnovers']);
+    final fantasy = _num(averages['fantasy']);
+    final rating = _num(_info?['rating']);
+    final selectedPercentage =
+        ((_info?['selected_today_pct'] as num?)?.toInt() ?? 0).clamp(0, 100);
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -295,17 +338,17 @@ class PlayerInfoScreen extends StatelessWidget {
                       children: [
                         _buildStatCard(
                           AppString.points.tr,
-                          points.toStringAsFixed(1),
+                          points,
                           const Color(0xFF60A5FA),
                         ),
                         _buildStatCard(
                           AppString.rebounds.tr,
-                          rebounds.toStringAsFixed(1),
+                          rebounds,
                           const Color(0xFF34D399),
                         ),
                         _buildStatCard(
                           AppString.assists.tr,
-                          assists.toStringAsFixed(1),
+                          assists,
                           const Color(0xFFC084FC),
                         ),
                         _buildStatCard(

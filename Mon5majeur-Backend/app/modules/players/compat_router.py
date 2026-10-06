@@ -88,7 +88,7 @@ def _game_to_compat(game: NBAGame) -> GameCompatResponse:
     )
 
 
-def _player_to_compat(player: Player, teams=None) -> PlayerCompatItem:
+def _player_to_compat(player: Player, teams=None, has_stats: bool = True) -> PlayerCompatItem:
     status = "OUT" if player.is_out else "OK"
     price_str = f"{player.daily_price:.1f}M"
 
@@ -110,7 +110,7 @@ def _player_to_compat(player: Player, teams=None) -> PlayerCompatItem:
         team_id=player.team_goalserve_id or None,
         status=status,
         price=price_str,
-        avg=round(player.avg_fantasy_score),
+        avg=round(player.avg_fantasy_score) if has_stats else None,
         trigram=trigram_for_team_name(player.team_name),
         opponent_trigram=opponent_trigram,
         is_home=is_home,
@@ -150,6 +150,11 @@ async def games_today(
 async def players_today(
     request: Request,
     page: int = Query(1, ge=1, description="Page number (1-based)"),
+    all: bool = Query(
+        False,
+        description="Every active player of the league, not only the teams "
+        "playing tonight (Data screen, QA #9 4.1)",
+    ),
     _: User = Depends(get_current_user),
 ) -> PlayersTodayPageResponse:
     today = await _nba_today()
@@ -157,15 +162,21 @@ async def players_today(
     games = await NBAGame.find(NBAGame.nba_date == today).to_list()
     teams = TeamsPlaying(games)
 
-    if not teams:
+    if all:
+        # The complete database: every active player, played or not. Tonight's
+        # opponent/venue is still filled in for those who play.
+        query_filter: dict = {"is_active": True}
+    elif not teams:
         return PlayersTodayPageResponse(count=0, next=None, results=[])
+    else:
+        # One rule (teams_playing.py) for the count, the page and per-player
+        # checks — matches by team, not by the drifting team-id scheme.
+        query_filter = teams.mongo_filter()
 
-    # One rule (teams_playing.py) for the count, the page and per-player
-    # checks — matches by team, not by the drifting team-id scheme.
-    total = await Player.find(teams.mongo_filter()).count()
+    total = await Player.find(query_filter).count()
 
     offset = (page - 1) * _PAGE_SIZE
-    players = await Player.find(teams.mongo_filter()).sort(-Player.daily_price).skip(offset).limit(_PAGE_SIZE).to_list()
+    players = await Player.find(query_filter).sort(-Player.daily_price, +Player.full_name).skip(offset).limit(_PAGE_SIZE).to_list()
 
     has_next = offset + len(players) < total
     next_url: str | None = None
@@ -177,12 +188,26 @@ async def players_today(
         # load (same class of bug as the file-upload public_url fix).
         # PUBLIC_BASE_URL is already the correct external origin.
         base = settings.PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
-        next_url = f"{base}/api/players-today/?page={page + 1}"
+        next_url = f"{base}/api/players-today/?page={page + 1}" + ("&all=true" if all else "")
+
+    # Average only for players who played a game this season (not a 0).
+    from app.modules.players.nba_night import season_start
+
+    played_ids = {
+        s.player_id
+        for s in await PlayerGameStats.find(
+            {
+                "player_id": {"$in": [p.id for p in players]},
+                "nba_date": {"$gte": datetime.combine(season_start(today), datetime.min.time())},
+                "did_not_play": False,
+            }
+        ).to_list()
+    }
 
     return PlayersTodayPageResponse(
         count=total,
         next=next_url,
-        results=[_player_to_compat(p, teams) for p in players],
+        results=[_player_to_compat(p, teams, has_stats=p.id in played_ids) for p in players],
     )
 
 
@@ -261,17 +286,22 @@ async def player_info(
     if not player:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    # ── Season averages: last 10 non-DNP games ─────────────────────────────
+    # ── Season averages: this season's games only (last 10 non-DNP) ────────
+    from app.modules.players.nba_night import season_start
+
+    today = await _nba_today()
     recent_stats = await PlayerGameStats.find(
         PlayerGameStats.player_id == player.id,
         PlayerGameStats.did_not_play == False,
         PlayerGameStats.score_computed == True,
+        PlayerGameStats.nba_date >= season_start(today),
     ).sort(-PlayerGameStats.nba_date).limit(10).to_list()
 
-    def _avg(values: list[float | int]) -> float:
-        return round(sum(values) / len(values), 1) if values else 0.0
+    def _avg(values: list[float | int]) -> float | None:
+        return round(sum(values) / len(values), 1) if values else None
 
     averages = PlayerSeasonAverages(
+        games_played=len(recent_stats),
         points=_avg([s.points for s in recent_stats]),
         rebounds=_avg([s.rebounds for s in recent_stats]),
         assists=_avg([s.assists for s in recent_stats]),
@@ -280,25 +310,23 @@ async def player_info(
         fantasy=_avg([s.fantasy_score or 0.0 for s in recent_stats]),
     )
 
-    # ── Rating: avg_fantasy / 6, clamped [0, 10] ───────────────────────────
-    raw_rating = (player.avg_fantasy_score / 6) if player.avg_fantasy_score else 0.0
-    rating = round(min(max(raw_rating, 0.0), 10.0), 1)
+    # ── Rating: avg_fantasy / 6, clamped [0, 10] — none before any game ────
+    rating = None
+    if recent_stats and averages.fantasy is not None:
+        rating = round(min(max(averages.fantasy / 6, 0.0), 10.0), 1)
 
-    # ── Selected Today % ───────────────────────────────────────────────────
-    today = await _nba_today()
+    # ── Selected Today %: among lineups of tonight's night ─────────────────
     player_id_str = str(player.id)
-
-    total_today = await FlutterPlayerSelection.find(
-        {"submitted_at": {"$gte": datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)}}
-    ).count()
-
+    night_filter = {
+        "$or": [
+            {"nba_date": datetime.combine(today, datetime.min.time())},
+            {"nba_date": None, "submitted_at": {"$gte": datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)}},
+        ]
+    }
+    total_today = await FlutterPlayerSelection.find(night_filter).count()
     selected_count = await FlutterPlayerSelection.find(
-        {
-            "submitted_at": {"$gte": datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)},
-            "selected_players.id": player_id_str,
-        }
+        {**night_filter, "selected_players.id": player_id_str}
     ).count()
-
     selected_pct = round((selected_count / total_today) * 100) if total_today > 0 else 0
 
     return PlayerInfoResponse(

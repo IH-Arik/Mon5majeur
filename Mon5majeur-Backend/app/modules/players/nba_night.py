@@ -64,3 +64,11 @@ async def live_night(now: datetime | None = None) -> date | None:
     if game is None:
         return None
     return game.nba_date if now < publication_cutoff(game.nba_date) else None
+
+
+def season_start(today: date) -> date:
+    """First day of the NBA season `today` belongs to (October 1st). Stats
+    from before it are not "this season" (QA #9 4.4: the player sheet showed
+    full statistics although no official game had been played)."""
+    year = today.year if today.month >= 10 else today.year - 1
+    return date(year, 10, 1)

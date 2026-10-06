@@ -461,7 +461,9 @@ class PlayerCompatItem(BaseSchema):
     team_id: str | None = None
     status: str = "OK"
     price: str = "0.0M"
-    avg: int = 0                    # avg fantasy score rounded to int (DataScreen column)
+    # avg fantasy score rounded to int (DataScreen column); None while the
+    # player has played no game this season (the app shows a dash, not 0).
+    avg: int | None = None
 
     # Part 1 — Player Selection Row Redesign
     trigram: str | None = None              # own team, e.g. "LAL"
@@ -569,12 +571,14 @@ class PlayoffBracketResponse(BaseSchema):
 # ── Player Info (Flutter: PlayerInfoScreen) ───────────────────────────────────
 
 class PlayerSeasonAverages(BaseSchema):
-    points: float = 0.0
-    rebounds: float = 0.0
-    assists: float = 0.0
-    steals: float = 0.0
-    turnovers: float = 0.0
-    fantasy: float = 0.0
+    # None while the player has no game this season (the sheet shows a dash).
+    games_played: int = 0
+    points: float | None = None
+    rebounds: float | None = None
+    assists: float | None = None
+    steals: float | None = None
+    turnovers: float | None = None
+    fantasy: float | None = None
 
 
 class PlayerInfoResponse(BaseSchema):
@@ -589,7 +593,7 @@ class PlayerInfoResponse(BaseSchema):
     team_id: str | None = None
     status: str = "Active"          # "Active" | "Out"
     current_value: str = "0M"       # formatted price string e.g. "29M"
-    rating: float = 0.0             # avg_fantasy / 6, clamped [0, 10]
+    rating: float | None = None     # avg_fantasy / 6, clamped [0, 10]; None = no game yet
     season_averages: PlayerSeasonAverages = PlayerSeasonAverages()
     selected_today_pct: int = 0     # 0-100
 
