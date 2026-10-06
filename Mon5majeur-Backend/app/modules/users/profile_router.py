@@ -271,6 +271,26 @@ async def get_profile_stats(
         GlobalLeagueReward.rank == 1,
     ).count()
 
+    # "Saison régulière" tile = leagues in which the user FINISHED FIRST of the
+    # regular-season ranking (seed 1 once the playoffs start), not the number
+    # of matches won - that already is the V/D figure (QA #9 5.1).
+    seed1_leagues = {
+        m.league_id
+        for m in await LeagueMatch.find(
+            {"is_playoff": True},
+            {
+                "$or": [
+                    {"home_user_id": user_id, "home_seed": 1},
+                    {"away_user_id": user_id, "away_seed": 1},
+                ]
+            },
+        ).to_list()
+    }
+    regular_season_firsts = sum(
+        1 for lid in seed1_leagues
+        if lid in league_map and league_map[lid].type != LEAGUE_TYPE_GLOBAL
+    )
+
     return ProfileStatsResponse(
         team_name=current_user.team_name or "",
         team_logo=current_user.team_logo or "",
@@ -279,7 +299,7 @@ async def get_profile_stats(
         losses=total_losses,
         no_match=no_match,
         total_matches=total_matches,
-        regular_season_wins=total_wins,
+        regular_season_wins=regular_season_firsts,
         league_victories=trophy_gold,
         trophy_gold=trophy_gold,
         trophy_silver=trophy_silver,

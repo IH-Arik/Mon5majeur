@@ -146,6 +146,12 @@ def _month_start_n_ago(today: date, months_ago: int) -> date:
     return date(year, month0 + 1, 1)
 
 
+def season_week_number(week_start: date, first_game: date) -> int:
+    """1 for the week containing the season's first game, then 2, 3 ..."""
+    first_monday = first_game - timedelta(days=first_game.weekday())
+    return max(1, (week_start - first_monday).days // 7 + 1)
+
+
 async def get_leaderboard_for_period(
     league: League, period: str, today: date, offset: int = 0
 ) -> tuple[list[tuple[PydanticObjectId, float]], int | None, int | None, int]:
@@ -175,8 +181,17 @@ async def get_leaderboard_for_period(
     reference = today - timedelta(weeks=offset)
     week_start, week_end = _week_bounds(reference)
     ranked = await _ranked_totals_for_period(league, week_start, week_end)
-    iso = week_start.isocalendar()
-    return ranked, iso.week, None, iso.year
+    # Counted from the start of the game season ("Semaine 1" = the week of the
+    # season's first game), not the calendar's ISO week (QA #9 7.2: "Semaine
+    # 41" just after the season had begun).
+    from app.modules.players.model import NBAGame
+    from app.modules.players.nba_night import season_start
+
+    first_game = await NBAGame.find(
+        NBAGame.nba_date >= season_start(week_start)
+    ).sort(+NBAGame.nba_date).first_or_none()
+    anchor = first_game.nba_date if first_game else season_start(week_start)
+    return ranked, season_week_number(week_start, anchor), None, week_start.isocalendar().year
 
 
 # ---------------------------------------------------------------------------
