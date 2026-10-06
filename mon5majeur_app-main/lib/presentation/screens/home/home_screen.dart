@@ -497,14 +497,16 @@ class _GlobalLeagueCard extends StatelessWidget {
     final tutorial = Get.find<TutorialController>();
 
     Future<void> handleJoinTap() async {
+      // Taken before the awaits: the tutorial overlay is torn down while the
+      // join runs, and a dead context used to swallow the navigation (QA #9
+      // 2.5: "Rejoindre" left the user on Home).
+      final router = GoRouter.of(context);
       final success = await controller.joinGlobalLeague();
-      if (success) {
+      if (success || controller.hasJoined.value) {
         if (tutorial.active.value && tutorial.step.value == 0) {
           await tutorial.advanceTo(1);
         }
-        if (context.mounted) {
-          context.go(RoutePath.globalLeagueScreen.addBasePath);
-        }
+        router.go(RoutePath.globalLeagueScreen.addBasePath);
       }
     }
 

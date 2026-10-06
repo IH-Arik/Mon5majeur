@@ -4,8 +4,6 @@ import '../../../controllers/global_league_controller.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/local_db/local_db.dart';
 import '../../../core/services/analytics_service.dart';
-import '../../../data/services/api_service.dart';
-import '../../../data/services/api_url.dart';
 
 /// Onboarding coach-mark tutorial state (spec Part 3).
 ///
@@ -40,7 +38,6 @@ class TutorialController extends GetxController {
   // "my matches today" list would permanently block step 0 for exactly the
   // users this step targets. null = not checked yet.
   bool? _hasGamesTonight;
-  bool _gamesCheckInFlight = false;
 
   @override
   void onInit() {
@@ -89,26 +86,10 @@ class TutorialController extends GetxController {
       showHomeSpotlight.value = false;
       return;
     }
-    if (_hasGamesTonight != null) {
-      _applyHomeReadiness();
-      return;
-    }
-    if (_gamesCheckInFlight) return;
-    _gamesCheckInFlight = true;
-    _fetchGamesTonight();
-  }
-
-  Future<void> _fetchGamesTonight() async {
-    try {
-      final response = await ApiClient().get(
-        url: '${ApiUrl.baseUrl}${ApiUrl.gamesToday}',
-      );
-      _hasGamesTonight =
-          response.statusCode == 200 && (response.body as List).isNotEmpty;
-    } catch (_) {
-      _hasGamesTonight = false;
-    }
-    _gamesCheckInFlight = false;
+    // The tutorial starts by itself on the first launch, whether or not an
+    // NBA game is scheduled tonight (QA #9 2.5: on a gameless day it never
+    // started). Step 0 only needs the Global League to be joinable.
+    _hasGamesTonight = true;
     _applyHomeReadiness();
   }
 
