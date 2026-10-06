@@ -109,7 +109,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                   color: const Color(0xFFFF8C42),
                   backgroundColor: const Color(0xFF252838),
                   child: _isDuel
-                      ? _buildDuelView(controller.matchScore.value)
+                      ? _buildDuelView(controller.matches.toList())
                       : _buildGlobalView(controller.globalScore.value),
                 );
               }),
@@ -366,36 +366,69 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     );
   }
 
-  Widget _buildDuelView(LiveMatchScore? match) {
-    // A finished (or not yet started) duel is not "live": the Results tab
-    // already shows it.
-    if (match == null || match.matchStatus != 'live') {
-      return _buildNoLiveState();
+  // Matches whose lineups are folded out; the user's own (first) starts open.
+  final Set<String> _expanded = {};
+  bool _expandedInit = false;
+
+  Widget _buildDuelView(List<LiveMatchScore> all) {
+    // Live keeps the night until the 09:00 publication (QA #9 12.2): the
+    // message only shows when no match of the night is left to display.
+    final shown = all.where((m) => m.hasLiveGames).toList();
+    if (shown.isEmpty) return _buildNoLiveState();
+
+    if (!_expandedInit) {
+      _expandedInit = true;
+      _expanded.add(shown.first.matchId);
     }
 
-    final home = match.homeTeamName ?? '${AppString.team.tr} A';
-    final away = match.awayTeamName ?? '${AppString.team.tr} B';
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.all(16.w),
       child: Column(
         children: [
-          if (match.isStale) _buildStaleBanner(),
-          const MatchStatusBadge(status: 'live'),
-          SizedBox(height: 12.h),
-          _buildMatchCard(
+          if (shown.any((m) => m.isStale)) _buildStaleBanner(),
+          for (var i = 0; i < shown.length; i++) ...[
+            _buildDuelSection(shown[i]),
+            SizedBox(height: 16.h),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDuelSection(LiveMatchScore match) {
+    final home = match.homeTeamName ?? '${AppString.team.tr} A';
+    final away = match.awayTeamName ?? '${AppString.team.tr} B';
+    final open = _expanded.contains(match.matchId);
+    return Column(
+      children: [
+        MatchStatusBadge(
+          status: match.matchStatus == 'completed' ? 'completed' : 'live',
+        ),
+        SizedBox(height: 8.h),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() {
+            open ? _expanded.remove(match.matchId) : _expanded.add(match.matchId);
+          }),
+          child: _buildMatchCard(
             home,
             away,
             match.homeScore.round(),
             match.awayScore.round(),
           ),
+        ),
+        Icon(
+          open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+          color: Colors.white54,
+          size: 20.r,
+        ),
+        if (open)
           MatchLineupsField(
             teamA: _toSquad(home, match.homePlayers),
             teamB: _toSquad(away, match.awayPlayers),
           ),
-          SizedBox(height: 16.h),
-        ],
-      ),
+      ],
     );
   }
 

@@ -43,6 +43,8 @@ class LiveMatchScore(BaseSchema):
     home_score: float
     away_score: float
     match_status: str   # upcoming | live | completed
+    # Live still has this night to show (until the 09:00 publication).
+    has_live_games: bool = False
 
     home_players: list[LivePlayerScore]
     away_players: list[LivePlayerScore]

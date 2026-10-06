@@ -55,9 +55,17 @@ class LiveScoreService:
         if not match:
             raise NotFoundException("Match not found")
 
-        # Verify user is a participant
+        # The live tab of a duel league shows EVERY match of the league
+        # (QA #9 12.1): a participant, or any member of the same league.
         if user.id not in (match.home_user_id, match.away_user_id):
-            raise ForbiddenException("You are not in this match")
+            from app.modules.leagues.model import LeagueMembership
+
+            member = await LeagueMembership.find_one(
+                LeagueMembership.league_id == match.league_id,
+                LeagueMembership.user_id == user.id,
+            )
+            if member is None:
+                raise ForbiddenException("You are not in this match")
 
         league = await League.get(match.league_id)
 
@@ -83,6 +91,7 @@ class LiveScoreService:
             home_score=round(home_score, 2),
             away_score=round(away_score, 2),
             match_status=match.status,
+            has_live_games=await _showing_night(match.nba_date),
             home_players=home_players,
             away_players=away_players,
             is_stale=await _is_stale_for_date(match.nba_date),
@@ -110,7 +119,7 @@ class LiveScoreService:
                 league_name=league.name,
                 total_score=0.0,
                 players=[],
-                has_live_games=await _has_live_games(today),
+                has_live_games=await _showing_night(today),
                 is_stale=False,
                 refreshed_at=datetime.now(timezone.utc),
             )
@@ -129,7 +138,7 @@ class LiveScoreService:
             league_name=league.name,
             total_score=round(total, 2),
             players=players,
-            has_live_games=await _has_live_games(today),
+            has_live_games=await _showing_night(today),
             is_stale=await _is_stale_for_date(today),
             refreshed_at=datetime.now(timezone.utc),
         )
@@ -261,11 +270,12 @@ async def _build_live_players(
     return result, total
 
 
-async def _has_live_games(nba_date: date) -> bool:
-    return await NBAGame.find(
-        NBAGame.nba_date == nba_date,
-        NBAGame.status == "live",
-    ).count() > 0
+async def _showing_night(nba_date: date) -> bool:
+    """True while Live still has this night to show (until the 09:00 Paris
+    publication), not only while a game is on the court."""
+    from app.modules.players.nba_night import live_night
+
+    return await live_night() == nba_date
 
 
 async def _is_stale_for_date(nba_date: date) -> bool:

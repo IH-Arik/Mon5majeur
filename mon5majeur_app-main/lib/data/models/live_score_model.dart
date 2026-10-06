@@ -77,6 +77,8 @@ class LiveMatchScore {
   final double homeScore;
   final double awayScore;
   final String matchStatus;
+  // Live still has this night to show (until the 09:00 publication).
+  final bool hasLiveGames;
 
   final List<LivePlayerScore> homePlayers;
   final List<LivePlayerScore> awayPlayers;
@@ -96,6 +98,7 @@ class LiveMatchScore {
     required this.homeScore,
     required this.awayScore,
     required this.matchStatus,
+    this.hasLiveGames = false,
     required this.homePlayers,
     required this.awayPlayers,
     required this.isStale,
@@ -115,6 +118,9 @@ class LiveMatchScore {
       homeScore: (json['home_score'] as num?)?.toDouble() ?? 0.0,
       awayScore: (json['away_score'] as num?)?.toDouble() ?? 0.0,
       matchStatus: json['match_status'] ?? 'upcoming',
+      // Older backends do not send it: fall back to the match being live.
+      hasLiveGames:
+          json['has_live_games'] ?? (json['match_status'] == 'live'),
       homePlayers:
           (json['home_players'] as List<dynamic>?)
               ?.map((e) => LivePlayerScore.fromJson(e))
