@@ -19,7 +19,19 @@ class PrivateLeagueModel {
   final int? creator;
   // Per-user "today" lineup validation state (My Leagues launch spec).
   final bool lineupSubmitted;
-  final int? lockInSeconds;
+  // The server sends seconds-until-lock as of the moment it answered. The
+  // home card turns it into a clock time ("Verrouillage à 1h00") with
+  // now + seconds, which drifted later the longer the screen sat on a stale
+  // answer (QA #9 2.3: 1h25, 1h06 for a 1h00 tip-off). Ageing the value by
+  // the time since it was received keeps that clock time fixed.
+  final DateTime _receivedAt = DateTime.now();
+  final int? _lockAtReceipt;
+  int? get lockInSeconds {
+    final raw = _lockAtReceipt;
+    if (raw == null || raw <= 0) return raw;
+    final left = raw - DateTime.now().difference(_receivedAt).inSeconds;
+    return left < 0 ? 0 : left;
+  }
 
   PrivateLeagueModel({
     this.id,
@@ -40,8 +52,8 @@ class PrivateLeagueModel {
     this.isActive,
     this.creator,
     this.lineupSubmitted = false,
-    this.lockInSeconds,
-  });
+    int? lockInSeconds,
+  }) : _lockAtReceipt = lockInSeconds;
 
   // To JSON - for API request (create/update)
   Map<String, dynamic> toJson() {

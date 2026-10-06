@@ -80,6 +80,18 @@ def _parse_tip_off(match_el: ET.Element, game_date: date | None) -> datetime | N
     closely enough for lock-timer purposes (a few minutes off at most for
     non-Eastern arenas — the same tolerance the rest of this app already
     accepts elsewhere for tip-off estimates)."""
+    # Goalserve also gives a ready UTC timestamp ("04.10.2026 23:00"): use it
+    # first, it needs no guess about daylight saving (QA #9 2.3: the lock must
+    # fall exactly on the first tip-off).
+    utc_raw = match_el.get("datetime_utc", "")
+    if utc_raw:
+        try:
+            return datetime.strptime(utc_raw.strip(), "%d.%m.%Y %H:%M").replace(
+                tzinfo=timezone.utc
+            )
+        except ValueError:
+            pass
+
     time_str = match_el.get("time", "")
     if not time_str or not game_date:
         return None
@@ -88,8 +100,17 @@ def _parse_tip_off(match_el: ET.Element, game_date: date | None) -> datetime | N
     except ValueError:
         return None
     combined = datetime.combine(game_date, naive.time())
-    # EST = UTC-5 (ignoring DST, same simplification as above)
-    return combined.replace(tzinfo=timezone(timedelta(hours=-5))).astimezone(timezone.utc)
+    try:
+        from zoneinfo import ZoneInfo
+
+        # US Eastern with daylight saving (EDT in October, EST in winter).
+        return combined.replace(tzinfo=ZoneInfo("America/New_York")).astimezone(
+            timezone.utc
+        )
+    except Exception:  # tz database missing: fixed EST, as before
+        return combined.replace(tzinfo=timezone(timedelta(hours=-5))).astimezone(
+            timezone.utc
+        )
 
 
 def _team_dict(team_el: ET.Element | None) -> dict:
