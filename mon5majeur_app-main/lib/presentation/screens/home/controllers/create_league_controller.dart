@@ -1,3 +1,4 @@
+import 'home_controller.dart';
 import '../../../../core/utils/server_message.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -214,6 +215,9 @@ class CreateLeagueController extends GetxController {
         try {
           final myLeaguesController = Get.find<MyLeaguesController>();
           await myLeaguesController.refreshLeagues();
+          if (Get.isRegistered<HomeController>()) {
+            Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+          }
         } catch (e) {
           logger.w("MyLeaguesController not found: $e");
         }
@@ -368,6 +372,9 @@ class CreateLeagueController extends GetxController {
           try {
             final myLeaguesController = Get.find<MyLeaguesController>();
             await myLeaguesController.refreshLeagues();
+            if (Get.isRegistered<HomeController>()) {
+              Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+            }
           } catch (e) {
             logger.w("MyLeaguesController not found: $e");
           }
@@ -413,6 +420,9 @@ class CreateLeagueController extends GetxController {
           try {
             final myLeaguesController = Get.find<MyLeaguesController>();
             await myLeaguesController.refreshLeagues();
+            if (Get.isRegistered<HomeController>()) {
+              Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+            }
           } catch (e) {
             logger.w("MyLeaguesController not found: $e");
           }
@@ -466,6 +476,9 @@ class CreateLeagueController extends GetxController {
         try {
           final myLeaguesController = Get.find<MyLeaguesController>();
           await myLeaguesController.refreshLeagues();
+          if (Get.isRegistered<HomeController>()) {
+            Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+          }
         } catch (e) {
           logger.w("MyLeaguesController not found: $e");
         }
@@ -569,6 +582,9 @@ class CreateLeagueController extends GetxController {
         try {
           final myLeaguesController = Get.find<MyLeaguesController>();
           await myLeaguesController.refreshLeagues();
+          if (Get.isRegistered<HomeController>()) {
+            Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+          }
         } catch (e) {
           logger.w("MyLeaguesController not found: $e");
         }
@@ -706,6 +722,9 @@ class CreateLeagueController extends GetxController {
         try {
           final myLeaguesController = Get.find<MyLeaguesController>();
           await myLeaguesController.refreshLeagues();
+          if (Get.isRegistered<HomeController>()) {
+            Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+          }
         } catch (e) {
           logger.w("MyLeaguesController not found: $e");
         }

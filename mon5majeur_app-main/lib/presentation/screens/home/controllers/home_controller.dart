@@ -196,51 +196,73 @@ class HomeController extends GetxController {
     }
   }
 
-  // Fetch my leagues
+  bool _leaguesReloadQueued = false;
+
+  // Fetch my leagues: private AND public (QA #9 2.1: only private ones were
+  // loaded, so a user whose league was public saw "Pas encore de ligue").
   Future<void> fetchMyLeagues() async {
-    if (leaguesLoading.value) return;
+    if (leaguesLoading.value) {
+      // A refresh asked while one is running (e.g. right after creating a
+      // league) must not be dropped: run once more when the current ends.
+      _leaguesReloadQueued = true;
+      return;
+    }
 
     leaguesLoading.value = true;
 
     try {
-      final apiClient = ApiClient();
-
-      logger.i('Fetching My Leagues...');
-
-      final response = await apiClient.get(
-        url: ApiUrl.baseUrl + ApiUrl.myPrivateLeagues,
-        isBasic: false,
-        showResult: true,
-      );
-
-      logger.i('Leagues Response: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        if (response.body is List) {
-          final leaguesList = (response.body as List)
-              .map((json) => PrivateLeagueModel.fromJson(json))
-              .map(
-                (privateLeague) => MyLeagueModel.fromPrivateLeague(
-                  privateLeague,
-                  userRank: privateLeague.rank,
-                  matchday: privateLeague.currentMatchDay,
-                  week: privateLeague.currentWeek,
-                  season: 'Regular Season',
-                ),
-              )
-              .toList();
-
-          myLeagues.value = leaguesList;
-          logger.i('Loaded ${myLeagues.length} leagues');
-        }
-      } else {
-        logger.e('Failed to load leagues: ${response.statusCode}');
+      final results = await Future.wait([
+        _loadLeaguesFrom(ApiUrl.myPrivateLeagues, isPrivate: true),
+        _loadLeaguesFrom(ApiUrl.myPublicLeagues, isPrivate: false),
+      ]);
+      // Keep what was shown if both calls failed (null), otherwise replace.
+      if (results.any((r) => r != null)) {
+        myLeagues.value = [
+          for (final r in results) ...?r,
+        ];
+        logger.i('Loaded ${myLeagues.length} leagues');
       }
     } catch (e) {
       logger.e('Error fetching leagues: $e');
     } finally {
       leaguesLoading.value = false;
+      if (_leaguesReloadQueued) {
+        _leaguesReloadQueued = false;
+        fetchMyLeagues();
+      }
     }
+  }
+
+  Future<List<MyLeagueModel>?> _loadLeaguesFrom(
+    String endpoint, {
+    required bool isPrivate,
+  }) async {
+    try {
+      final response = await ApiClient().get(
+        url: ApiUrl.baseUrl + endpoint,
+        isBasic: false,
+        showResult: true,
+      );
+      if (response.statusCode == 200 && response.body is List) {
+        return (response.body as List)
+            .map((json) => PrivateLeagueModel.fromJson(json))
+            .map(
+              (league) => MyLeagueModel.fromPrivateLeague(
+                league,
+                userRank: league.rank,
+                matchday: league.currentMatchDay,
+                week: league.currentWeek,
+                season: 'Regular Season',
+                isPrivate: isPrivate,
+              ),
+            )
+            .toList();
+      }
+      logger.e('Failed to load leagues ($endpoint): ${response.statusCode}');
+    } catch (e) {
+      logger.e('Error fetching leagues ($endpoint): $e');
+    }
+    return null;
   }
 
   // Check if profile exists on the server
