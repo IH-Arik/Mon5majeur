@@ -1,4 +1,5 @@
 // lib/presentation/screens/home/screens/live_score_screen.dart
+import '../../../../data/services/jersey_service.dart';
 import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
@@ -57,6 +58,9 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     _tag = widget.mode == LiveScoreMode.duel
         ? 'live_${widget.matchId ?? '${widget.leagueId}_${widget.matchDay}'}'
         : 'live_global';
+    JerseyService.cached().then((i) {
+      if (mounted) setState(() => _myJersey = i);
+    });
     controller = Get.put(
       LiveScoreController(
         mode: widget.mode,
@@ -76,6 +80,9 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   bool get _isDuel => widget.mode == LiveScoreMode.duel;
+
+  // The user's saved jersey, for the Global League court (own five only).
+  int _myJersey = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -425,8 +432,8 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         ),
         if (open)
           MatchLineupsField(
-            teamA: _toSquad(home, match.homePlayers),
-            teamB: _toSquad(away, match.awayPlayers),
+            teamA: _toSquad(home, match.homePlayers, jersey: match.homeJerseyIndex),
+            teamB: _toSquad(away, match.awayPlayers, jersey: match.awayJerseyIndex),
           ),
       ],
     );
@@ -472,7 +479,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             )
           else ...[
             MatchLineupsField(
-              teamA: _toSquad(name, score.players),
+              teamA: _toSquad(name, score.players, jersey: _myJersey),
               teamB: null,
               showOpponent: false,
             ),
@@ -574,7 +581,8 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
 
   /// The court draws the five starters by position; the 6th man rides along
   /// flagged, and the lineup widget lists him under the court.
-  PlayerScore _toSquad(String teamName, List<LivePlayerScore> players) {
+  PlayerScore _toSquad(String teamName, List<LivePlayerScore> players,
+      {int jersey = 0}) {
     final starters = inCourtOrder(
       players.where((p) => !p.isSixthMan).take(5).toList(),
       (p) => p.position,
@@ -598,6 +606,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         for (final p in starters) toSel(p),
         for (final p in sixth) toSel(p, sixth: true),
       ],
+      jerseyIndex: jersey,
       isMe: true,
     );
   }
