@@ -14,6 +14,9 @@ from app.modules.leagues.constants import (
 )
 
 
+_INVITE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
 class League(BaseDocument):
     name: str
     type: Literal["global", "private", "public"]
@@ -54,7 +57,9 @@ class League(BaseDocument):
 
     @classmethod
     def generate_invite_code(cls) -> str:
-        return secrets.token_urlsafe(6).upper()
+        # 8 letters/digits, no look-alikes (0/O, 1/I/L): a friend types it
+        # from a screenshot. (token_urlsafe also produced "-" and "_".)
+        return "".join(secrets.choice(_INVITE_ALPHABET) for _ in range(8))
 
 
 class LeagueMembership(BaseDocument):

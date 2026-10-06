@@ -255,6 +255,7 @@ class FrenchTranslation {
     AppString.accessYourLeague: 'Accéder à ta ligue',
     AppString.enterCodeToJoinPrivateLeague: 'Entre le code pour rejoindre',
     AppString.enter6DigitCode: 'Entre le code à 6 chiffres',
+    AppString.enterLeagueCode: 'Entre le code de la ligue',
     AppString.enterValidCodeToJoinFriendsLeague:
         "Entre un code valide pour rejoindre tes amis",
     AppString.goatFC: 'Goat FC',

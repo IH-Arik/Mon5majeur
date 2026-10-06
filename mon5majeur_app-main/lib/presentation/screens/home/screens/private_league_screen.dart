@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -177,11 +178,21 @@ class _PrivateLeagueScreenState extends State<PrivateLeagueScreen> {
                               letterSpacing: 2,
                             ),
                             textAlign: TextAlign.center,
-                            maxLength: 6,
-                            keyboardType: TextInputType.text,
+                            // The code given at creation has 8 letters/digits
+                            // (QA #9 8.1: the field used to stop at 6).
+                            maxLength: 8,
+                            keyboardType: TextInputType.visiblePassword,
+                            autocorrect: false,
+                            enableSuggestions: false,
                             textCapitalization: TextCapitalization.characters,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[A-Za-z0-9_-]'),
+                              ),
+                              UpperCaseTextFormatter(),
+                            ],
                             decoration: InputDecoration(
-                              hintText: AppString.enter6DigitCode.tr,
+                              hintText: AppString.enterLeagueCode.tr,
                               hintStyle: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 16.sp,
@@ -309,4 +320,13 @@ class _PrivateLeagueScreenState extends State<PrivateLeagueScreen> {
       ),
     );
   }
+}
+
+/// Join codes are stored in capitals; type them in capitals.
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) => newValue.copyWith(text: newValue.text.toUpperCase());
 }

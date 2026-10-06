@@ -299,6 +299,7 @@ class AppString {
   static const String enterCodeToJoinPrivateLeague =
       'Enter the code to join Private league';
   static const String enter6DigitCode = 'Enter 6 digit code';
+  static const String enterLeagueCode = 'Enter the league code';
   static const String enterValidCodeToJoinFriendsLeague =
       "Enter a valid code to join your friend's league";
   static const String goatFC = 'Goat FC';

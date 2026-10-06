@@ -255,6 +255,7 @@ class EnglishTranslation {
     AppString.enterCodeToJoinPrivateLeague:
         'Enter the code to join Private league',
     AppString.enter6DigitCode: 'Enter 6 digit code',
+    AppString.enterLeagueCode: 'Enter the league code',
     AppString.enterValidCodeToJoinFriendsLeague:
         "Enter a valid code to join your friend's league",
     AppString.goatFC: 'Goat FC',
