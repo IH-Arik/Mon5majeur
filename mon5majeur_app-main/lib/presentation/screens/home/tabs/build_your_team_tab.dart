@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/utils/datetime_format.dart';
@@ -97,6 +98,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   ];
 
   // 6th Man is outside the budget — spec says it is NOT counted against the 100M cap
+  // Same rule as the Global League tab: 80 M and 100 M leagues behave alike
+  // (QA #9 9.4).
+  bool get isOverBudget => usedBudget > totalBudget;
+
   double get usedBudget =>
       selectedPlayers.fold(0.0, (sum, p) => sum + (p?.price ?? 0.0));
 
@@ -184,9 +189,24 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // Add this ValueNotifier to notify child screen of updates
   final ValueNotifier<List<Player>> _playersNotifier = ValueNotifier([]);
 
+  // The league's own budget ("80M") is known from the leagues list: use it
+  // at once instead of showing 100 M until the server answers.
+  void _seedBudgetFromLeague() {
+    final id = widget.leagueId;
+    if (id == null || !Get.isRegistered<MyLeaguesController>()) return;
+    for (final l in Get.find<MyLeaguesController>().leagues) {
+      if (l.leagueId == id && l.isPrivate == widget.isPrivate) {
+        final v = double.tryParse(l.league.teamBudget.replaceAll(RegExp(r'[^0-9.]'), ''));
+        if (v != null && v > 0) _baseBudget = v;
+        return;
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _seedBudgetFromLeague();
     _fetchPlayers();
     _fetchTodaysGames();
     _fetchSavedTeam();
@@ -537,6 +557,20 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         SnackBar(
           content: Text('Please select all 5 players before submitting'.tr),
           backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (isOverBudget) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppString.budgetExceeded.tr} - '
+            '${AppString.budgetExceededBy((usedBudget - totalBudget).ceil())}',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -949,6 +983,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   }
 
   Widget _buildBudgetCard() {
+    final overBudget = isOverBudget;
+    final budgetDelta = (usedBudget - totalBudget).ceil();
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Container(
@@ -969,7 +1005,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                 Text(
                   '${usedBudget.toInt()}M / ${totalBudget.toInt()}M',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: overBudget ? const Color(0xFFF84A4A) : Colors.white,
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                   ),
@@ -980,14 +1016,28 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
               child: LinearProgressIndicator(
-                value: usedBudget / totalBudget,
+                value: (usedBudget / totalBudget).clamp(0.0, 1.0),
                 backgroundColor: const Color(0xFF2A2D3E),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFFFF8C42),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  overBudget ? const Color(0xFFF84A4A) : const Color(0xFFFF8C42),
                 ),
                 minHeight: 8.h,
               ),
             ),
+            if (overBudget) ...[
+              SizedBox(height: 8.h),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  AppString.budgetExceededBy(budgetDelta),
+                  style: TextStyle(
+                    color: const Color(0xFFF84A4A),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
