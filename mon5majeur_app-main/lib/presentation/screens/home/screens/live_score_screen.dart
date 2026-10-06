@@ -1,4 +1,6 @@
 // lib/presentation/screens/home/screens/live_score_screen.dart
+import '../../../../controllers/my_leagues_controller.dart';
+import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,7 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/live_score_model.dart';
+import '../../../../core/utils/lineup_positions.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../../../widgets/match_widgets.dart';
 import '../controllers/live_score_controller.dart';
@@ -197,7 +200,10 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         ),
       ),
       child: Center(
-        child: (_isDuel ? Assets.icons.logo1 : Assets.icons.earth).image(
+        child: (_isDuel
+                ? logoAsset(MyLeaguesController.logoFor(widget.leagueId, isPrivate: widget.isPrivate))
+                : Assets.icons.earth)
+            .image(
           width: 16.w,
           height: 18.h,
           fit: BoxFit.cover,
@@ -387,8 +393,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             teamA: _toSquad(home, match.homePlayers),
             teamB: _toSquad(away, match.awayPlayers),
           ),
-          ..._sixthManRows(home, match.homePlayers),
-          ..._sixthManRows(away, match.awayPlayers),
           SizedBox(height: 16.h),
         ],
       ),
@@ -439,7 +443,6 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
               teamB: null,
               showOpponent: false,
             ),
-            ..._sixthManRows(name, score.players),
           ],
           SizedBox(height: 16.h),
         ],
@@ -536,9 +539,22 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
 
   // ── Live data → the Results tab's court model ────────────────────────────
 
-  /// The court draws five players; the 6th man is listed under it.
+  /// The court draws the five starters by position; the 6th man rides along
+  /// flagged, and the lineup widget lists him under the court.
   PlayerScore _toSquad(String teamName, List<LivePlayerScore> players) {
-    final starters = players.where((p) => !p.isSixthMan).take(5).toList();
+    final starters = inCourtOrder(
+      players.where((p) => !p.isSixthMan).take(5).toList(),
+      (p) => p.position,
+    );
+    final sixth = players.where((p) => p.isSixthMan).toList();
+    PlayerSelection toSel(LivePlayerScore p, {bool sixth = false}) =>
+        PlayerSelection(
+          id: p.playerId,
+          name: p.fullName,
+          position: p.position ?? '',
+          score: p.fantasyScoreLive.round(),
+          isSixthMan: sixth,
+        );
     return PlayerScore(
       playerId: 0,
       teamName: teamName,
@@ -546,55 +562,10 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       totalPoints:
           starters.fold(0, (sum, p) => sum + p.fantasyScoreLive.round()),
       selection: [
-        for (final p in starters)
-          PlayerSelection(
-            id: p.playerId,
-            name: p.fullName,
-            position: p.position ?? '',
-            score: p.fantasyScoreLive.round(),
-          ),
+        for (final p in starters) toSel(p),
+        for (final p in sixth) toSel(p, sixth: true),
       ],
+      isMe: true,
     );
-  }
-
-  List<Widget> _sixthManRows(String teamName, List<LivePlayerScore> players) {
-    return [
-      for (final p in players.where((p) => p.isSixthMan))
-        Container(
-          width: double.infinity,
-          constraints: BoxConstraints(maxWidth: 362.w),
-          margin: EdgeInsets.only(top: 8.h),
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-          decoration: ShapeDecoration(
-            color: const Color(0xFF1A1A1A),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: Color(0xFF2C2C2C)),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$teamName · ${AppString.sixthMan.tr}: ${p.fullName}'
-                  '${p.isCounted ? '' : ' (${AppString.sixthManDropped.tr})'}',
-                  style: TextStyle(
-                    color: p.isCounted ? Colors.white : Colors.white38,
-                    fontSize: 11.sp,
-                  ),
-                ),
-              ),
-              Text(
-                p.fantasyScoreLive.toStringAsFixed(0),
-                style: TextStyle(
-                  color: p.isCounted ? Colors.white : Colors.white38,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-    ];
   }
 }

@@ -535,6 +535,10 @@ class EnglishTranslation {
     AppString.sixthManDropped: 'Not counted (6th Man)',
     AppString.noLineupSubmitted: 'No lineup submitted',
     AppString.removeBonus: 'Remove',
+    AppString.bonusLabel: 'Bonus',
+    AppString.noBonus: 'No bonus',
+    AppString.bonusHidden: 'Bonus revealed with the results',
+    AppString.opponentLineupHidden: "Opponent's lineup is revealed at tip-off",
     AppString.noLiveMatchNow: 'No live match right now',
     AppString.noLiveMatchHint:
         'Pull down to refresh. Live scores appear here while games are being played.',

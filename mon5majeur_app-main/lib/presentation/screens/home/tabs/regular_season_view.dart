@@ -1,3 +1,4 @@
+import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,15 +13,6 @@ class RegularSeasonView extends StatelessWidget {
   final LeaderboardController controller;
 
   const RegularSeasonView({super.key, required this.controller});
-
-  static final List<AssetGenImage> _logos = [
-    Assets.icons.logo1,
-    Assets.icons.logo2,
-    Assets.icons.logo3,
-    Assets.icons.logo4,
-    Assets.icons.logo5,
-    Assets.icons.logo6,
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -52,10 +44,7 @@ class RegularSeasonView extends StatelessWidget {
           _buildTableHeader(),
           SizedBox(height: 12.h),
           for (final team in standings.teams)
-            _buildTeamRow(
-              team,
-              _logos[(team.rank - 1) % _logos.length],
-            ),
+            _buildTeamRow(team, logoAsset(team.teamLogo)),
           SizedBox(height: 20.h),
           _buildPlayoffInfo(standings.playoffSpots),
         ],

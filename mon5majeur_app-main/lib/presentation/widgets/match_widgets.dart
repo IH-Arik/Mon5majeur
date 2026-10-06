@@ -1,3 +1,4 @@
+import '../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -213,9 +214,11 @@ class NightMatchCard extends StatelessWidget {
               children: [
                 Padding(
                   padding: EdgeInsets.only(top: 2.h),
-                  child: Assets.icons.basketBall.image(
+                  // The logo chosen at league creation (QA #9 2.4 / 11.1).
+                  child: logoAsset(match.leagueLogo).image(
                     width: 20.r,
                     height: 20.r,
+                    fit: BoxFit.contain,
                   ),
                 ),
                 SizedBox(width: 8.w),
@@ -279,7 +282,7 @@ class NightMatchCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _teamLogo(Assets.icons.logo1),
+                  _teamLogo(logoAsset(pair.playerALogo)),
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
@@ -314,7 +317,7 @@ class NightMatchCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: 8.w),
-                  _teamLogo(pair.hasPlayerB ? Assets.icons.logo2 : null),
+                  _teamLogo(pair.hasPlayerB ? logoAsset(pair.playerBLogo) : null),
                 ],
               ),
             ],

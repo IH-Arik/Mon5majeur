@@ -58,6 +58,13 @@ class PlayerScore {
   final String username;
   final int totalPoints;
   final List<PlayerSelection> selection;
+  // What the result screen needs to draw each team (QA #9 10/11).
+  final String teamLogo; // the team's saved avatar
+  final int jerseyIndex; // the team's saved jersey
+  final bool isMe;
+  final String? bonus; // sixth_man | chef_curry | luxury_tax | null = none used
+  final bool bonusHidden; // opponent's bonus, revealed with the results
+  final bool selectionHidden; // opponent's lineup, revealed at tip-off
 
   PlayerScore({
     required this.playerId,
@@ -65,6 +72,12 @@ class PlayerScore {
     required this.username,
     required this.totalPoints,
     required this.selection,
+    this.teamLogo = '',
+    this.jerseyIndex = 0,
+    this.isMe = false,
+    this.bonus,
+    this.bonusHidden = false,
+    this.selectionHidden = false,
   });
 
   factory PlayerScore.fromJson(Map<String, dynamic> json) {
@@ -80,6 +93,12 @@ class PlayerScore {
               ?.map((e) => PlayerSelection.fromJson(e))
               .toList() ??
           [],
+      teamLogo: json['team_logo'] ?? '',
+      jerseyIndex: (json['jersey_index'] as num?)?.toInt() ?? 0,
+      isMe: json['is_me'] ?? false,
+      bonus: json['bonus'],
+      bonusHidden: json['bonus_hidden'] ?? false,
+      selectionHidden: json['selection_hidden'] ?? false,
     );
   }
 }
@@ -89,12 +108,14 @@ class PlayerSelection {
   final String name;
   final String position;
   final int score;
+  final bool isSixthMan;
 
   PlayerSelection({
     required this.id,
     required this.name,
     required this.position,
     required this.score,
+    this.isSixthMan = false,
   });
 
   factory PlayerSelection.fromJson(Map<String, dynamic> json) {
@@ -105,6 +126,7 @@ class PlayerSelection {
       // Backend score fields are floats (e.g. 16.0) — parsing straight into
       // an int throws (double is not a subtype of int); coerce via num.
       score: (json['score'] as num?)?.round() ?? 0,
+      isSixthMan: json['is_sixth_man'] ?? false,
     );
   }
 }

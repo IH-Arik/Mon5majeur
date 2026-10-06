@@ -297,6 +297,9 @@ class MatchPairCompatResponse(BaseSchema):
     player_a_name: str | None = None
     player_b_id: int | None = None
     player_b_name: str | None = None
+    # Saved avatar of each team (QA #9 11.2: the app drew a default devil).
+    player_a_logo: str | None = None
+    player_b_logo: str | None = None
     score_a: float = 0
     score_b: float = 0
     # Mongo LeagueMatch._id (as str) — lets Flutter call GET /api/v1/live/match/{id}
@@ -309,6 +312,7 @@ class MyMatchTodayCompatResponse(BaseSchema):
     id: int = 0                 # match auto_id
     league_id: int = 0          # league auto_id
     league_name: str = ""
+    league_logo: str = ""        # logo chosen at league creation
     match_day: int = 0
     match_type: str = "head_to_head"
     match_date: str = ""
@@ -342,6 +346,7 @@ class PlayerSelectionItem(BaseSchema):
     name: str = ""
     position: str = ""
     score: int = 0
+    is_sixth_man: bool = False
 
 
 class PlayerScoreItem(BaseSchema):
@@ -351,6 +356,13 @@ class PlayerScoreItem(BaseSchema):
     username: str = ""
     total_points: int = 0
     selection: list[PlayerSelectionItem] = []
+    # QA #9 10/11: what the result screen needs to draw each team.
+    team_logo: str = ""         # the team's saved avatar
+    jersey_index: int = 0       # the team's saved jersey (0-5)
+    is_me: bool = False
+    bonus: str | None = None    # sixth_man | chef_curry | luxury_tax | None (none used)
+    bonus_hidden: bool = False  # opponent's bonus, revealed with the results
+    selection_hidden: bool = False  # opponent's lineup, revealed at tip-off
 
 
 class MatchPairItem(BaseSchema):
@@ -494,6 +506,7 @@ class StandingsEntry(BaseSchema):
     points_for: float = 0.0    # PTS column — total FP scored
     points_against: float = 0.0 # PTC column — total FP conceded
     differential: float = 0.0   # +/- column
+    team_logo: str = ""         # the team's saved avatar
     is_playoff_spot: bool = False  # top-4 → blue border in Flutter
 
 
@@ -610,6 +623,7 @@ class GlobalLeaderboardEntry(BaseSchema):
     user_id: int = 0            # User.auto_id, matches the Flutter-facing id elsewhere
     team_name: str
     points: int
+    team_logo: str = ""         # the team's saved avatar
 
 
 class GlobalLeaderboardResponse(BaseSchema):

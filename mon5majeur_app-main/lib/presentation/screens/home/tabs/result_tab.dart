@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
@@ -11,6 +10,7 @@ import '../../../../data/models/match_result_model.dart';
 import '../controllers/result_controller.dart';
 import '../widgets/match_lineups_field.dart';
 import '../../../widgets/match_widgets.dart';
+import '../../../../core/utils/logo_assets.dart';
 
 class ResultTab extends StatefulWidget {
   final int? leagueId;
@@ -343,7 +343,7 @@ class _ResultTabState extends State<ResultTab> {
                     Expanded(
                       child: Row(
                         children: [
-                          _buildTeamLogo(playerAScore?.teamName ?? ''),
+                          _buildTeamLogo(playerAScore?.teamLogo),
                           SizedBox(width: 8.w),
                           Expanded(
                             child: Text(
@@ -384,7 +384,7 @@ class _ResultTabState extends State<ResultTab> {
                             ),
                           ),
                           SizedBox(width: 8.w),
-                          _buildTeamLogo(playerBScore?.teamName ?? ''),
+                          _buildTeamLogo(playerBScore?.teamLogo),
                         ],
                       ),
                     ),
@@ -418,8 +418,8 @@ class _ResultTabState extends State<ResultTab> {
     });
   }
 
-  Widget _buildTeamLogo(String teamName) {
-    // Use a default logo or map team names to logos
+  Widget _buildTeamLogo(String? teamLogo) {
+    // The team's own saved avatar (QA #9 11.2: every team showed the devil).
     return Container(
       width: 32.w,
       height: 32.w,
@@ -430,7 +430,7 @@ class _ResultTabState extends State<ResultTab> {
         ),
       ),
       child: Center(
-        child: Assets.icons.logo1.image(width: 16.w, height: 18.h),
+        child: logoAsset(teamLogo).image(width: 20.w, height: 20.w, fit: BoxFit.contain),
       ),
     );
   }

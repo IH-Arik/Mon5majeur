@@ -514,6 +514,7 @@ async def get_global_leaderboard(
             user_id=user.auto_id or 0 if user else 0,
             team_name=display_name,
             points=int(round(total)),
+            team_logo=(user.team_logo or "") if user else "",
         ))
 
     return GlobalLeaderboardResponse(

@@ -355,6 +355,7 @@ _STATUS_MAP = {"upcoming": "scheduled", "live": "live", "completed": "completed"
 
 async def get_match_result(league_auto_id: int, match_day: int, viewer: User | None = None) -> dict:
     from app.modules.leagues.score_visibility import release_iso, scores_hidden
+    from app.modules.leagues.positions import court_order
     from app.modules.players.model import PlayerGameStats
 
     league = await League.find_one(League.auto_id == league_auto_id)
@@ -379,6 +380,15 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
 
     nba_date = matches[0].nba_date
 
+    # QA #9 10.1: an opponent's lineup is hidden until the first tip-off, so
+    # nobody can copy it; their bonus (except the 6th man, whose jersey is on
+    # the court) is revealed with the published results.
+    started = overall_status in ("live", "completed") or (
+        await _lock_in_seconds(league_auto_id, match_day) == 0
+    )
+    published = overall_status == "completed"
+    viewer_oid = viewer.id if viewer is not None else None
+
     # Collect all participant user ObjectIds
     all_user_oids = set()
     for m in matches:
@@ -397,6 +407,7 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
         if not user:
             continue
 
+        is_me = viewer_oid is not None and user_oid == viewer_oid
         sel_doc = await FlutterPlayerSelection.find_one(
             FlutterPlayerSelection.user_id == user_oid,
             FlutterPlayerSelection.league_auto_id == league_auto_id,
@@ -405,38 +416,67 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
 
         selection_items: list[dict] = []
         total = 0
+        bonus: str | None = None
+        bonus_hidden = False
+        selection_hidden = False
 
         if sel_doc:
-            all_players = list(sel_doc.selected_players)
             if sel_doc.sixth_man_player is not None:
-                all_players.append(sel_doc.sixth_man_player)
+                real_bonus = "sixth_man"
+            elif sel_doc.chef_curry:
+                real_bonus = "chef_curry"
+            elif sel_doc.luxury_tax:
+                real_bonus = "luxury_tax"
+            else:
+                real_bonus = None
 
-            for p in all_players:
-                fscore = 0
-                pid_str = p.get("id", "")
-                try:
-                    player_oid = PydanticObjectId(pid_str)
-                    stats = await PlayerGameStats.find_one(
-                        PlayerGameStats.player_id == player_oid,
-                        PlayerGameStats.nba_date == nba_date,
-                        PlayerGameStats.score_computed == True,  # noqa: E712
-                    )
-                    if stats and stats.fantasy_score is not None:
-                        fscore = int(round(stats.fantasy_score))
-                except Exception:
-                    pass
-                selection_items.append({
-                    "id": pid_str,
-                    "name": p.get("name", ""),
-                    "position": p.get("position", ""),
-                    "score": fscore,
-                })
+            selection_hidden = not is_me and not started
+            if is_me or published:
+                bonus = real_bonus
+            elif real_bonus == "sixth_man" and started:
+                bonus = real_bonus  # his jersey is on the court anyway
+
+            if not selection_hidden:
+                async def _item(p: dict, is_sixth: bool) -> dict:
+                    fscore = 0
+                    pid_str = p.get("id", "")
+                    try:
+                        player_oid = PydanticObjectId(pid_str)
+                        stats = await PlayerGameStats.find_one(
+                            PlayerGameStats.player_id == player_oid,
+                            PlayerGameStats.nba_date == nba_date,
+                            PlayerGameStats.score_computed == True,  # noqa: E712
+                        )
+                        if stats and stats.fantasy_score is not None:
+                            fscore = int(round(stats.fantasy_score))
+                    except Exception:
+                        pass
+                    return {
+                        "id": pid_str,
+                        "name": p.get("name", ""),
+                        "position": p.get("position", ""),
+                        "score": fscore,
+                        "is_sixth_man": is_sixth,
+                    }
+
+                starters = [await _item(p, False) for p in sel_doc.selected_players]
+                order = court_order([i["position"] for i in starters])
+                if order is not None:
+                    starters = [starters[i] for i in order]
+                selection_items = starters
+                if sel_doc.sixth_man_player is not None:
+                    selection_items.append(await _item(sel_doc.sixth_man_player, True))
 
             # Authoritative total: same bonus-aware calculation that decides
             # the duel (score_full_selection) — top-5-of-6 + Chef Curry, not
             # a plain sum of the list above (which may include a dropped 6th
             # Man score, shown for transparency but not counted).
             total = int(round(await score_full_selection(sel_doc, nba_date)))
+
+        # An opponent's bonus stays secret until the results are published -
+        # whether they have one or not, so its absence leaks nothing either.
+        if not is_me and not published and bonus is None:
+            bonus_hidden = True
 
         user_totals[user_oid] = total
         display_name = user.team_name or (user.email.split("@")[0] if user.email else "Unknown")
@@ -446,6 +486,12 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             "username": user.full_name or display_name,
             "total_points": total,
             "selection": selection_items,
+            "team_logo": user.team_logo or "",
+            "jersey_index": user.jersey_index,
+            "is_me": is_me,
+            "bonus": bonus,
+            "bonus_hidden": bonus_hidden,
+            "selection_hidden": selection_hidden,
         })
 
     # Build pairs from each LeagueMatch

@@ -3,6 +3,7 @@ class MyMatchTodayModel {
   final int id;
   final int leagueId;
   final String leagueName;
+  final String leagueLogo; // logo chosen at league creation
   final int matchDay;
   final String matchType;
   final String matchDate;
@@ -25,6 +26,7 @@ class MyMatchTodayModel {
     required this.id,
     required this.leagueId,
     required this.leagueName,
+    this.leagueLogo = '',
     required this.matchDay,
     required this.matchType,
     required this.matchDate,
@@ -44,6 +46,7 @@ class MyMatchTodayModel {
       id: json['id'] ?? 0,
       leagueId: json['league_id'] ?? 0,
       leagueName: json['league_name'] ?? '',
+      leagueLogo: json['league_logo'] ?? '',
       matchDay: json['match_day'] ?? 0,
       matchType: json['match_type'] ?? '',
       matchDate: json['match_date'] ?? '',
@@ -100,6 +103,8 @@ class MatchPair {
   final String? playerAName;
   final int? playerBId;
   final String? playerBName;
+  final String? playerALogo;
+  final String? playerBLogo;
   final int scoreA;
   final int scoreB;
   // Mongo LeagueMatch id — needed to call GET /live/match/{id}.
@@ -110,6 +115,8 @@ class MatchPair {
     this.playerAName,
     this.playerBId,
     this.playerBName,
+    this.playerALogo,
+    this.playerBLogo,
     required this.scoreA,
     required this.scoreB,
     this.matchObjectId,
@@ -121,6 +128,8 @@ class MatchPair {
       playerAName: json['player_a_name'],
       playerBId: json['player_b_id'],
       playerBName: json['player_b_name'],
+      playerALogo: json['player_a_logo'],
+      playerBLogo: json['player_b_logo'],
       // Backend sends these as floats (e.g. 16.0) even for whole scores —
       // parsing directly into an int field throws (double is not a subtype
       // of int), silently swallowed by the caller's try/catch, which left

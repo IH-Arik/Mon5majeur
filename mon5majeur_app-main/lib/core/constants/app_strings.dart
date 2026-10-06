@@ -645,6 +645,10 @@ class AppString {
   static const String sixthManDropped = 'Not counted (6th Man)';
   static const String noLineupSubmitted = 'No lineup submitted';
   static const String removeBonus = 'Remove';
+  static const String bonusLabel = 'Bonus';
+  static const String noBonus = 'No bonus';
+  static const String bonusHidden = 'Bonus revealed with the results';
+  static const String opponentLineupHidden = "Opponent's lineup is revealed at tip-off";
   static const String noLiveMatchNow = 'No live match right now';
   static const String noLiveMatchHint =
       'Pull down to refresh. Live scores appear here while games are being played.';

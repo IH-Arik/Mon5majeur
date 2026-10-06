@@ -1,3 +1,4 @@
+import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,12 +14,14 @@ class _LeaderboardEntry {
   final int userAutoId;
   final String teamName;
   final int points;
+  final String teamLogo;
 
   const _LeaderboardEntry({
     required this.rank,
     required this.userAutoId,
     required this.teamName,
     required this.points,
+    this.teamLogo = '',
   });
 
   factory _LeaderboardEntry.fromJson(Map<String, dynamic> json) {
@@ -27,6 +30,7 @@ class _LeaderboardEntry {
       userAutoId: (json['user_id'] as num?)?.toInt() ?? 0,
       teamName: json['team_name'] as String? ?? '',
       points: (json['points'] as num?)?.toInt() ?? 0,
+      teamLogo: json['team_logo'] as String? ?? '',
     );
   }
 }
@@ -331,14 +335,16 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
               child: Text('🔥', style: TextStyle(fontSize: 16.sp)),
             ),
           // Team icon
+          // The team's own saved avatar (QA #9 11.2: a grey shield for all).
           Container(
-            width: 24.w,
-            height: 24.h,
+            width: 26.w,
+            height: 26.w,
+            padding: EdgeInsets.all(3.r),
             decoration: const BoxDecoration(
               color: Color(0xFF3A3D4E),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.shield, size: 14.r, color: Colors.white54),
+            child: logoAsset(team.teamLogo).image(fit: BoxFit.contain),
           ),
           SizedBox(width: 12.w),
 

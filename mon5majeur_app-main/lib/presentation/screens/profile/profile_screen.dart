@@ -1,3 +1,4 @@
+import '../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -327,24 +328,8 @@ class ProfileScreen extends StatelessWidget {
 
   // Get team logo asset based on team_logo string from API
   // (same mapping used by HomeController.getTeamLogoAsset).
-  AssetGenImage _teamLogoAsset(String teamLogo) {
-    switch (teamLogo.toLowerCase()) {
-      case 'paris_fc':
-        return Assets.icons.logo1;
-      case 'lakers':
-        return Assets.icons.logo2;
-      case 'boston_celtics':
-        return Assets.icons.logo3;
-      case 'chicago_bulls':
-        return Assets.icons.logo4;
-      case 'atlanta_hawks':
-        return Assets.icons.logo5;
-      case 'golden_state_warriors':
-        return Assets.icons.logo6;
-      default:
-        return Assets.icons.logo1;
-    }
-  }
+  AssetGenImage _teamLogoAsset(String teamLogo) => logoAsset(teamLogo);
+
 }
 
 /// Statistics Card Widget

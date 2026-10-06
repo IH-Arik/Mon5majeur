@@ -254,6 +254,7 @@ async def get_standings(league_auto_id: int, viewer=None) -> StandingsResponse:
             points_for=round(m.points_for, 1),
             points_against=round(m.points_against, 1),
             differential=round(diff, 1),
+            team_logo=(user.team_logo or "") if user else "",
             is_playoff_spot=(rank <= playoff_spots),
         ))
 

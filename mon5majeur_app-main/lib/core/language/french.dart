@@ -536,6 +536,10 @@ class FrenchTranslation {
     AppString.sixthManDropped: 'Non comptabilisé (6ème homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
     AppString.removeBonus: 'Retirer',
+    AppString.bonusLabel: 'Bonus',
+    AppString.noBonus: 'Aucun bonus',
+    AppString.bonusHidden: 'Bonus révélé avec les résultats',
+    AppString.opponentLineupHidden: "La composition de l'adversaire sera révélée au coup d'envoi",
     AppString.noLiveMatchNow: 'Aucun match en direct pour le moment',
     AppString.noLiveMatchHint:
         'Tire pour actualiser. Les scores en direct apparaissent ici pendant les matchs.',

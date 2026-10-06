@@ -36,6 +36,7 @@ class StandingsEntry {
   final double pointsAgainst;
   final double differential;
   final bool isPlayoffSpot;
+  final String teamLogo; // the team's saved avatar
 
   StandingsEntry({
     required this.rank,
@@ -47,6 +48,7 @@ class StandingsEntry {
     required this.pointsAgainst,
     required this.differential,
     required this.isPlayoffSpot,
+    this.teamLogo = '',
   });
 
   factory StandingsEntry.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,7 @@ class StandingsEntry {
       pointsAgainst: (json['points_against'] ?? 0).toDouble(),
       differential: (json['differential'] ?? 0).toDouble(),
       isPlayoffSpot: json['is_playoff_spot'] ?? false,
+      teamLogo: json['team_logo'] ?? '',
     );
   }
 }

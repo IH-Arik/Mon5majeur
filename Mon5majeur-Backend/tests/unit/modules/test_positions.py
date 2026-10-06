@@ -51,3 +51,21 @@ def test_wrong_number_of_players():
 ])
 def test_slots_for(label, expected):
     assert slots_for(label) == expected
+
+
+def test_court_order_puts_wings_center_guards_in_the_global_layout():
+    from app.modules.leagues.positions import court_order
+
+    labels = ["PG", "SG", "C", "SF", "PF"]
+    order = court_order(labels)
+    arranged = [labels[i] for i in order]
+    assert arranged[1] == "C"                       # center in the middle
+    assert set(arranged[0:1] + arranged[2:3]) <= {"SF", "PF", "F"}   # wings on the sides
+    assert set(arranged[3:]) == {"PG", "SG"}                         # guards behind
+
+
+def test_court_order_handles_hybrids_and_gives_none_when_impossible():
+    from app.modules.leagues.positions import court_order
+
+    assert court_order(["PG", "G-F", "SF", "F-C", "C"]) is not None
+    assert court_order(["PG", "SG", "G", "PF", "C"]) is None

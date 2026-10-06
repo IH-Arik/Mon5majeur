@@ -1,3 +1,4 @@
+import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -71,42 +72,8 @@ class _JoinLeagueWaitingRoomScreenState
   }
 
   // Helper to get logo asset
-  AssetGenImage _getLogoAsset(String logoName) {
-    switch (logoName.toLowerCase()) {
-      // League logo pool (QA 08/08/2026 item 8) — what league.leagueLogo
-      // actually holds now.
-      case 'league_flaming_ball':
-        return Assets.icons.leagueLogoFlamingBall;
-      case 'league_cap':
-        return Assets.icons.leagueLogoCap;
-      case 'league_yeti':
-        return Assets.icons.leagueLogoYeti;
-      case 'league_lion':
-        return Assets.icons.leagueLogoLion;
-      case 'league_ball':
-        return Assets.icons.leagueLogoBall;
-      case 'league_shark':
-        return Assets.icons.leagueLogoShark;
-      case 'league_snake':
-        return Assets.icons.leagueLogoSnake;
-      // Legacy/team-logo values — this function also renders team.teamLogo
-      // (personal profile logos, a separate unrelated picker), left as-is.
-      case 'lion':
-        return Assets.icons.lion;
-      case 'logo1':
-        return Assets.icons.logo1;
-      case 'logo2':
-        return Assets.icons.logo2;
-      case 'logo3':
-        return Assets.icons.logo3;
-      case 'logo4':
-        return Assets.icons.logo4;
-      case 'logo5':
-        return Assets.icons.logo5;
-      default:
-        return Assets.icons.lion;
-    }
-  }
+  AssetGenImage _getLogoAsset(String logoName) => logoAsset(logoName);
+
 
   @override
   Widget build(BuildContext context) {

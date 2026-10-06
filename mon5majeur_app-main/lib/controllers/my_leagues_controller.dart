@@ -162,6 +162,18 @@ class MyLeaguesController extends GetxController {
     }
   }
 
+  /// The logo chosen at creation for league [leagueId], from the already
+  /// loaded list ('' when unknown: the default image is then used).
+  static String logoFor(int? leagueId, {required bool isPrivate}) {
+    if (leagueId == null || !Get.isRegistered<MyLeaguesController>()) return '';
+    for (final l in Get.find<MyLeaguesController>().leagues) {
+      if (l.leagueId == leagueId && l.isPrivate == isPrivate) {
+        return l.leagueLogo;
+      }
+    }
+    return '';
+  }
+
   // Refresh leagues
   Future<void> refreshLeagues() async {
     leagues.clear(); // Clear existing leagues before refresh

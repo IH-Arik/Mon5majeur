@@ -1,4 +1,5 @@
 // lib/data/models/my_league_model.dart
+import '../../core/utils/logo_assets.dart';
 import 'package:mon5majeur_app/core/custom_assets/assets.gen.dart';
 import 'private_league_model.dart';
 
@@ -91,24 +92,8 @@ class MyLeagueModel {
   String get leagueTypeText => isPrivate ? 'Private' : 'Public';
 
   // Get league logo asset
-  AssetGenImage getLeagueLogoAsset() {
-    switch (leagueLogo.toLowerCase()) {
-      case 'paris_fc':
-        return Assets.icons.logo1;
-      case 'lakers':
-        return Assets.icons.logo2;
-      case 'boston_celtics':
-        return Assets.icons.logo3;
-      case 'chicago_bulls':
-        return Assets.icons.logo4;
-      case 'atlanta_hawks':
-        return Assets.icons.logo5;
-      case 'golden_state_warriors':
-        return Assets.icons.logo6;
-      default:
-        return Assets.icons.logo1;
-    }
-  }
+  AssetGenImage getLeagueLogoAsset() => logoAsset(leagueLogo);
+
 
   @override
   String toString() {

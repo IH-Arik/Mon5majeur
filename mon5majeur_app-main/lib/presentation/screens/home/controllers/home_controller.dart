@@ -1,4 +1,5 @@
 // lib/presentation/screens/home/controller/home_controller.dart
+import '../../../../core/utils/logo_assets.dart';
 import 'dart:async';
 
 import 'package:get/get.dart';
@@ -287,24 +288,8 @@ class HomeController extends GetxController {
   }
 
   // Get team logo asset based on team_logo string from API
-  AssetGenImage getTeamLogoAsset(String teamLogo) {
-    switch (teamLogo.toLowerCase()) {
-      case 'paris_fc':
-        return Assets.icons.logo1;
-      case 'lakers':
-        return Assets.icons.logo2;
-      case 'boston_celtics':
-        return Assets.icons.logo3;
-      case 'chicago_bulls':
-        return Assets.icons.logo4;
-      case 'atlanta_hawks':
-        return Assets.icons.logo5;
-      case 'golden_state_warriors':
-        return Assets.icons.logo6;
-      default:
-        return Assets.icons.logo1; // Default logo
-    }
-  }
+  AssetGenImage getTeamLogoAsset(String teamLogo) => logoAsset(teamLogo);
+
 
   // Get display team name
   String get displayTeamName {

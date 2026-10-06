@@ -43,3 +43,21 @@ def can_fill_lineup(labels: list[str | None]) -> bool:
         all(slot in allowed[i] for i, slot in enumerate(perm))
         for perm in permutations(SLOTS)
     )
+
+
+# Order the court draws the five starters in: left wing, center, right wing,
+# left guard, right guard (the Global League layout).
+COURT_ORDER = (WING, CENTER, WING, BACKCOURT, BACKCOURT)
+
+
+def court_order(labels: list[str | None]) -> list[int] | None:
+    """Indexes of `labels` arranged in COURT_ORDER (wing, center, wing, guard,
+    guard), or None when no valid assignment exists. Lets a lineup be drawn by
+    position instead of by the order players were added."""
+    if len(labels) != len(COURT_ORDER):
+        return None
+    allowed = [slots_for(label) for label in labels]
+    for perm in permutations(range(len(labels))):
+        if all(COURT_ORDER[slot] in allowed[i] for slot, i in enumerate(perm)):
+            return list(perm)
+    return None

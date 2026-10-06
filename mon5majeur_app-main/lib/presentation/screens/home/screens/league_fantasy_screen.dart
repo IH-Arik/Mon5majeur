@@ -1,3 +1,5 @@
+import '../../../../controllers/my_leagues_controller.dart';
+import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -237,10 +239,10 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
         ),
       ),
       child: Center(
-        child: Assets.icons.logo1.image(
-          width: 16.w,
-          height: 18.h,
-          fit: BoxFit.cover,
+        child: logoAsset(MyLeaguesController.logoFor(widget.leagueId, isPrivate: widget.isPrivate)).image(
+          width: 24.w,
+          height: 24.w,
+          fit: BoxFit.contain,
         ),
       ),
     );
