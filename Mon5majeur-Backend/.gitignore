@@ -40,3 +40,6 @@ uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# server-only secrets (Firebase service account ...)
+secrets/
