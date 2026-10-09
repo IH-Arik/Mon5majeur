@@ -65,6 +65,45 @@ const _nbaTeams = [
   'Toronto Raptors', 'Utah Jazz', 'Washington Wizards',
 ];
 
+/// EU summer time (Paris is UTC+2 from the last Sunday of March 01:00 UTC to
+/// the last Sunday of October 01:00 UTC, UTC+1 otherwise).
+bool _isParisSummer(DateTime utc) {
+  DateTime lastSunday(int month) {
+    var d = DateTime.utc(utc.year, month + 1, 0, 1); // last day of [month]
+    while (d.weekday != DateTime.sunday) {
+      d = d.subtract(const Duration(days: 1));
+    }
+    return d;
+  }
+
+  return !utc.isBefore(lastSunday(3)) && utc.isBefore(lastSunday(10));
+}
+
+/// The latest 09:00 Paris (the daily publication) at or before [refUtc].
+DateTime _lastParisPublication(DateTime refUtc) {
+  final paris = refUtc.add(Duration(hours: _isParisSummer(refUtc) ? 2 : 1));
+  var day = DateTime.utc(paris.year, paris.month, paris.day, 9);
+  if (day.isAfter(paris)) day = day.subtract(const Duration(days: 1));
+  return day.subtract(Duration(hours: _isParisSummer(day) ? 2 : 1));
+}
+
+/// When a player list fetched at [fetchedUtc] stops being valid: at the next
+/// 09:00 Paris publication. A list fetched in the first 15 minutes after a
+/// publication (the data may not be fully updated yet) is only kept 15 minutes.
+@visibleForTesting
+DateTime playersCacheExpiry(DateTime fetchedUtc) {
+  final lastPublication = _lastParisPublication(fetchedUtc);
+  final next = _lastParisPublication(
+    lastPublication.add(const Duration(hours: 36)),
+  );
+  final grace = lastPublication.add(const Duration(minutes: 15));
+  if (fetchedUtc.isBefore(grace)) {
+    final soon = fetchedUtc.add(const Duration(minutes: 15));
+    return soon.isBefore(next) ? soon : next;
+  }
+  return next;
+}
+
 class DataScreen extends StatefulWidget {
   const DataScreen({super.key});
 
@@ -73,6 +112,12 @@ class DataScreen extends StatefulWidget {
 }
 
 class _DataScreenState extends State<DataScreen> {
+  // In-memory cache of the complete player list, kept for the app session.
+  // Only a COMPLETE list is ever stored; the refresh button replaces it.
+  static List<Player>? _cachePlayers;
+  static int _cacheTotal = 0;
+  static DateTime? _cacheExpiresAt;
+
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ApiClient _apiClient = ApiClient();
@@ -108,7 +153,35 @@ class _DataScreenState extends State<DataScreen> {
       });
     });
     _scrollController.addListener(_onScroll);
-    _fetchPlayers();
+    if (_cacheIsValid) {
+      _restoreFromCache();
+    } else {
+      _fetchPlayers();
+    }
+  }
+
+  bool get _cacheIsValid =>
+      _cachePlayers != null &&
+      _cacheExpiresAt != null &&
+      DateTime.now().toUtc().isBefore(_cacheExpiresAt!);
+
+  void _restoreFromCache() {
+    _allPlayers = List<Player>.of(_cachePlayers!);
+    _totalPlayers = _cacheTotal;
+    _nextPageUrl = null;
+    _hasMorePages = false;
+    _isLoading = false;
+    for (final player in _allPlayers) {
+      _availablePositions.add(player.position);
+      _availableTeams.add(player.team);
+    }
+  }
+
+  void _storeCache() {
+    if (_allPlayers.isEmpty) return;
+    _cachePlayers = List<Player>.of(_allPlayers);
+    _cacheTotal = _totalPlayers;
+    _cacheExpiresAt = playersCacheExpiry(DateTime.now().toUtc());
   }
 
   void _onScroll() {
@@ -123,6 +196,7 @@ class _DataScreenState extends State<DataScreen> {
   Future<void> _fetchPlayers({bool refresh = false}) async {
     try {
       if (refresh) {
+        _cachePlayers = null; // the refresh button always replaces the cache
         setState(() {
           _isLoading = true;
           _allPlayers.clear();
@@ -184,6 +258,107 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Future<void> _loadAllRemaining() async {
+    final firstNext = _nextPageUrl;
+    if (firstNext == null) {
+      _storeCache();
+      return;
+    }
+    final pageSize = _allPlayers.length;
+    final nextUri = Uri.tryParse(firstNext);
+    final firstNo = int.tryParse(nextUri?.queryParameters['page'] ?? '');
+    if (nextUri == null || firstNo == null || pageSize == 0) {
+      await _loadRemainingSequentially(); // cannot work the pages out
+      return;
+    }
+    final lastNo = (_totalPlayers + pageSize - 1) ~/ pageSize;
+    if (lastNo < firstNo) {
+      await _loadRemainingSequentially();
+      return;
+    }
+    final urls = <String>[
+      for (var n = firstNo; n <= lastNo; n++)
+        nextUri
+            .replace(queryParameters: {...nextUri.queryParameters, 'page': '$n'})
+            .toString(),
+    ];
+
+    // Pages 2..N are requested together. They are added to the list in page
+    // order whatever order they arrive in, so the result is the same as with
+    // sequential loading.
+    setState(() => _isLoadingMore = true);
+    final bodies = List<Map<String, dynamic>?>.filled(urls.length, null);
+    final finished = List<bool>.filled(urls.length, false);
+    var flushed = 0;
+    int? failedAt;
+
+    void flush() {
+      while (mounted &&
+          failedAt == null &&
+          flushed < urls.length &&
+          finished[flushed]) {
+        final body = bodies[flushed];
+        if (body == null) {
+          failedAt = flushed;
+          return;
+        }
+        final players = (body['results'] as List<dynamic>? ?? [])
+            .map((json) => Player.fromJson(json as Map<String, dynamic>))
+            .toList();
+        for (final player in players) {
+          _availablePositions.add(player.position);
+          _availableTeams.add(player.team);
+        }
+        setState(() => _allPlayers.addAll(players));
+        flushed++;
+      }
+    }
+
+    Future<void> fetchOne(int i) async {
+      // One retry: a page that fails twice is reported, never skipped.
+      for (var attempt = 0; attempt < 2 && bodies[i] == null; attempt++) {
+        try {
+          final response = await _apiClient.get(url: urls[i], showResult: true);
+          if (response.statusCode == 200 && response.body is Map) {
+            bodies[i] = Map<String, dynamic>.from(response.body as Map);
+          }
+        } catch (e) {
+          debugPrint('Error loading page ${i + firstNo}: $e');
+        }
+      }
+      finished[i] = true;
+      flush();
+    }
+
+    await Future.wait([for (var i = 0; i < urls.length; i++) fetchOne(i)]);
+    if (!mounted) return;
+
+    if (failedAt != null) {
+      // Show what we have, exactly as when a page used to fail: the counter
+      // and the "load more" row stay, and the list continues from the page
+      // that failed. Nothing incomplete is cached.
+      setState(() {
+        _nextPageUrl = urls[failedAt!];
+        _hasMorePages = true;
+        _isLoadingMore = false;
+      });
+      return;
+    }
+
+    final lastBody = bodies.last!;
+    setState(() {
+      _totalPlayers = lastBody['count'] ?? _totalPlayers;
+      _nextPageUrl = lastBody['next'];
+      _hasMorePages = _nextPageUrl != null;
+      _isLoadingMore = false;
+    });
+    if (_hasMorePages) {
+      await _loadRemainingSequentially(); // the total had grown meanwhile
+    } else {
+      _storeCache();
+    }
+  }
+
+  Future<void> _loadRemainingSequentially() async {
     while (mounted && _hasMorePages && _nextPageUrl != null) {
       final before = _allPlayers.length;
       await _loadMorePlayers();
@@ -227,6 +402,7 @@ class _DataScreenState extends State<DataScreen> {
             _allPlayers.addAll(players);
             _isLoadingMore = false;
           });
+          if (!_hasMorePages) _storeCache(); // the list is now complete
         }
       } else {
         setState(() {
