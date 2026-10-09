@@ -668,7 +668,7 @@ class _GlobalLeagueCard extends StatelessWidget {
                     SizedBox(width: 12.w),
 
                     /// Right: team status / CTA
-                    _validationStatus(validated, lockInSeconds),
+                    _TeamStatus(validated: validated, lockInSeconds: lockInSeconds),
                   ],
                 ),
               ],
@@ -769,45 +769,6 @@ class _GlobalLeagueCard extends StatelessWidget {
       style: TextStyle(color: Colors.grey[300], fontSize: 12.sp),
     );
   }
-
-  // Right-side team status / CTA — see _homeCardCta for the 4-state logic.
-  static Widget _validationStatus(bool validated, int? lockInSeconds) {
-    final cta = _homeCardCta(validated, lockInSeconds);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8.w,
-              height: 8.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cta.dotColor,
-              ),
-            ),
-            SizedBox(width: 6.w),
-            Text(
-              cta.ctaText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        if (cta.subLabelText != null) ...[
-          SizedBox(height: 2.h),
-          Text(
-            cta.subLabelText!,
-            style: TextStyle(color: Colors.grey, fontSize: 8.sp),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 /// The Home league card's 4-state CTA (QA #4 item 1): which of
@@ -839,6 +800,79 @@ _HomeCardCta _homeCardCta(bool validated, int? lockInSeconds) {
   return validated
       ? _HomeCardCta(const Color(0xFF22C55E), AppString.editYourFive.tr, subLabel)
       : _HomeCardCta(const Color(0xFFEF4444), AppString.setYourFive.tr, subLabel);
+}
+
+/// Team status shown on the right of both Home league cards: a glowing
+/// ring-and-dot indicator, the status in the scoreboard face and, when there
+/// is one, a lighter grey second line. The state itself comes from
+/// [_homeCardCta]; this only draws it.
+class _TeamStatus extends StatelessWidget {
+  final bool validated;
+  final int? lockInSeconds;
+
+  const _TeamStatus({required this.validated, required this.lockInSeconds});
+
+  @override
+  Widget build(BuildContext context) {
+    final cta = _homeCardCta(validated, lockInSeconds);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dot inside a thin ring of the same colour, with a soft halo.
+            Container(
+              width: 14.w,
+              height: 14.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: cta.dotColor.withValues(alpha: 0.7),
+                  width: 1.w,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: cta.dotColor.withValues(alpha: 0.45),
+                    blurRadius: 6.r,
+                  ),
+                ],
+              ),
+              child: Container(
+                width: 7.w,
+                height: 7.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cta.dotColor,
+                ),
+              ),
+            ),
+            SizedBox(width: 6.w),
+            Flexible(
+              child: Text(
+                cta.ctaText,
+                textAlign: TextAlign.end,
+                style: scoreTextStyle(size: 14, letterSpacing: 0.5),
+              ),
+            ),
+          ],
+        ),
+        if (cta.subLabelText != null) ...[
+          SizedBox(height: 2.h),
+          Text(
+            cta.subLabelText!,
+            textAlign: TextAlign.end,
+            style: scoreTextStyle(
+              size: 10,
+              color: Colors.grey,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 /// Locale-specific clock time for the lock label - FR: "1h30" (24-hour, no
@@ -1130,9 +1164,29 @@ class _AnimatedLeagueCard extends StatelessWidget {
                                 // Validation status (right side) — real
                                 // per-user "5 validated" state + lock
                                 // countdown from the backend.
-                                _leagueValidationStatus(
-                                  league.lineupSubmitted,
-                                  league.lockInSeconds,
+                                // A one-line status (no secondary line) is
+                                // centred on the name's first line instead of
+                                // sitting above it.
+                                Builder(
+                                  builder: (_) {
+                                    final status = _TeamStatus(
+                                      validated: league.lineupSubmitted,
+                                      lockInSeconds: league.lockInSeconds,
+                                    );
+                                    final oneLine = _homeCardCta(
+                                      league.lineupSubmitted,
+                                      league.lockInSeconds,
+                                    ).subLabelText == null;
+                                    return oneLine
+                                        ? SizedBox(
+                                            height: 4.h + 20.r,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: status,
+                                            ),
+                                          )
+                                        : status;
+                                  },
                                 ),
                               ],
                             ),
@@ -1213,47 +1267,6 @@ class _AnimatedLeagueCard extends StatelessWidget {
       default:
         return '${number}th';
     }
-  }
-
-  // Right-side validation status:
-  // See _homeCardCta for the 4-state logic (shared with the Global League
-  // card above).
-  static Widget _leagueValidationStatus(bool validated, int? lockInSeconds) {
-    final cta = _homeCardCta(validated, lockInSeconds);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8.w,
-              height: 8.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cta.dotColor,
-              ),
-            ),
-            SizedBox(width: 6.w),
-            Text(
-              cta.ctaText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        if (cta.subLabelText != null) ...[
-          SizedBox(height: 2.h),
-          Text(
-            cta.subLabelText!,
-            style: TextStyle(color: Colors.grey, fontSize: 8.sp),
-          ),
-        ],
-      ],
-    );
   }
 
   // Thin vertical separator between info-row items.
