@@ -493,6 +493,16 @@ class AppString {
   // Letters of the profile W / L tile (V / D in French).
   static const String statWinLetter = 'statWinLetter';
   static const String statLossLetter = 'statLossLetter';
+  // Trophy details sheet (Profile).
+  static const String trophyLeagueChampionName = 'trophyLeagueChampionName';
+  static const String trophyLeagueChampionDesc = 'trophyLeagueChampionDesc';
+  static const String trophyBestOfMonthName = 'trophyBestOfMonthName';
+  static const String trophyBestOfMonthDesc = 'trophyBestOfMonthDesc';
+  static const String trophyBestOfWeekName = 'trophyBestOfWeekName';
+  static const String trophyBestOfWeekDesc = 'trophyBestOfWeekDesc';
+  static const String trophyLastPlaceName = 'trophyLastPlaceName';
+  static const String trophyLastPlaceDesc = 'trophyLastPlaceDesc';
+  static const String trophyObtainedTimes = 'trophyObtainedTimes';
   static const String trophies = 'Trophies';
   static const String performanceHighlights = 'Duel stats';
   static const String avgPointScoredValue = '92.3';
