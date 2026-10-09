@@ -6,7 +6,6 @@ import 'package:showcaseview/showcaseview.dart';
 
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/player.dart';
@@ -18,6 +17,7 @@ import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
 import '../../tutorial/tutorial_skip_button.dart';
 import '../screens/select_player_screen.dart';
+import '../widgets/game_card.dart';
 import '../widgets/lineup_widgets.dart';
 import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
@@ -745,42 +745,12 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
               itemBuilder: (context, index) {
                 return Padding(
                   padding: EdgeInsets.only(right: 12.w),
-                  child: _buildGameCard(todaysGames[index]),
+                  child: GameCard(game: todaysGames[index]),
                 );
               },
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildGameCard(Game game) {
-    return Container(
-      width: 160.w,
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1C2A),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFF2A2D3E)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${game.homeTeam} vs ${game.awayTeam}',
-            style: TextStyle(
-              color: const Color(0xFFFF8C42),
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            formatGameLocalTime(game.datetimeUtc) ?? game.gameTime,
-            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
-          ),
-        ],
-      ),
     );
   }
 
