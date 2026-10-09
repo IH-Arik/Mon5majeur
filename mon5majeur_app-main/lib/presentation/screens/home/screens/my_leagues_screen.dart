@@ -333,24 +333,6 @@ class LeagueCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // League Icon
-            Container(
-              width: 44.w,
-              height: 44.h,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A2A),
-                borderRadius: BorderRadius.circular(33.r),
-              ),
-              child: Center(
-                child: SizedBox(
-                  width: 24.w,
-                  height: 24.h,
-                  child: league.getLeagueLogoAsset().image(fit: BoxFit.contain),
-                ),
-              ),
-            ),
-            SizedBox(width: 16.w),
-
             // League Info + Matchday Row
             Expanded(
               child: Column(
@@ -360,6 +342,13 @@ class LeagueCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // The logo chosen at league creation.
+                      league.getLeagueLogoAsset().image(
+                        width: 20.r,
+                        height: 20.r,
+                        fit: BoxFit.contain,
+                      ),
+                      SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
                           league.leagueName,

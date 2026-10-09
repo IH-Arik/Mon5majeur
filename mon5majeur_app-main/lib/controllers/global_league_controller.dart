@@ -97,6 +97,9 @@ class GlobalLeagueController extends GetxController {
   var globalLeagueSelection = Rx<GlobalLeagueSelection?>(null);
   var selectedPlayers = <Player>[].obs;
   var totalPoints = 0.obs;
+  // Points of the last PUBLISHED night (null until loaded) - same source as
+  // Global League > Results.
+  var lastPublishedScore = Rxn<int>();
   var currentBalance = '100M'.obs;
   var maxBalance = '100M'.obs;
   var currentMatchDay = 0.obs;
@@ -181,6 +184,7 @@ class GlobalLeagueController extends GetxController {
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
+    fetchLastPublishedScore();
 
     try {
       final apiClient = ApiClient();
@@ -225,6 +229,24 @@ class GlobalLeagueController extends GetxController {
       logger.e('Error fetching global league selection: $e');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Points of the user's last published night, read from the same endpoint
+  /// as Global League > Results (offset 0). 0 when there is none.
+  Future<void> fetchLastPublishedScore() async {
+    try {
+      final response = await ApiClient().get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.globalPublishedResult}?offset=0',
+      );
+      if (response.statusCode == 200 && response.body is Map) {
+        final body = response.body as Map;
+        lastPublishedScore.value = body['available'] == true
+            ? ((body['total_points'] as num?)?.toInt() ?? 0)
+            : 0;
+      }
+    } catch (e) {
+      logger.e('Error fetching last published score: $e');
     }
   }
 

@@ -12,6 +12,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../../../core/utils/score_style.dart';
 import '../../../data/models/my_league_model.dart';
 import '../../widgets/match_widgets.dart';
 import '../../widgets/navigation.dart';
@@ -622,10 +623,10 @@ class _GlobalLeagueCard extends StatelessWidget {
             }
 
             final selection = controller.globalLeagueSelection.value;
-            // Night score comes from the loaded selection; "—" until available.
-            final nightScore = selection == null
-                ? AppString.noResultPlaceholder.tr
-                : '${controller.totalPoints.value} pts';
+            // Night score = last published night (same source as Results); "—" until loaded.
+            final publishedScore = controller.lastPublishedScore.value;
+            final nightScore =
+                publishedScore?.toString() ?? AppString.noResultPlaceholder.tr;
             // Real per-user validated/locked lineup flag from the backend.
             final validated = selection?.lineupSubmitted ?? false;
             final lockInSeconds = selection?.lockInSeconds;
@@ -640,31 +641,29 @@ class _GlobalLeagueCard extends StatelessWidget {
                   children: [
                     /// Left: stats column
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Assets.icons.basketBall.image(
-                                width: 12.r,
-                                height: 12.r,
-                              ),
-                              SizedBox(width: 4.w),
-                              _statLine(
-                                '${AppString.nightScore.tr} $nightScore',
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 6.h),
-                          _statLine(
-                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder.tr}',
-                          ),
-                          SizedBox(height: 6.h),
-                          _statLine(
-                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder.tr}',
-                          ),
-                        ],
-                      ),
+                      child: _statsTable([
+                        (
+                          AppString.nightScore.tr,
+                          nightScore,
+                          const Color(0xFFFF6B35),
+                          publishedScore == null ? null : 'pts',
+                          17,
+                        ),
+                        (
+                          AppString.weekly.tr,
+                          _rankText(selection?.weeklyRank),
+                          _rankColor(selection?.weeklyRank),
+                          null,
+                          _rankSize,
+                        ),
+                        (
+                          AppString.monthly.tr,
+                          _rankText(selection?.monthlyRank),
+                          _rankColor(selection?.monthlyRank),
+                          null,
+                          _rankSize,
+                        ),
+                      ]),
                     ),
                     SizedBox(width: 12.w),
 
@@ -675,6 +674,90 @@ class _GlobalLeagueCard extends StatelessWidget {
               ],
             );
           }),
+        ),
+      ),
+    );
+  }
+
+  static String _rankText(int? rank) =>
+      rank == null ? AppString.noResultPlaceholder.tr : '#$rank';
+
+  // Rank value ("#1") is ~10% smaller than the night score (17).
+  static const double _rankSize = 15.3;
+
+  // Podium colours for the rank ("#" and digit share it): gold, silver,
+  // bronze; white from 4th on and while the rank is still loading.
+  static Color _rankColor(int? rank) {
+    switch (rank) {
+      case 1:
+        return const Color(0xFFFFD54A);
+      case 2:
+        return const Color(0xFFC9D1D9);
+      case 3:
+        return const Color(0xFFCD7F32);
+      default:
+        return Colors.white;
+    }
+  }
+
+  /// Two aligned columns: labels (width of the longest one) and values, all
+  /// sitting on a shared baseline. FittedBox keeps a three-digit score on one
+  /// line on small screens.
+  static Widget _statsTable(
+    List<(String, String, Color, String?, double)> rows,
+  ) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Table(
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            for (var i = 0; i < rows.length; i++)
+              TableRow(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: i == 0 ? 0 : 6.h,
+                      right: 10.w,
+                    ),
+                    child: Text(
+                      rows[i].$1,
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(top: i == 0 ? 0 : 6.h),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          rows[i].$2,
+                          style: scoreTextStyle(size: rows[i].$5, color: rows[i].$3),
+                        ),
+                        if (rows[i].$4 != null) ...[
+                          SizedBox(width: 3.w),
+                          Text(
+                            rows[i].$4!,
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 10.sp,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
@@ -1014,21 +1097,6 @@ class _AnimatedLeagueCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 30.w,
-                        height: 30.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF2a2a2a),
-                        ),
-                        child: Center(
-                          child: league.getLeagueLogoAsset().image(
-                            width: 20.r,
-                            height: 20.r,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 16.w),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1036,9 +1104,14 @@ class _AnimatedLeagueCard extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Assets.icons.basketBall.image(
-                                  width: 20.r,
-                                  height: 20.r,
+                                Padding(
+                                  padding: EdgeInsets.only(top: 2.h),
+                                  // The logo chosen at league creation.
+                                  child: league.getLeagueLogoAsset().image(
+                                    width: 20.r,
+                                    height: 20.r,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                                 SizedBox(width: 8.w),
                                 // Full name, wrapped onto as many lines as it needs
