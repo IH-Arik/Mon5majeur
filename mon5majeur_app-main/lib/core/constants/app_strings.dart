@@ -692,6 +692,13 @@ class AppString {
   static const String semifinalRound = 'semifinalRound';
   static const String finalRound = 'finalRound';
 
+  // Bottom navigation bar labels.
+  static const String navHome = 'navHome';
+  static const String navResults = 'navResults';
+  static const String navData = 'navData';
+  static const String navShop = 'navShop';
+  static const String navProfile = 'navProfile';
+
   // See youNeedMorePlayersTemplate above — same @n-placeholder pattern so
   // the amount survives translation (QA 28/08/2026 #4).
   static const String budgetExceededByTemplate = 'Budget exceeded by @nM';

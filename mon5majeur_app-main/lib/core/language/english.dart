@@ -579,6 +579,11 @@ class EnglishTranslation {
     AppString.liveTabLabel: "Live",
     AppString.semifinalRound: "Semifinal",
     AppString.finalRound: "Final",
+    AppString.navHome: "Home",
+    AppString.navResults: "Results",
+    AppString.navData: "Data",
+    AppString.navShop: "Shop",
+    AppString.navProfile: "Profile",
   };
 
   // --- Handling Dynamic Strings (Methods) ---
