@@ -273,11 +273,18 @@ class _HomeScreenState extends State<HomeScreen>
                                 onTap: () => context.go(
                                   RoutePath.notificationsScreen.addBasePath,
                                 ),
-                                child: AnimatedBuilder(
+                                child: Obx(() {
+                                  // Read here so Obx tracks the unread flag.
+                                  final unread = notifController.hasUnread;
+                                  return AnimatedBuilder(
                                   animation: _pulseAnimation,
                                   builder: (context, child) {
                                     return Transform.scale(
-                                      scale: _pulseAnimation.value,
+                                      // Pulses only while there are unread
+                                      // notifications; fixed otherwise.
+                                      scale: unread
+                                          ? _pulseAnimation.value
+                                          : 1.0,
                                       child: Container(
                                         padding: EdgeInsets.all(8.r),
                                         decoration: const BoxDecoration(
@@ -287,9 +294,9 @@ class _HomeScreenState extends State<HomeScreen>
                                           clipBehavior: Clip.none,
                                           children: [
                                             Icon(
-                                              Icons.notifications,
-                                              color: Colors.yellow,
-                                              size: 24.r,
+                                              Icons.notifications_none_outlined,
+                                              color: Colors.white,
+                                              size: 26.r,
                                             ),
                                             Obx(
                                               () => notifController
@@ -304,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                           shape:
                                                               BoxShape.circle,
                                                           color: Color(
-                                                            0xFFFF3B30,
+                                                            0xFFFF6B35,
                                                           ),
                                                         ),
                                                       ),
@@ -316,7 +323,8 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                     );
                                   },
-                                ),
+                                  );
+                                }),
                               );
                             },
                           ),
