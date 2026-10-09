@@ -184,85 +184,86 @@ class _HomeScreenState extends State<HomeScreen>
           SafeArea(
             child: Column(
               children: [
-                /// 🔹 Animated Team Logo and Name (API-driven)
-                AnimatedBuilder(
-                  animation: _logoController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _logoScale.value,
-                      child: Transform.rotate(
-                        angle: _logoRotation.value,
-                        child: Obx(() {
-                          return Column(
-                            children: [
-                              Hero(
-                                tag: AppString.teamLogoTag,
-                                child: Container(
-                                  width: 50.w,
-                                  height: 50.w,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFFFF6B35),
-                                      width: 3.r,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        // color: const Color(
-                                        //   0xFFFF6B35,
-                                        // ).withOpacity(0.5),
-                                        // blurRadius: 20.r,
-                                        // spreadRadius: 2.r,
+                /// 🔹 Animated Team Logo and Name (API-driven) — the
+                /// notification bell and menu sit in the top-right corner of
+                /// this same row (they used to have a row of their own).
+                SizedBox(
+                  width: double.infinity,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                        AnimatedBuilder(
+                          animation: _logoController,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _logoScale.value,
+                              child: Transform.rotate(
+                                angle: _logoRotation.value,
+                                child: Obx(() {
+                                  return Column(
+                                    children: [
+                                      Hero(
+                                        tag: AppString.teamLogoTag,
+                                        child: Container(
+                                          width: 50.w,
+                                          height: 50.w,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: const Color(0xFFFF6B35),
+                                              width: 3.r,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                // color: const Color(
+                                                //   0xFFFF6B35,
+                                                // ).withOpacity(0.5),
+                                                // blurRadius: 20.r,
+                                                // spreadRadius: 2.r,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: homeController.isLoading.value
+                                                ? SizedBox(
+                                                    width: 20.w,
+                                                    height: 20.w,
+                                                    child:
+                                                        const CircularProgressIndicator(
+                                                          color: Color(0xFFFF6B35),
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  )
+                                                : homeController.displayTeamLogo.image(
+                                                    width: 30.w,
+                                                    height: 30.w,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        homeController.displayTeamName,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18.sp,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                  child: Center(
-                                    child: homeController.isLoading.value
-                                        ? SizedBox(
-                                            width: 20.w,
-                                            height: 20.w,
-                                            child:
-                                                const CircularProgressIndicator(
-                                                  color: Color(0xFFFF6B35),
-                                                  strokeWidth: 2,
-                                                ),
-                                          )
-                                        : homeController.displayTeamLogo.image(
-                                            width: 30.w,
-                                            height: 30.w,
-                                            fit: BoxFit.contain,
-                                          ),
-                                  ),
-                                ),
+                                  );
+                                }),
                               ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                homeController.displayTeamName,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      ),
-                    );
-                  },
-                ),
-
-                /// Header Section
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 4.h,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      /// Notification + Menu
-                      Row(
+                            );
+                          },
+                        ),
+                      Positioned(
+                        top: 0,
+                        right: 8.w,
+                        child: SizedBox(
+                          height: 50.w < 44 ? 44 : 50.w,
+                          child: Row(
                         children: [
                           /// Pulsing Notification Icon
                           Builder(
@@ -286,6 +287,11 @@ class _HomeScreenState extends State<HomeScreen>
                                           ? _pulseAnimation.value
                                           : 1.0,
                                       child: Container(
+                                        constraints: const BoxConstraints(
+                                          minWidth: 44,
+                                          minHeight: 44,
+                                        ),
+                                        alignment: Alignment.center,
                                         padding: EdgeInsets.all(8.r),
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
@@ -328,18 +334,24 @@ class _HomeScreenState extends State<HomeScreen>
                               );
                             },
                           ),
-                          SizedBox(width: 12.w),
                           Builder(
                             builder: (context) => GestureDetector(
+                              behavior: HitTestBehavior.opaque,
                               onTap: () => Scaffold.of(context).openEndDrawer(),
-                              child: Icon(
-                                Icons.menu,
-                                color: Colors.white,
-                                size: 28.r,
+                              child: SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Icons.menu,
+                                  color: Colors.white,
+                                  size: 28.r,
+                                ),
                               ),
                             ),
                           ),
                         ],
+                      ),
+                        ),
                       ),
                     ],
                   ),
