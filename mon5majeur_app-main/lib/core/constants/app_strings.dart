@@ -61,6 +61,11 @@ class AppString {
   static const String position = 'Position';
   static const String avg = 'Avg';
   static const String price = 'Price';
+  // Position groups of the Data list header.
+  static const String positionGroupCenters = 'positionGroupCenters';
+  static const String positionGroupForwards = 'positionGroupForwards';
+  static const String positionGroupGuards = 'positionGroupGuards';
+  static const String positionGroupAll = 'positionGroupAll';
   static const String noPlayersFoundFor = 'No players found for';
   static const String noPlayersMatchFilters = 'No players match your filters';
   static const String priceRange = 'Price Range';

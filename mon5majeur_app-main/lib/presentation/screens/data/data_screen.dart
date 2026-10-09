@@ -65,6 +65,26 @@ const _nbaTeams = [
   'Toronto Raptors', 'Utah Jazz', 'Washington Wizards',
 ];
 
+enum _SortColumn { avg, price }
+
+enum _PositionGroup { centers, forwards, guards, all }
+
+// Position groups of the header (a hybrid can sit in two groups on purpose).
+const _centersPositions = ['C', 'C-F', 'F-C'];
+const _forwardsPositions = ['SF', 'PF', 'F', 'G-F', 'F-G', 'F-C', 'C-F'];
+const _guardsPositions = ['PG', 'SG', 'G', 'G-F', 'F-G'];
+
+/// Positions compared without case or spaces ("g-f " == "G-F").
+String _normPosition(String position) =>
+    position.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+
+List<String> _positionsOf(_PositionGroup group) => switch (group) {
+  _PositionGroup.centers => _centersPositions,
+  _PositionGroup.forwards => _forwardsPositions,
+  _PositionGroup.guards => _guardsPositions,
+  _PositionGroup.all => const [],
+};
+
 /// EU summer time (Paris is UTC+2 from the last Sunday of March 01:00 UTC to
 /// the last Sunday of October 01:00 UTC, UTC+1 otherwise).
 bool _isParisSummer(DateTime utc) {
@@ -129,7 +149,9 @@ class _DataScreenState extends State<DataScreen> {
   RangeValues _priceRange = RangeValues(0.w, 100.w);
   final Set<String> _selectedPositions = {};
   final Set<String> _selectedTeams = {};
-  bool _sortAscending = true;
+  // Default: best average first. Tapping a header changes column / direction.
+  _SortColumn _sortColumn = _SortColumn.avg;
+  bool _sortAscending = false;
 
   // API states
   List<Player> _allPlayers = [];
@@ -418,14 +440,15 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   List<Player> get _filteredPlayers {
+    final selectedPositions = _selectedPositions.map(_normPosition).toSet();
     List<Player> filtered = _allPlayers.where((player) {
       // Search filter
       final matchesSearch = player.name.toLowerCase().contains(_searchQuery);
 
       // Position filter
       final matchesPosition =
-          _selectedPositions.isEmpty ||
-          _selectedPositions.contains(player.position);
+          selectedPositions.isEmpty ||
+          selectedPositions.contains(_normPosition(player.position));
 
       // Team filter
       final matchesTeam =
@@ -438,13 +461,72 @@ class _DataScreenState extends State<DataScreen> {
       return matchesSearch && matchesPosition && matchesTeam && matchesPrice;
     }).toList();
 
-    // Sort by average score
+    // Sort by the chosen column; ties always fall back to name then id so the
+    // list never jumps between two sorts.
     filtered.sort((a, b) {
-      final x = a.avg ?? -1, y = b.avg ?? -1; // no game yet: below everyone
-      return _sortAscending ? x.compareTo(y) : y.compareTo(x);
+      final int byKey;
+      if (_sortColumn == _SortColumn.price) {
+        byKey = a.price.compareTo(b.price);
+      } else {
+        // no game yet: below everyone
+        byKey = (a.avg ?? -1).compareTo(b.avg ?? -1);
+      }
+      if (byKey != 0) return _sortAscending ? byKey : -byKey;
+      final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      if (byName != 0) return byName;
+      return (a.id ?? '').compareTo(b.id ?? '');
     });
 
     return filtered;
+  }
+
+  /// The header group the position selection currently matches (null = a
+  /// custom choice made in the filter panel).
+  _PositionGroup? get _activePositionGroup {
+    final selected = _selectedPositions.map(_normPosition).toSet();
+    for (final group in _PositionGroup.values) {
+      final wanted = _positionsOf(group).map(_normPosition).toSet();
+      if (selected.length == wanted.length && selected.containsAll(wanted)) {
+        return group;
+      }
+    }
+    return null;
+  }
+
+  String _positionGroupLabel(_PositionGroup group) => switch (group) {
+    _PositionGroup.centers => AppString.positionGroupCenters.tr,
+    _PositionGroup.forwards => AppString.positionGroupForwards.tr,
+    _PositionGroup.guards => AppString.positionGroupGuards.tr,
+    _PositionGroup.all => AppString.positionGroupAll.tr,
+  };
+
+  /// Position header: centers -> forwards -> guards -> all -> centers. After a
+  /// manual choice in the filter panel the cycle restarts from the centers.
+  void _cyclePositionGroup() {
+    final next = switch (_activePositionGroup) {
+      _PositionGroup.centers => _PositionGroup.forwards,
+      _PositionGroup.forwards => _PositionGroup.guards,
+      _PositionGroup.guards => _PositionGroup.all,
+      _PositionGroup.all || null => _PositionGroup.centers,
+    };
+    setState(() {
+      _selectedPositions
+        ..clear()
+        ..addAll(_positionsOf(next));
+    });
+  }
+
+  /// Moy / Prix header: a tap on the sorted column flips its direction, a tap
+  /// on the other column sorts it from the highest.
+  void _onSortHeaderTap(_SortColumn column) {
+    setState(() {
+      if (_sortColumn == column) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortColumn = column;
+        _sortAscending = false;
+      }
+    });
   }
 
   void _clearFilters() {
@@ -452,7 +534,8 @@ class _DataScreenState extends State<DataScreen> {
       _priceRange = RangeValues(0.w, 100.w);
       _selectedPositions.clear();
       _selectedTeams.clear();
-      _sortAscending = true;
+      _sortColumn = _SortColumn.avg;
+      _sortAscending = false;
       _searchController.clear();
     });
   }
@@ -602,8 +685,11 @@ class _DataScreenState extends State<DataScreen> {
                       ),
                     ),
 
-                  /// Active Filters Display
-                  if (_selectedPositions.isNotEmpty ||
+                  /// Active Filters Display. A position group chosen with the
+                  /// Poste header is already shown under that header, so it
+                  /// does not open this strip (the list would jump down).
+                  if ((_selectedPositions.isNotEmpty &&
+                          _activePositionGroup == null) ||
                       _selectedTeams.isNotEmpty ||
                       _priceRange.start > 0 ||
                       _priceRange.end < 100.w)
@@ -652,60 +738,74 @@ class _DataScreenState extends State<DataScreen> {
 
                   SizedBox(height: 8.h),
 
-                  /// Table Header
+                  /// Table Header (Poste cycles the position groups, Moy and
+                  /// Prix sort). Same inset and same column widths as a player
+                  /// row (see _playerColumns), so every title sits over its column.
                   if (!_isLoading)
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
+                      padding: EdgeInsets.symmetric(horizontal: _rowInset),
+                      child: _playerColumns(
+                        name: _headerCell(
+                          Alignment.centerLeft,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
                             child: Text(
                               AppString.playerName.tr,
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: _headerStyle(Colors.grey),
                             ),
                           ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              AppString.position.tr,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        ),
+                        position: _headerCell(
+                          Alignment.center,
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _cyclePositionGroup,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    AppString.position.tr,
+                                    style: _headerStyle(Colors.grey),
+                                  ),
+                                ),
+                                // The active group (nothing for a custom
+                                // choice made in the filter panel). The slot
+                                // is always there, so the list never moves.
+                                SizedBox(
+                                  height: 14.sp,
+                                  child: _activePositionGroup == null
+                                      ? null
+                                      : FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            _positionGroupLabel(
+                                              _activePositionGroup!,
+                                            ),
+                                            style: TextStyle(
+                                              color: const Color(0xFFFF6B35),
+                                              fontSize: 11.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ],
                             ),
                           ),
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              AppString.avg.tr,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              AppString.price.tr,
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
+                        avg: _sortHeader(
+                          AppString.avg.tr,
+                          _SortColumn.avg,
+                          arrowOnRight: true,
+                        ),
+                        price: _sortHeader(
+                          AppString.price.tr,
+                          _SortColumn.price,
+                          arrowOnRight: false,
+                        ),
                       ),
                     ),
 
@@ -970,6 +1070,7 @@ class _DataScreenState extends State<DataScreen> {
                                       child: GestureDetector(
                                         onTap: () {
                                           setState(() {
+                                            _sortColumn = _SortColumn.avg;
                                             _sortAscending = true;
                                           });
                                         },
@@ -1004,6 +1105,7 @@ class _DataScreenState extends State<DataScreen> {
                                       child: GestureDetector(
                                         onTap: () {
                                           setState(() {
+                                            _sortColumn = _SortColumn.avg;
                                             _sortAscending = false;
                                           });
                                         },
@@ -1185,6 +1287,98 @@ class _DataScreenState extends State<DataScreen> {
     );
   }
 
+  /// A sortable column title: the sorted column shows an arrow for its
+  /// direction (up = lowest first, down = highest first). The arrow is drawn
+  /// beside the title without taking any room, so the title never moves
+  /// whether its column is the sorted one or not. [arrowOnRight] puts it after
+  /// the title (centred column); otherwise before it (right-aligned column).
+  Widget _sortHeader(
+    String label,
+    _SortColumn column, {
+    required bool arrowOnRight,
+  }) {
+    final active = _sortColumn == column;
+    final arrowSize = 12.r;
+    final arrow = Icon(
+      _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
+      color: const Color(0xFFFF6B35),
+      size: arrowSize,
+    );
+    final title = Text(
+      label,
+      style: _headerStyle(active ? Colors.white : Colors.grey),
+    );
+    return _headerCell(
+      arrowOnRight ? Alignment.center : Alignment.centerRight,
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _onSortHeaderTap(column),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: arrowOnRight ? Alignment.center : Alignment.centerRight,
+          // Only the title takes room; the arrow hangs outside its box.
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              title,
+              if (active)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  left: arrowOnRight ? null : -(arrowSize + 2),
+                  right: arrowOnRight ? -(arrowSize + 2) : null,
+                  child: Center(child: arrow),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle _headerStyle(Color color) => TextStyle(
+    color: color,
+    fontSize: 14.sp,
+    fontWeight: FontWeight.w600,
+  );
+
+  /// A header cell: at least 44 points tall, content aligned in its column.
+  Widget _headerCell(Alignment alignment, Widget child) => SizedBox(
+    height: 44,
+    child: Align(alignment: alignment, child: child),
+  );
+
+  // ---- Column layout shared by the header and every player row ----------
+  // List padding + card border + card padding: the space left of the first
+  // column, on both sides.
+  double get _rowInset => 16.w + 1 + 12.w;
+  // Jersey (28) + gap (12): the name column starts after it.
+  double get _jerseyZone => 28.w + 12.w;
+  double get _positionWidth => 66.w;
+  double get _avgWidth => 52.w;
+  double get _priceWidth => 62.w;
+
+  /// The four columns of the player table (name takes what is left). Used by
+  /// the header and by each row so both always have the same widths.
+  Widget _playerColumns({
+    Widget? leading,
+    required Widget name,
+    required Widget position,
+    required Widget avg,
+    required Widget price,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(width: _jerseyZone, child: leading),
+        Expanded(child: name),
+        SizedBox(width: _positionWidth, child: position),
+        SizedBox(width: _avgWidth, child: avg),
+        SizedBox(width: _priceWidth, child: price),
+      ],
+    );
+  }
+
   Widget _buildFilterChip(String label) {
     return Container(
       margin: EdgeInsets.only(right: 8.w),
@@ -1241,95 +1435,81 @@ class _DataScreenState extends State<DataScreen> {
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(color: Color(0xFF333333)),
         ),
-        child: Row(
-          children: [
-            /// Player Avatar/Jersey — QA4 #10: was the wrong (Lakers #20)
-            /// jersey asset; the approved reference jersey must be used
-            /// on every screen that shows this generic per-row jersey.
-            Center(
-              child: Assets.icons.jerseyReference.image(
-                width: 28.w,
-                height: 42.h,
-              ),
+        child: _playerColumns(
+          /// Player Avatar/Jersey — QA4 #10: was the wrong (Lakers #20)
+          /// jersey asset; the approved reference jersey must be used
+          /// on every screen that shows this generic per-row jersey.
+          leading: Align(
+            alignment: Alignment.centerLeft,
+            child: Assets.icons.jerseyReference.image(
+              width: 28.w,
+              height: 42.h,
             ),
-            SizedBox(width: 12.w),
+          ),
 
-            /// Player Name
-            Expanded(
-              flex: 3,
-              child: Text(
-                name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+          /// Player Name: two lines at most, "…" as a last resort
+          name: Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w500,
             ),
+          ),
 
-            /// Position Badge
-            Expanded(
-              flex: 2,
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 6.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFF6B35),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    position,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+          /// Position Badge
+          position: Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: Color(0xFFFF6B35),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-            ),
-
-            /// Average Score
-            Expanded(
-              flex: 1,
-              child: Column(
-                children: [
-                  Text(
-                    avg?.toString() ?? '-',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            /// Price
-            Expanded(
-              flex: 1,
-              // One line whatever the amount ("40.0M" used to wrap).
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
                 child: Text(
-                  price,
-                  maxLines: 1,
-                  softWrap: false,
+                  position,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-          ],
+          ),
+
+          /// Average Score
+          avg: Center(
+            child: Text(
+              avg?.toString() ?? '-',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+          /// Price
+          // One line whatever the amount ("40.0M" used to wrap).
+          price: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              price,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ),
       ),
     );
