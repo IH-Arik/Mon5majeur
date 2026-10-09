@@ -307,673 +307,702 @@ class _DataScreenState extends State<DataScreen> {
             ),
         ],
       ),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              /// Search Bar with Filter Button
-              Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1a1a1a),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: const Color(0xFF333333)),
+          /// Search Bar with Filter Button
+          Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1a1a1a),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: const Color(0xFF333333)),
+              ),
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    child: Icon(
+                      Icons.search,
+                      color: Colors.grey,
+                      size: 24.r,
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
-                        child: Icon(
-                          Icons.search,
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: AppString.searchPlayersHint.tr,
+                        hintStyle: TextStyle(
                           color: Colors.grey,
-                          size: 24.r,
+                          fontSize: 14.sp,
                         ),
+                        border: InputBorder.none,
                       ),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14.sp,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: AppString.searchPlayersHint.tr,
-                            hintStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14.sp,
-                            ),
-                            border: InputBorder.none,
-                          ),
-                        ),
+                    ),
+                  ),
+                  if (_searchQuery.isNotEmpty)
+                    IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+                      },
+                      icon: Icon(
+                        Icons.clear,
+                        color: Colors.grey,
+                        size: 20.r,
                       ),
-                      if (_searchQuery.isNotEmpty)
-                        IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                          },
-                          icon: Icon(
-                            Icons.clear,
-                            color: Colors.grey,
-                            size: 20.r,
-                          ),
-                        ),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _showFilterMenu = !_showFilterMenu;
-                          });
-                        },
-                        icon: Icon(
-                          Icons.tune,
-                          color: _showFilterMenu
-                              ? const Color(0xFFFF6B35)
-                              : Colors.white,
-                          size: 24.r,
-                        ),
-                      ),
-                      Icon(
+                    ),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _showFilterMenu = !_showFilterMenu;
+                      });
+                    },
+                    icon: Icon(
+                      Icons.tune,
+                      color: _showFilterMenu
+                          ? const Color(0xFFFF6B35)
+                          : Colors.white,
+                      size: 24.r,
+                    ),
+                  ),
+                  // Same action as the filter icon, with a 44-point touch area.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      _showFilterMenu = !_showFilterMenu;
+                    }),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(
                         _showFilterMenu
                             ? Icons.keyboard_arrow_up
                             : Icons.keyboard_arrow_down,
                         color: Colors.white,
                         size: 24.r,
                       ),
-                      SizedBox(width: 8.w),
-                    ],
-                  ),
-                ),
-              ),
-
-              /// Player count indicator
-              if (!_isLoading)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Loaded: @n / @m players'.trParams({'n': '${_allPlayers.length}', 'm': '$_totalPlayers'}),
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                      if (_hasMorePages)
-                        Text(
-                          ' • Scroll for more'.tr,
-                          style: TextStyle(
-                            color: Color(0xFFFF6B35),
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-              /// Active Filters Display
-              if (_selectedPositions.isNotEmpty ||
-                  _selectedTeams.isNotEmpty ||
-                  _priceRange.start > 0 ||
-                  _priceRange.end < 100.w)
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 8.h,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        AppString.filtersLabel.tr,
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              ..._selectedPositions.map(
-                                (pos) => _buildFilterChip(pos),
-                              ),
-                              ..._selectedTeams.map(
-                                (team) => _buildFilterChip(team),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _clearFilters,
-                        child: Text(
-                          AppString.clearAll.tr,
-                          style: TextStyle(
-                            color: Color(0xFFFF6B35),
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              SizedBox(height: 8.h),
-
-              /// Table Header
-              if (!_isLoading)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          AppString.playerName.tr,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          AppString.position.tr,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          AppString.avg.tr,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          AppString.price.tr,
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              SizedBox(height: 8.h),
-
-              /// Player List
-              Expanded(
-                child: _isLoading
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              color: Color(0xFFFF6B35),
-                              strokeWidth: 4.w,
-                            ),
-                            SizedBox(height: 16.h),
-                            Text(
-                              'Loading players...'.tr,
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 14.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _errorMessage != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 64.r,
-                            ),
-                            SizedBox(height: 16.h),
-                            Text(
-                              _errorMessage!,
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 14.sp,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: 16.h),
-                            ElevatedButton(
-                              onPressed: () => _fetchPlayers(refresh: true),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFFFF6B35),
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 24.w,
-                                  vertical: 12.h,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                              ),
-                              child: Text(
-                                'Retry'.tr,
-                                style: TextStyle(fontSize: 14.sp),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : filteredPlayers.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              color: Colors.grey,
-                              size: 64.r,
-                            ),
-                            SizedBox(height: 16.h),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? '${AppString.noPlayersFoundFor.tr} "$_searchQuery"'
-                                  : AppString.noPlayersMatchFilters.tr,
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 16.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: EdgeInsets.symmetric(horizontal: 16.w),
-                        itemCount: filteredPlayers.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == filteredPlayers.length) {
-                            // Loading indicator at the bottom
-                            if (_isLoadingMore) {
-                              return Padding(
-                                padding: EdgeInsets.all(16.w),
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: Color(0xFFFF6B35),
-                                    strokeWidth: 4.w,
-                                  ),
-                                ),
-                              );
-                            } else if (_hasMorePages) {
-                              return Padding(
-                                padding: EdgeInsets.all(16.w),
-                                child: Center(
-                                  child: TextButton(
-                                    onPressed: _loadMorePlayers,
-                                    child: Text(
-                                      'Load More'.tr,
-                                      style: TextStyle(
-                                        color: Color(0xFFFF6B35),
-                                        fontSize: 14.sp,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            } else {
-                              return SizedBox.shrink();
-                            }
-                          }
-
-                          final player = filteredPlayers[index];
-                          return _buildPlayerCard(
-                            player.id,
-                            player.name,
-                            player.position,
-                            player.avg,
-                            '${player.price.toStringAsFixed(1)}M',
-                            player.team,
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-
-          /// Filter Menu Overlay
-          if (_showFilterMenu)
-            Positioned(
-              top: 8.h,
-              bottom: 12.h,
-              right: 16.w,
-              child: Container(
-                width: 250.w,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1a1a1a),
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: const Color(0xFF333333)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black54,
-                      blurRadius: 10.r,
-                      offset: Offset(0, 5.h),
                     ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      /// Price Range
-                      Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppString.priceRange.tr,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 8.h),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${AppString.min.tr} ${_priceRange.start.toInt()}M',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
-                                Text(
-                                  '${AppString.max.tr} ${_priceRange.end.toInt()}M',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12.sp,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SliderTheme(
-                              data: SliderThemeData(
-                                activeTrackColor: Color(0xFFFF6B35),
-                                inactiveTrackColor: Color(0xFF333333),
-                                thumbColor: Color(0xFFFF6B35),
-                                overlayColor: Color(0x33FF6B35),
-                                trackHeight: 4.h,
-                                thumbShape: RoundSliderThumbShape(
-                                  enabledThumbRadius: 12.r,
-                                ),
-                                overlayShape: RoundSliderOverlayShape(
-                                  overlayRadius: 20.r,
-                                ),
-                              ),
-                              child: RangeSlider(
-                                values: _priceRange,
-                                min: 0.w,
-                                max: 100.w,
-                                onChanged: (values) {
-                                  setState(() {
-                                    _priceRange = values;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Divider(color: Color(0xFF333333), height: 1.h),
-
-                      /// Avg Point Scored Sorting
-                      Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppString.avgPointScored.tr,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 12.h),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _sortAscending = true;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 8.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _sortAscending
-                                            ? Color(0xFFFF6B35)
-                                            : Color(0xFF2a2a2a),
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        AppString.minToMax.tr,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: _sortAscending
-                                              ? Colors.white
-                                              : Colors.grey,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 8.w),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _sortAscending = false;
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 8.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: !_sortAscending
-                                            ? Color(0xFFFF6B35)
-                                            : Color(0xFF2a2a2a),
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        AppString.maxToMin.tr,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: !_sortAscending
-                                              ? Colors.white
-                                              : Colors.grey,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Divider(color: Color(0xFF333333), height: 1.h),
-
-                      /// Position
-                      if (_availablePositions.isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.all(16.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                AppString.position.tr,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 12.h),
-                              Wrap(
-                                spacing: 8.w,
-                                runSpacing: 8.h,
-                                children: _availablePositions.map((position) {
-                                  final isSelected = _selectedPositions
-                                      .contains(position);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedPositions.remove(position);
-                                        } else {
-                                          _selectedPositions.add(position);
-                                        }
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 16.w,
-                                        vertical: 8.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? Color(0xFFFF6B35)
-                                            : Color(0xFF2a2a2a),
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        position,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.grey,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      Divider(color: Color(0xFF333333), height: 1.h),
-
-                      /// Team
-                      if (_availableTeams.isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.all(16.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                AppString.team.tr,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 12.h),
-                              Wrap(
-                                spacing: 8.w,
-                                runSpacing: 8.h,
-                                children: _availableTeams.toList().map((team) {
-                                  final isSelected = _selectedTeams.contains(
-                                    team,
-                                  );
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedTeams.remove(team);
-                                        } else {
-                                          _selectedTeams.add(team);
-                                        }
-                                      });
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12.w,
-                                        vertical: 8.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? Color(0xFFFF6B35)
-                                            : Color(0xFF2a2a2a),
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        team,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.grey,
-                                          fontSize: 11.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
-                      // room under the last option
-                      SizedBox(height: 32.h),
-                    ],
                   ),
-                ),
+                  SizedBox(width: 8.w),
+                ],
               ),
             ),
+          ),
+
+          // Everything under the search bar: the list, and the filter panel
+          // opened over it (never over the search bar itself).
+          Expanded(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                  /// Player count indicator
+                  if (!_isLoading)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Loaded: @n / @m players'.trParams({'n': '${_allPlayers.length}', 'm': '$_totalPlayers'}),
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12.sp,
+                            ),
+                          ),
+                          if (_hasMorePages)
+                            Text(
+                              ' • Scroll for more'.tr,
+                              style: TextStyle(
+                                color: Color(0xFFFF6B35),
+                                fontSize: 12.sp,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                  /// Active Filters Display
+                  if (_selectedPositions.isNotEmpty ||
+                      _selectedTeams.isNotEmpty ||
+                      _priceRange.start > 0 ||
+                      _priceRange.end < 100.w)
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 8.h,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            AppString.filtersLabel.tr,
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12.sp,
+                            ),
+                          ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  ..._selectedPositions.map(
+                                    (pos) => _buildFilterChip(pos),
+                                  ),
+                                  ..._selectedTeams.map(
+                                    (team) => _buildFilterChip(team),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _clearFilters,
+                            child: Text(
+                              AppString.clearAll.tr,
+                              style: TextStyle(
+                                color: Color(0xFFFF6B35),
+                                fontSize: 12.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  SizedBox(height: 8.h),
+
+                  /// Table Header
+                  if (!_isLoading)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              AppString.playerName.tr,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              AppString.position.tr,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Text(
+                              AppString.avg.tr,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Text(
+                              AppString.price.tr,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  SizedBox(height: 8.h),
+
+                  /// Player List
+                  Expanded(
+                    child: _isLoading
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  color: Color(0xFFFF6B35),
+                                  strokeWidth: 4.w,
+                                ),
+                                SizedBox(height: 16.h),
+                                Text(
+                                  'Loading players...'.tr,
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _errorMessage != null
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 64.r,
+                                ),
+                                SizedBox(height: 16.h),
+                                Text(
+                                  _errorMessage!,
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 14.sp,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16.h),
+                                ElevatedButton(
+                                  onPressed: () => _fetchPlayers(refresh: true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFFFF6B35),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 24.w,
+                                      vertical: 12.h,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Retry'.tr,
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : filteredPlayers.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off,
+                                  color: Colors.grey,
+                                  size: 64.r,
+                                ),
+                                SizedBox(height: 16.h),
+                                Text(
+                                  _searchQuery.isNotEmpty
+                                      ? '${AppString.noPlayersFoundFor.tr} "$_searchQuery"'
+                                      : AppString.noPlayersMatchFilters.tr,
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 16.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
+                            itemCount: filteredPlayers.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == filteredPlayers.length) {
+                                // Loading indicator at the bottom
+                                if (_isLoadingMore) {
+                                  return Padding(
+                                    padding: EdgeInsets.all(16.w),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFFFF6B35),
+                                        strokeWidth: 4.w,
+                                      ),
+                                    ),
+                                  );
+                                } else if (_hasMorePages) {
+                                  return Padding(
+                                    padding: EdgeInsets.all(16.w),
+                                    child: Center(
+                                      child: TextButton(
+                                        onPressed: _loadMorePlayers,
+                                        child: Text(
+                                          'Load More'.tr,
+                                          style: TextStyle(
+                                            color: Color(0xFFFF6B35),
+                                            fontSize: 14.sp,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  return SizedBox.shrink();
+                                }
+                              }
+
+                              final player = filteredPlayers[index];
+                              return _buildPlayerCard(
+                                player.id,
+                                player.name,
+                                player.position,
+                                player.avg,
+                                '${player.price.toStringAsFixed(1)}M',
+                                player.team,
+                              );
+                            },
+                          ),
+                  ),
+                  ],
+                ),
+
+                /// Tap outside the panel closes it (the list stays scrollable
+                /// underneath, and taps on a player row only close the panel).
+                if (_showFilterMenu)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => setState(() => _showFilterMenu = false),
+                    ),
+                  ),
+
+                /// Filter Menu Overlay
+              if (_showFilterMenu)
+                Positioned(
+                  top: 4.h,
+                  bottom: 12.h,
+                  right: 16.w,
+                  child: Container(
+                    width: 250.w,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1a1a1a),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: const Color(0xFF333333)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black54,
+                          blurRadius: 10.r,
+                          offset: Offset(0, 5.h),
+                        ),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          /// Price Range
+                          Padding(
+                            padding: EdgeInsets.all(16.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppString.priceRange.tr,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 8.h),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '${AppString.min.tr} ${_priceRange.start.toInt()}M',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12.sp,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${AppString.max.tr} ${_priceRange.end.toInt()}M',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12.sp,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SliderTheme(
+                                  data: SliderThemeData(
+                                    activeTrackColor: Color(0xFFFF6B35),
+                                    inactiveTrackColor: Color(0xFF333333),
+                                    thumbColor: Color(0xFFFF6B35),
+                                    overlayColor: Color(0x33FF6B35),
+                                    trackHeight: 4.h,
+                                    thumbShape: RoundSliderThumbShape(
+                                      enabledThumbRadius: 12.r,
+                                    ),
+                                    overlayShape: RoundSliderOverlayShape(
+                                      overlayRadius: 20.r,
+                                    ),
+                                  ),
+                                  child: RangeSlider(
+                                    values: _priceRange,
+                                    min: 0.w,
+                                    max: 100.w,
+                                    onChanged: (values) {
+                                      setState(() {
+                                        _priceRange = values;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          Divider(color: Color(0xFF333333), height: 1.h),
+
+                          /// Avg Point Scored Sorting
+                          Padding(
+                            padding: EdgeInsets.all(16.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppString.avgPointScored.tr,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 12.h),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _sortAscending = true;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 8.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _sortAscending
+                                                ? Color(0xFFFF6B35)
+                                                : Color(0xFF2a2a2a),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            AppString.minToMax.tr,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: _sortAscending
+                                                  ? Colors.white
+                                                  : Colors.grey,
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _sortAscending = false;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 8.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: !_sortAscending
+                                                ? Color(0xFFFF6B35)
+                                                : Color(0xFF2a2a2a),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            AppString.maxToMin.tr,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: !_sortAscending
+                                                  ? Colors.white
+                                                  : Colors.grey,
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          Divider(color: Color(0xFF333333), height: 1.h),
+
+                          /// Position
+                          if (_availablePositions.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.all(16.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    AppString.position.tr,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  Wrap(
+                                    spacing: 8.w,
+                                    runSpacing: 8.h,
+                                    children: _availablePositions.map((position) {
+                                      final isSelected = _selectedPositions
+                                          .contains(position);
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedPositions.remove(position);
+                                            } else {
+                                              _selectedPositions.add(position);
+                                            }
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 16.w,
+                                            vertical: 8.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? Color(0xFFFF6B35)
+                                                : Color(0xFF2a2a2a),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            position,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : Colors.grey,
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          Divider(color: Color(0xFF333333), height: 1.h),
+
+                          /// Team
+                          if (_availableTeams.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.all(16.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    AppString.team.tr,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  Wrap(
+                                    spacing: 8.w,
+                                    runSpacing: 8.h,
+                                    children: _availableTeams.toList().map((team) {
+                                      final isSelected = _selectedTeams.contains(
+                                        team,
+                                      );
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedTeams.remove(team);
+                                            } else {
+                                              _selectedTeams.add(team);
+                                            }
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12.w,
+                                            vertical: 8.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? Color(0xFFFF6B35)
+                                                : Color(0xFF2a2a2a),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            team,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : Colors.grey,
+                                              fontSize: 11.sp,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // room under the last option
+                          SizedBox(height: 32.h),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: const NavigationWidget(currentIndex: 2),
@@ -1009,6 +1038,11 @@ class _DataScreenState extends State<DataScreen> {
   ) {
     return GestureDetector(
       onTap: () {
+        // While the filter panel is open, a tap on a row only closes it.
+        if (_showFilterMenu) {
+          setState(() => _showFilterMenu = false);
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
