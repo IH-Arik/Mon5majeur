@@ -415,6 +415,8 @@ class EnglishTranslation {
     AppString.matches: 'Matches',
     AppString.wins: 'Wins',
     AppString.victories: 'Victories',
+    AppString.statWinLetter: 'W',
+    AppString.statLossLetter: 'L',
     AppString.trophies: 'Trophies',
     AppString.performanceHighlights: 'Duel stats',
     AppString.avgPointScoredValue: '92.3',

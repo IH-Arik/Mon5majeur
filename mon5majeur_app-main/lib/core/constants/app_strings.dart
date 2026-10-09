@@ -490,6 +490,9 @@ class AppString {
   static const String matches = 'matches';
   static const String wins = 'wins';
   static const String victories = 'victories';
+  // Letters of the profile W / L tile (V / D in French).
+  static const String statWinLetter = 'statWinLetter';
+  static const String statLossLetter = 'statLossLetter';
   static const String trophies = 'Trophies';
   static const String performanceHighlights = 'Duel stats';
   static const String avgPointScoredValue = '92.3';

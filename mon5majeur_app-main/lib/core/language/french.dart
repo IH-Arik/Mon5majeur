@@ -417,6 +417,8 @@ class FrenchTranslation {
     AppString.matches: 'Matchs',
     AppString.wins: 'Victoires',
     AppString.victories: 'Victoires',
+    AppString.statWinLetter: 'V',
+    AppString.statLossLetter: 'D',
     AppString.trophies: 'Trophées',
     AppString.performanceHighlights: 'Statistiques de duel',
     AppString.avgPointScoredValue: '92.3',

@@ -8,6 +8,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../../../core/utils/score_style.dart';
 import '../../widgets/navigation.dart';
 import 'profile_controller.dart';
 
@@ -131,20 +132,22 @@ class ProfileScreen extends StatelessWidget {
                                   // duel is always won or lost - so the
                                   // stored noMatch/draw count is dropped
                                   // entirely rather than displayed. Letters
-                                  // follow the same language as the label
-                                  // above (V/D in FR, W/L in EN).
-                                  value: Get.locale?.languageCode == 'fr'
-                                      ? '${s.wins}V - ${s.losses}D'
-                                      : '${s.wins}W - ${s.losses}L',
-                                  valueColor: const Color(0xFFFF6B35),
+                                  // follow the app language (V/D in FR, W/L
+                                  // in EN) through AppString.
+                                  value: _WinLossValue(
+                                    wins: s.wins,
+                                    losses: s.losses,
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 12.w),
                               Expanded(
                                 child: _StatCard(
                                   title: AppString.statLeaguePlay.tr,
-                                  value: '${s.totalMatches} ${AppString.matches.tr}',
-                                  valueColor: const Color(0xFFFF6B35),
+                                  value: _StatNumber(
+                                    number: '${s.totalMatches}',
+                                    unit: AppString.matches.tr,
+                                  ),
                                 ),
                               ),
                             ],
@@ -155,18 +158,20 @@ class ProfileScreen extends StatelessWidget {
                               Expanded(
                                 child: _StatCard(
                                   title: AppString.statRegularSeason.tr,
-                                  value:
-                                      '${s.regularSeasonWins} ${AppString.wins.tr}',
-                                  valueColor: const Color(0xFFFF6B35),
+                                  value: _StatNumber(
+                                    number: '${s.regularSeasonWins}',
+                                    unit: AppString.wins.tr,
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 12.w),
                               Expanded(
                                 child: _StatCard(
                                   title: AppString.statLeagueWins.tr,
-                                  value:
-                                      '${s.leagueVictories} ${AppString.victories.tr}',
-                                  valueColor: const Color(0xFFFF6B35),
+                                  value: _StatNumber(
+                                    number: '${s.leagueVictories}',
+                                    unit: AppString.victories.tr,
+                                  ),
                                 ),
                               ),
                             ],
@@ -200,26 +205,38 @@ class ProfileScreen extends StatelessWidget {
                     /// Silver(Ball)=Global League weekly #1,
                     /// Diamond=Global League monthly #1,
                     /// Orange L=last place in a completed duel league.
+                    /// Four equal cards 12 apart, on the same 16 margins as the
+                    /// statistics tiles above. The colour follows the counter.
                     Obx(() {
                       final s = controller.stats.value;
                       return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _TrophyCard(
-                            iconAsset: Assets.icons.trophie1,
-                            count: '${s.trophyGold}x',
+                          Expanded(
+                            child: _TrophyCard(
+                              iconAsset: Assets.icons.trophie1,
+                              count: s.trophyGold,
+                            ),
                           ),
-                          _TrophyCard(
-                            iconAsset: Assets.icons.trophie2,
-                            count: '${s.trophySilver}x',
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: _TrophyCard(
+                              iconAsset: Assets.icons.trophie2,
+                              count: s.trophySilver,
+                            ),
                           ),
-                          _TrophyCard(
-                            iconAsset: Assets.icons.trophie3,
-                            count: '${s.trophyDiamond}x',
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: _TrophyCard(
+                              iconAsset: Assets.icons.trophie3,
+                              count: s.trophyDiamond,
+                            ),
                           ),
-                          _TrophyCard(
-                            iconAsset: Assets.icons.trophie4,
-                            count: '${s.trophyOrangeL}x',
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: _TrophyCard(
+                              iconAsset: Assets.icons.trophie4,
+                              count: s.trophyOrangeL,
+                            ),
                           ),
                         ],
                       );
@@ -268,10 +285,9 @@ class ProfileScreen extends StatelessWidget {
                           Obx(() => Text(
                                 controller.stats.value.avgPointsScored
                                     .toStringAsFixed(1),
-                                style: TextStyle(
+                                style: scoreTextStyle(
+                                  size: 44,
                                   color: const Color(0xFF3CDF1C),
-                                  fontSize: 40.sp,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               )),
                         ],
@@ -302,10 +318,9 @@ class ProfileScreen extends StatelessWidget {
                           Obx(() => Text(
                                 controller.stats.value.avgPointsConceded
                                     .toStringAsFixed(1),
-                                style: TextStyle(
+                                style: scoreTextStyle(
+                                  size: 44,
                                   color: const Color(0xFFD32F2F),
-                                  fontSize: 40.sp,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               )),
                         ],
@@ -332,17 +347,13 @@ class ProfileScreen extends StatelessWidget {
 
 }
 
-/// Statistics Card Widget
+/// Statistics Card Widget: a grey label above a value (a widget, so the number
+/// and its unit, or the two colours of W / L, can share one baseline).
 class _StatCard extends StatelessWidget {
   final String title;
-  final String value;
-  final Color valueColor;
+  final Widget value;
 
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.valueColor,
-  });
+  const _StatCard({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -362,14 +373,39 @@ class _StatCard extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 12.h),
+          value,
+        ],
+      ),
+    );
+  }
+}
+
+/// A big white number in the scoreboard face with its small grey unit on the
+/// same baseline ("12 Matches"), scaled down rather than overflowing.
+class _StatNumber extends StatelessWidget {
+  final String number;
+  final String unit;
+
+  const _StatNumber({required this.number, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(number, style: scoreTextStyle(size: 28, color: Colors.white)),
+          SizedBox(width: 4.w),
           Text(
-            value,
+            unit,
             style: TextStyle(
-              color: valueColor,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -377,37 +413,184 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Trophy Card Widget
-class _TrophyCard extends StatelessWidget {
-  final AssetGenImage iconAsset;
-  final String count;
+/// "12V - 5D": wins and their letter in green, losses and theirs in red, the
+/// separator in grey. The letters come from AppString (V / D in French,
+/// W / L in English).
+class _WinLossValue extends StatelessWidget {
+  final int wins;
+  final int losses;
 
-  const _TrophyCard({required this.iconAsset, required this.count});
+  const _WinLossValue({required this.wins, required this.losses});
+
+  static const _green = Color(0xFF3CDF1C);
+  static const _red = Color(0xFFD32F2F);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 80.w,
-      padding: EdgeInsets.symmetric(vertical: 20.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a1a1a),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFF333333)),
-      ),
-      child: Column(
+    TextStyle letter(Color color) => TextStyle(
+      color: color,
+      fontSize: 14.sp,
+      fontWeight: FontWeight.w700,
+    );
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
-          iconAsset.image(width: 60.w, height: 60.h, fit: BoxFit.contain),
-          SizedBox(height: 12.h),
+          Text('$wins', style: scoreTextStyle(size: 28, color: _green)),
+          Text(AppString.statWinLetter.tr, style: letter(_green)),
           Text(
-            count,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-            ),
+            '  -  ',
+            style: TextStyle(color: Colors.grey, fontSize: 14.sp),
           ),
+          Text('$losses', style: scoreTextStyle(size: 28, color: _red)),
+          Text(AppString.statLossLetter.tr, style: letter(_red)),
         ],
       ),
     );
   }
+}
+
+/// The colour of each trophy IMAGE (outline and halo of its card). It is tied
+/// to the image, not to the counter shown on the card: if two images are ever
+/// swapped between cards, their colours follow them and nothing changes here.
+///   trophie1 (gold wings) = gold        trophie2 (globe)       = light blue
+///   trophie3 (silver ball) = silver     trophie4 (orange "L")  = bronze
+final _trophyImageColors = <(AssetGenImage, Color)>[
+  (Assets.icons.trophie1, const Color(0xFFFFD54A)),
+  (Assets.icons.trophie2, const Color(0xFF6EC1E4)),
+  (Assets.icons.trophie3, const Color(0xFFC9D1D9)),
+  (Assets.icons.trophie4, const Color(0xFFCD7F32)),
+];
+
+Color _trophyColorOf(AssetGenImage image) => _trophyImageColors
+    .firstWhere((pair) => identical(pair.$1, image))
+    .$2;
+
+/// Trophy Card Widget: a thin outline and a soft halo in the trophy's colour,
+/// the same whatever the counter. With a counter above 0 the colour also glows
+/// from the four edges toward the inside of the card (fading to nothing before
+/// the trophy in the middle) and the image is at full strength; with a counter
+/// of 0 there is no inner glow and the image is muted. The number is white
+/// either way.
+class _TrophyCard extends StatelessWidget {
+  final AssetGenImage iconAsset;
+  final int count;
+
+  const _TrophyCard({required this.iconAsset, required this.count});
+
+  static const double _outline = 1.2;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _trophyColorOf(iconAsset);
+    final earned = count > 0;
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a1a),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: color,
+          width: _outline,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.4),
+            blurRadius: 12.r,
+          ),
+        ],
+      ),
+      // Clipped to the rounded corners, inside the outline.
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16.r - _outline),
+        child: Stack(
+          children: [
+            if (earned)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _InnerGlowPainter(
+                    color: color,
+                    radius: 16.r - _outline,
+                    sigma: 9.r,
+                  ),
+                ),
+              ),
+            // Full card width, so the image and the number stay centred.
+            SizedBox(
+              width: double.infinity,
+              child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20.h),
+              child: Column(
+                children: [
+                  Opacity(
+                    opacity: earned ? 1.0 : 0.4,
+                    child: iconAsset.image(
+                      width: 60.w,
+                      height: 60.h,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  // "3x": the x stays glued to the number; scaled down, never
+                  // wrapped.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${count}x',
+                      style: scoreTextStyle(size: 26, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Light that radiates from the four edges of a rounded card toward its
+/// centre (an inner glow): the colour is about 40% at the edge and fades to
+/// transparent within a couple of [sigma]. Drawn behind the card's content.
+class _InnerGlowPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  final double sigma;
+
+  const _InnerGlowPainter({
+    required this.color,
+    required this.radius,
+    required this.sigma,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final card = RRect.fromRectAndRadius(rect, Radius.circular(radius));
+    // Everything OUTSIDE the card, blurred: its blur bleeds inward from every
+    // edge and corner, evenly. (A blurred straight edge is only about 40% at a
+    // few points inside the card, fading out over a couple of [sigma].)
+    final outside = Path.combine(
+      PathOperation.difference,
+      Path()..addRect(rect.inflate(sigma * 4)),
+      Path()..addRRect(card),
+    );
+    canvas.save();
+    canvas.clipRRect(card);
+    canvas.drawPath(
+      outside,
+      Paint()
+        ..color = color
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, sigma),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_InnerGlowPainter old) =>
+      old.color != color || old.radius != radius || old.sigma != sigma;
 }
