@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/models/game_model.dart';
 
@@ -8,6 +10,21 @@ class GameCard extends StatelessWidget {
   final Game game;
 
   const GameCard({super.key, required this.game});
+
+  /// The server's status in the app language. Case and spaces are ignored; a
+  /// status we do not know is shown as received.
+  String get _statusLabel {
+    switch (game.status.trim().toLowerCase()) {
+      case 'not started':
+        return AppString.matchStatusNotStarted.tr;
+      case 'live':
+        return AppString.matchStatusLive.tr;
+      case 'final':
+        return AppString.matchStatusFinal.tr;
+      default:
+        return game.status;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +69,7 @@ class GameCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(4.r),
             ),
             child: Text(
-              game.status,
+              _statusLabel,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 9.sp,
