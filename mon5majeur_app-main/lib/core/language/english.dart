@@ -383,7 +383,7 @@ class EnglishTranslation {
     AppString.month: 'Month',
     AppString.separator: '|',
     AppString.todaysNbaResults: 'Todays Nba Results',
-    AppString.todaysFantasyPlayersScore: 'Todays Fantasy players Score',
+    AppString.todaysFantasyPlayersScore: "Today's Fantasy Scores",
     AppString.noGamesToday: 'No games today',
     AppString.noPlayerScoresYet: 'No player scores yet',
     AppString.last7DaysNbaResults: 'Last 7 Days - NBA Results',

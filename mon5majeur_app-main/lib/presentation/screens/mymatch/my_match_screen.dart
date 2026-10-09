@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
+import '../../../core/utils/datetime_format.dart';
+import '../../../core/utils/score_style.dart';
 import '../../../data/models/game_model.dart';
 import '../../../data/models/player_today_score_model.dart';
 import '../../widgets/navigation.dart';
@@ -23,7 +25,7 @@ class MyMatchScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          AppString.todaysNbaResults.tr,
+          AppString.result.tr,
           style: TextStyle(
             color: Colors.white,
             fontSize: 20.sp,
@@ -47,8 +49,7 @@ class MyMatchScreen extends StatelessWidget {
             child: Column(
               children: [
                 _Section(
-                  title: AppString.todaysNbaResults.tr,
-                  icon: Assets.icons.basketBall,
+                  title: AppString.todaysGames.tr,
                   initiallyExpanded: true,
                   children: ctrl.todaysGames.isEmpty
                       ? [_emptyState(AppString.noGamesToday.tr)]
@@ -59,13 +60,10 @@ class MyMatchScreen extends StatelessWidget {
                 SizedBox(height: 20.h),
                 _Section(
                   title: AppString.todaysFantasyPlayersScore.tr,
-                  icon: Assets.icons.basketBall,
                   initiallyExpanded: true,
                   children: ctrl.playerScores.isEmpty
                       ? [_emptyState(AppString.noPlayerScoresYet.tr)]
-                      : ctrl.playerScores
-                            .map((p) => _PlayerScoreCard(player: p))
-                            .toList(),
+                      : _rankedScoreCards(ctrl.playerScores),
                 ),
                 SizedBox(height: 20.h),
               ],
@@ -88,15 +86,36 @@ class MyMatchScreen extends StatelessWidget {
   }
 }
 
+/// The fantasy scores of the night as ranked rows: highest score first, ties
+/// ordered by name so rows never jump between refreshes. Tied players share a
+/// rank and the next rank skips the places (22, 22, 22, 21 -> 1, 1, 1, 4).
+List<Widget> _rankedScoreCards(List<PlayerTodayScore> players) {
+  final sorted = [...players]
+    ..sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+  final cards = <Widget>[];
+  var rank = 0;
+  int? previousScore;
+  for (var i = 0; i < sorted.length; i++) {
+    if (sorted[i].score != previousScore) {
+      rank = i + 1;
+      previousScore = sorted[i].score;
+    }
+    cards.add(_PlayerScoreCard(player: sorted[i], rank: rank));
+  }
+  return cards;
+}
+
 class _Section extends StatefulWidget {
   final String title;
-  final AssetGenImage icon;
   final bool initiallyExpanded;
   final List<Widget> children;
 
   const _Section({
     required this.title,
-    required this.icon,
     required this.initiallyExpanded,
     required this.children,
   });
@@ -131,8 +150,6 @@ class _SectionState extends State<_Section> {
               padding: EdgeInsets.all(16.w),
               child: Row(
                 children: [
-                  widget.icon.image(width: 29.w, height: 29.h),
-                  SizedBox(width: 12.w),
                   Expanded(
                     child: Text(
                       widget.title,
@@ -190,11 +207,98 @@ class _GameResultCard extends StatelessWidget {
     }
   }
 
+  // Away team on the left, home team on the right ("away @ home", like the
+  // match cards of the leagues). The score colour follows the TEAM: green for
+  // the one ahead, red for the one behind, white for both when level.
+  Color _teamScoreColor(int own, int other) {
+    if (own == other) return Colors.white;
+    return own > other ? Colors.green : Colors.red;
+  }
+
+  // The name sits on the score line: a one-line name is level with the score,
+  // a two-line name is centred on that same line (it grows above and below).
+  Widget _teamName(String name, TextAlign align) {
+    return OverflowBox(
+      alignment: align == TextAlign.end
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
+      minHeight: 0,
+      maxHeight: double.infinity,
+      child: Text(
+        name,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: align,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _center() {
+    final hasScore = game.homeScore != null && game.awayScore != null;
+    if (hasScore) {
+      final away = game.awayScore!;
+      final home = game.homeScore!;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$away',
+            style: TextStyle(
+              color: _teamScoreColor(away, home),
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6.w),
+            child: Text(
+              AppString.vs.tr,
+              style: TextStyle(color: Colors.grey, fontSize: 11.sp),
+            ),
+          ),
+          Text(
+            '$home',
+            style: TextStyle(
+              color: _teamScoreColor(home, away),
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    }
+    final time = formatGameLocalTime(game.datetimeUtc) ?? game.gameTime;
+    if (time.isEmpty) {
+      return Text(
+        _localizedStatus(),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _statusColor(),
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.access_time, color: Colors.white70, size: 14.r),
+        SizedBox(width: 4.w),
+        Text(
+          time,
+          style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasScore = game.homeScore != null && game.awayScore != null;
-    final homeWon = hasScore && game.homeScore! > game.awayScore!;
-
     return Container(
       margin: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 12.h),
       padding: EdgeInsets.all(16.w),
@@ -203,110 +307,122 @@ class _GameResultCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  game.homeTeam,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (hasScore) ...[
-                Text(
-                  '${game.homeScore}',
-                  style: TextStyle(
-                    color: homeWon ? Colors.green : Colors.red,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w),
-                  child: Text(
-                    AppString.vs.tr,
-                    style: TextStyle(color: Colors.grey, fontSize: 14.sp),
-                  ),
-                ),
-                Text(
-                  '${game.awayScore}',
-                  style: TextStyle(
-                    color: !homeWon ? Colors.green : Colors.red,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ] else ...[
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: _statusColor().withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: _statusColor()),
-                  ),
-                  child: Text(
-                    _localizedStatus(),
-                    style: TextStyle(
-                      color: _statusColor(),
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+      // One layout for the three states, and one height: away team, a
+      // fixed-width centre column, home team. The names share what is left
+      // (2 lines max) and never touch the centre.
+      child: SizedBox(
+        height: 48.h,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // The score line: names and score share this line.
+            SizedBox(
+              height: 22.h,
+              child: Row(
+                children: [
+                  Expanded(child: _teamName(game.awayTeam, TextAlign.start)),
+                  SizedBox(
+                    width: 104.w,
+                    // At least 8 points between the score and the names.
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _center(),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-              Expanded(
-                child: Text(
-                  game.awayTeam,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (hasScore)
-            Padding(
-              padding: EdgeInsets.only(top: 6.h),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                  decoration: BoxDecoration(
-                    color: _statusColor().withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  child: Text(
-                    _localizedStatus(),
-                    style: TextStyle(
-                      color: _statusColor(),
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                  Expanded(child: _teamName(game.homeTeam, TextAlign.end)),
+                ],
               ),
             ),
-        ],
+            // Status under the score (room kept in every state so the score
+            // line stays at the same height).
+            SizedBox(
+              height: 14.h,
+              child: Center(
+                child: game.homeScore != null && game.awayScore != null
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: _StatusMark(
+                          color: _statusColor(),
+                          label: _localizedStatus(),
+                        ),
+                      )
+                    : null,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
 
+/// Status of a match: a dot inside a thin ring of the same colour, with a soft
+/// halo, and the status text next to it (same look as the Home team status).
+class _StatusMark extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _StatusMark({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12.w,
+          height: 12.w,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color.withValues(alpha: 0.7), width: 1.w),
+            boxShadow: [
+              BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 5.r),
+            ],
+          ),
+          child: Container(
+            width: 6.w,
+            height: 6.w,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+        ),
+        SizedBox(width: 5.w),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 10.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _PlayerScoreCard extends StatelessWidget {
   final PlayerTodayScore player;
+  final int rank;
 
-  const _PlayerScoreCard({required this.player});
+  const _PlayerScoreCard({required this.player, required this.rank});
+
+  Color _rankColor() {
+    switch (rank) {
+      case 1:
+        return const Color(0xFFFFD54A);
+      case 2:
+        return const Color(0xFFC9D1D9);
+      case 3:
+        return const Color(0xFFCD7F32);
+      default:
+        return Colors.white;
+    }
+  }
 
   Color _scoreColor(int score) {
     if (score >= 21) return Colors.green;
@@ -326,6 +442,19 @@ class _PlayerScoreCard extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Rank: fixed-width column so two- and three-digit ranks never shift
+          // the jerseys.
+          SizedBox(
+            width: 28.w,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$rank',
+                style: scoreTextStyle(size: 18, color: _rankColor()),
+              ),
+            ),
+          ),
+          SizedBox(width: 6.w),
           // QA4 #10: was the wrong (Lakers #20) jersey asset.
           Center(
             child: Assets.icons.jerseyReference.image(
@@ -378,12 +507,23 @@ class _PlayerScoreCard extends StatelessWidget {
               ],
             ),
           ),
-          Text(
-            '${player.score}',
-            style: TextStyle(
-              color: _scoreColor(player.score),
-              fontSize: 13.sp,
-              fontWeight: FontWeight.bold,
+          // The main figure of the row: scoreboard face, scaled down rather
+          // than overflowing (three-digit score, small screen).
+          Padding(
+            padding: EdgeInsets.only(left: 8.w),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 60.w),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${player.score}',
+                  style: scoreTextStyle(
+                    size: 22,
+                    color: _scoreColor(player.score),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
