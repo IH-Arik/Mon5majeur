@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
 import 'package:mon5majeur_app/core/language/language_controller.dart';
+import 'package:mon5majeur_app/data/models/game_model.dart';
 import 'package:mon5majeur_app/data/models/match_result_model.dart';
+import 'package:mon5majeur_app/presentation/screens/home/widgets/todays_games.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/match_lineups_field.dart';
 
 Widget _host(Widget child) => ScreenUtilInit(
@@ -42,6 +44,7 @@ PlayerScore _team(String name,
     );
 
 void main() {
+  gamesTests();
   testWidgets('Global results: points pill under the court, no bonus card',
       (tester) async {
     tester.view.physicalSize = const Size(390, 2400);
@@ -100,6 +103,39 @@ void main() {
     expect(find.text('Aucun bonus'), findsOneWidget);
     expect(find.text('9h00'), findsOneWidget);
     expect(find.byIcon(Icons.lock_outline), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+// ---- QA #10 9: one "Matchs du jour" component for duel and Global leagues
+void gamesTests() {
+  testWidgets('game card: Away @ Home, clock icon, status badge', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final game = Game(
+      id: 1,
+      homeTeam: 'Pacers',
+      homeTeamId: 'h',
+      awayTeam: 'Wolves',
+      awayTeamId: 'a',
+      gameTime: '1h00',
+      status: 'Not Started',
+      venue: '',
+      timezone: 'UTC',
+      datetimeUtc: '',
+    );
+    await tester.pumpWidget(_host(TodaysGamesSection(
+      isLoading: false,
+      errorMessage: null,
+      games: [game],
+    )));
+    await tester.pump();
+
+    expect(find.text('Wolves @ Pacers'), findsOneWidget);
+    expect(find.byIcon(Icons.access_time), findsOneWidget);
+    expect(find.text('Not Started'), findsOneWidget);
+    expect(find.textContaining(' vs '), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

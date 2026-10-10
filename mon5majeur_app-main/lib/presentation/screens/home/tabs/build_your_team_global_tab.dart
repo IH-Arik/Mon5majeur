@@ -1,3 +1,4 @@
+import '../widgets/todays_games.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,6 @@ import 'package:showcaseview/showcaseview.dart';
 
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/player.dart';
@@ -701,88 +701,12 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     );
   }
 
-  Widget _buildTodaysGames() {
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              AppString.todaysGames.tr,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: 12.h),
-        if (isLoadingGames)
-          Center(
-            child: CircularProgressIndicator(
-              color: const Color(0xFFFF8C42),
-            ),
-          )
-        else if (gamesErrorMessage != null)
-          Text(
-            gamesErrorMessage!,
-            style: TextStyle(color: Colors.red, fontSize: 12.sp),
-          )
-        else if (todaysGames.isEmpty)
-          Text(
-            'No games today',
-            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
-          )
-        else
-          SizedBox(
-            height: 120.h,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              itemCount: todaysGames.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: EdgeInsets.only(right: 12.w),
-                  child: _buildGameCard(todaysGames[index]),
-                );
-              },
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildGameCard(Game game) {
-    return Container(
-      width: 160.w,
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1C2A),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFF2A2D3E)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${game.homeTeam} vs ${game.awayTeam}',
-            style: TextStyle(
-              color: const Color(0xFFFF8C42),
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            formatGameLocalTime(game.datetimeUtc) ?? game.gameTime,
-            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
-          ),
-        ],
-      ),
-    );
-  }
+  // The same component as the duel leagues (QA #10 9).
+  Widget _buildTodaysGames() => TodaysGamesSection(
+        isLoading: isLoadingGames,
+        errorMessage: gamesErrorMessage,
+        games: todaysGames,
+      );
 
   Widget _buildTimeLeft() {
     final lock = _controller.globalLeagueSelection.value?.lockInSeconds;

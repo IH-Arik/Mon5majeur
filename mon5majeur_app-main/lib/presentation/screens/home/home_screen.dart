@@ -1014,21 +1014,6 @@ class _AnimatedLeagueCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 30.w,
-                        height: 30.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF2a2a2a),
-                        ),
-                        child: Center(
-                          child: league.getLeagueLogoAsset().image(
-                            width: 20.r,
-                            height: 20.r,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 16.w),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1036,9 +1021,13 @@ class _AnimatedLeagueCard extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Assets.icons.basketBall.image(
+                                // The league's own logo, left of the name, drawn
+                                // like the "Résultats de la nuit" card; no circle
+                                // and no plain basketball (QA #10 3).
+                                league.getLeagueLogoAsset().image(
                                   width: 20.r,
                                   height: 20.r,
+                                  fit: BoxFit.contain,
                                 ),
                                 SizedBox(width: 8.w),
                                 // Full name, wrapped onto as many lines as it needs
