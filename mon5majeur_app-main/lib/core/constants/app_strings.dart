@@ -291,6 +291,16 @@ class AppString {
   static const String searchTeamsByName = 'Search Teams by name';
   static const String parisFC = 'Paris FC';
   static String totalPoints(int n) => '$n Points';
+
+  // "N Point" / "N Points" with the right singular. French: 0 and 1 are
+  // singular; English: only 1 is.
+  static const String totalPointsOne = 'totalPointsOne';
+  static const String totalPointsMany = 'totalPointsMany';
+  static String totalPointsLabel(int n) {
+    final french = Get.locale?.languageCode == 'fr';
+    final singular = french ? n <= 1 : n == 1;
+    return (singular ? totalPointsOne : totalPointsMany).trParams({'n': '$n'});
+  }
   static const String kikiFC = 'Kiki FC';
   static const String rockFC = 'Rock FC';
   static const String courtFC = 'Court FC';

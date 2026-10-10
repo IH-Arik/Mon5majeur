@@ -552,6 +552,8 @@ class EnglishTranslation {
     AppString.removeBonus: "Remove bonus",
     AppString.bonusRemovedBack: "Bonus removed. It is back in your inventory.",
     AppString.bonusLockedNotice: "Night locked: the bonus can no longer be changed",
+    AppString.totalPointsOne: "@n Point",
+    AppString.totalPointsMany: "@n Points",
     AppString.noPublishedResult: 'No published result yet',
     AppString.bonusLabel: 'Bonus',
     AppString.noBonus: 'No bonus',

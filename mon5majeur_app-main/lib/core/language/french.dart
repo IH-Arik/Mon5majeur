@@ -553,6 +553,8 @@ class FrenchTranslation {
     AppString.removeBonus: "Retirer le bonus",
     AppString.bonusRemovedBack: "Bonus retiré. Il est de retour dans ton inventaire.",
     AppString.bonusLockedNotice: "Soirée verrouillée : le bonus ne peut plus être modifié",
+    AppString.totalPointsOne: "@n Point",
+    AppString.totalPointsMany: "@n Points",
     AppString.noPublishedResult: 'Aucun résultat publié pour le moment',
     "Could not load the result": "Impossible de charger le résultat",
     AppString.bonusLabel: 'Bonus',

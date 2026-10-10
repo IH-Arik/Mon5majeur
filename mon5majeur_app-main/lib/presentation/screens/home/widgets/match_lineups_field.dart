@@ -24,6 +24,11 @@ class MatchLineupsField extends StatelessWidget {
   final bool scoresHidden;
   // Global League live view: only the user's own five, no opponent.
   final bool showOpponent;
+  // Global League "Results" look (and "view team"): the top half of the same
+  // full court the duel results use, the team name at the top left, and no
+  // summary card under the court (there is no bonus in the Global League).
+  // False everywhere else, so no other screen changes.
+  final bool globalResultStyle;
 
   const MatchLineupsField({
     super.key,
@@ -31,6 +36,7 @@ class MatchLineupsField extends StatelessWidget {
     required this.teamB,
     this.scoresHidden = false,
     this.showOpponent = true,
+    this.globalResultStyle = false,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -51,7 +57,7 @@ class MatchLineupsField extends StatelessWidget {
     return Column(
       children: [
         _court(b),
-        ..._summary(teamA),
+        if (!globalResultStyle) ..._summary(teamA),
         if (showOpponent) ..._summary(teamB),
       ],
     );
@@ -67,17 +73,27 @@ class MatchLineupsField extends StatelessWidget {
       margin: EdgeInsets.only(top: 12.h),
       width: double.infinity,
       constraints: BoxConstraints(maxWidth: 362.w),
-      height: showOpponent ? 700.h : 380.h,
+      height: globalResultStyle ? 350.h : (showOpponent ? 700.h : 380.h),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
         child: Stack(
           children: [
-            Positioned.fill(
-              child: showOpponent
-                  ? Assets.images.fullplayground.image(fit: BoxFit.cover)
-                  : Assets.images.playground.image(fit: BoxFit.cover),
-            ),
+            if (globalResultStyle)
+              // The duel court at its full 700 height: only its top half shows.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 700.h,
+                child: Assets.images.fullplayground.image(fit: BoxFit.cover),
+              )
+            else
+              Positioned.fill(
+                child: showOpponent
+                    ? Assets.images.fullplayground.image(fit: BoxFit.cover)
+                    : Assets.images.playground.image(fit: BoxFit.cover),
+              ),
             Positioned.fill(
               child: Container(color: Colors.black.withValues(alpha: 0.3)),
             ),
@@ -85,7 +101,13 @@ class MatchLineupsField extends StatelessWidget {
               Positioned.fill(child: Center(child: _notReadyCard())),
 
             // ── Top team
-            if (teamA != null) _teamLabel(teamA!.teamName, Colors.red, top: 8.h),
+            if (teamA != null)
+              _teamLabel(
+                teamA!.teamName,
+                Colors.red,
+                top: 8.h,
+                leftAligned: globalResultStyle,
+              ),
             if (aHidden)
               _hiddenCard(top: 130.h)
             else
@@ -259,29 +281,37 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
-  Widget _teamLabel(String name, Color color, {double? top, double? bottom}) {
+  Widget _teamLabel(
+    String name,
+    Color color, {
+    double? top,
+    double? bottom,
+    bool leftAligned = false,
+  }) {
+    final label = Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12.sp,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+    if (leftAligned) {
+      return Positioned(top: top, bottom: bottom, left: 8.w, child: label);
+    }
     return Positioned(
       top: top,
       bottom: bottom,
       left: 0,
       right: 0,
-      child: Center(
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: Text(
-            name,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
+      child: Center(child: label),
     );
   }
 

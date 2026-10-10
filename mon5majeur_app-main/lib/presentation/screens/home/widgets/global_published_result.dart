@@ -172,23 +172,44 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                 style: TextStyle(color: Colors.white54, fontSize: 14.sp),
               ),
             ] else ...[
-              SizedBox(height: 8.h),
-              Text(
-                '${d['total_points']}',
-                style: TextStyle(
-                  color: const Color(0xFFFF8C42),
-                  fontSize: 36.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                AppString.pts.tr,
-                style: TextStyle(color: Colors.white54, fontSize: 12.sp),
-              ),
-              MatchLineupsField(
-                teamA: _toTeam(d),
-                teamB: null,
-                showOpponent: false,
+              Builder(
+                builder: (context) {
+                  final team = _toTeam(d);
+                  // The score is the sum of the players' points shown on the
+                  // court, so the two always agree.
+                  final sum = team.selection.fold<int>(0, (a, p) => a + p.score);
+                  return Column(
+                    children: [
+                      MatchLineupsField(
+                        teamA: team,
+                        teamB: null,
+                        showOpponent: false,
+                        globalResultStyle: true,
+                      ),
+                      if (team.selection.isNotEmpty) ...[
+                        SizedBox(height: 12.h),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.w,
+                            vertical: 8.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE0E0E0),
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          child: Text(
+                            AppString.totalPointsLabel(sum),
+                            style: TextStyle(
+                              color: const Color(0xFF1A1A1A),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
               ),
             ],
             SizedBox(height: 16.h),
