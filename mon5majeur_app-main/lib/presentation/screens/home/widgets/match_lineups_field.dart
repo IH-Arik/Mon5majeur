@@ -29,6 +29,11 @@ class MatchLineupsField extends StatelessWidget {
   // summary card under the court (there is no bonus in the Global League).
   // False everywhere else, so no other screen changes.
   final bool globalResultStyle;
+  // Duel "Results" look (QA #10 17): the team name labels sit at the left of
+  // the court, and the two bonus cards are replaced by one two-column card
+  // (left column = [teamA], right = [teamB], like the match card above).
+  // False everywhere else, so no other screen changes.
+  final bool duelResultStyle;
 
   const MatchLineupsField({
     super.key,
@@ -37,6 +42,7 @@ class MatchLineupsField extends StatelessWidget {
     this.scoresHidden = false,
     this.showOpponent = true,
     this.globalResultStyle = false,
+    this.duelResultStyle = false,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -57,8 +63,12 @@ class MatchLineupsField extends StatelessWidget {
     return Column(
       children: [
         _court(b),
-        if (!globalResultStyle) ..._summary(teamA),
-        if (showOpponent) ..._summary(teamB),
+        if (duelResultStyle)
+          ..._duelBonusCard()
+        else ...[
+          if (!globalResultStyle) ..._summary(teamA),
+          if (showOpponent) ..._summary(teamB),
+        ],
       ],
     );
   }
@@ -110,7 +120,7 @@ class MatchLineupsField extends StatelessWidget {
                 teamA!.teamName,
                 Colors.red,
                 top: 8.h,
-                leftAligned: globalResultStyle,
+                leftAligned: globalResultStyle || duelResultStyle,
               ),
             if (aHidden)
               _hiddenCard(top: 130.h)
@@ -121,7 +131,13 @@ class MatchLineupsField extends StatelessWidget {
               _teamNotReady(teamA?.teamName ?? 'Team A', Colors.red, top: 100.h),
 
             // ── Bottom team
-            if (b != null) _teamLabel(b.teamName, Colors.blue, bottom: 8.h),
+            if (b != null)
+              _teamLabel(
+                b.teamName,
+                Colors.blue,
+                bottom: 8.h,
+                leftAligned: duelResultStyle,
+              ),
             if (bHidden)
               _hiddenCard(bottom: 130.h)
             else
@@ -135,6 +151,129 @@ class MatchLineupsField extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  // ── Duel results: one card, one column per team ──────────────────────────
+
+  static const double _bonusImageSize = 44;
+
+  List<Widget> _duelBonusCard() {
+    if (teamA == null && teamB == null) return const [];
+    return [
+      Container(
+        width: double.infinity,
+        constraints: BoxConstraints(maxWidth: 362.w),
+        margin: EdgeInsets.only(top: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Color(0xFF2C2C2C)),
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _bonusColumn(teamA)),
+              Container(width: 1.w, color: const Color(0xFF2C2C2C)),
+              Expanded(child: _bonusColumn(teamB)),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _bonusColumn(PlayerScore? t) {
+    if (t == null) return const SizedBox.shrink();
+    final sixth = _sixth(t);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8.w),
+      child: Column(
+        children: [
+          Text(
+            t.teamName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          SizedBox(
+            height: _bonusImageSize.w,
+            child: Center(child: _bonusZone(t)),
+          ),
+          if (sixth != null) ...[
+            SizedBox(height: 6.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    sixth.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+                  ),
+                ),
+                Text(
+                  ' · ',
+                  style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+                ),
+                scoresHidden
+                    ? Icon(Icons.lock_outline, color: Colors.grey, size: 13.r)
+                    : Text('${sixth.score}', style: scoreTextStyle(size: 14)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Decided only by what the server sends: [PlayerScore.bonusHidden] first,
+  /// then [PlayerScore.bonus] (null = no bonus; an unknown value = empty).
+  Widget _bonusZone(PlayerScore t) {
+    if (t.bonusHidden) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lock_outline, color: Colors.grey, size: 18.r),
+          SizedBox(height: 2.h),
+          Text(
+            AppString.bonusRevealTime.tr,
+            style: TextStyle(color: Colors.grey, fontSize: 11.sp),
+          ),
+        ],
+      );
+    }
+    final AssetGenImage? image;
+    switch (t.bonus) {
+      case 'sixth_man':
+        image = Assets.icons.sixman;
+      case 'chef_curry':
+        image = Assets.icons.chefcurry;
+      case 'luxury_tax':
+        image = Assets.icons.luxarytax;
+      case null:
+        return Text(
+          AppString.noBonus.tr,
+          style: TextStyle(color: Colors.grey, fontSize: 11.sp),
+        );
+      default:
+        return const SizedBox.shrink(); // unknown value: nothing, no error
+    }
+    return image.image(
+      width: _bonusImageSize.w,
+      height: _bonusImageSize.w,
+      fit: BoxFit.contain,
     );
   }
 

@@ -107,6 +107,8 @@ class FrenchTranslation {
     AppString.playOff: 'Play-Off',
     AppString.leaguePhaseCompleted: 'Terminée',
     AppString.leaguePhaseCancelled: 'Annulée',
+    // Texte provisoire : l'heure de révélation peut changer avec le futur cycle des journées
+    AppString.bonusRevealTime: '9h00',
     AppString.quarterFinalMatchday1: 'Demi-finale',
     AppString.you: 'Toi',
     AppString.vs: 'Vs',

@@ -106,6 +106,8 @@ class EnglishTranslation {
     AppString.playOff: 'Play-Off',
     AppString.leaguePhaseCompleted: 'Completed',
     AppString.leaguePhaseCancelled: 'Cancelled',
+    // Texte provisoire : l'heure de révélation peut changer avec le futur cycle des journées
+    AppString.bonusRevealTime: '9:00 AM',
     AppString.quarterFinalMatchday1: 'Semifinal',
     AppString.you: 'You',
     AppString.vs: 'Vs',

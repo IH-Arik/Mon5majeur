@@ -410,6 +410,7 @@ class _ResultTabState extends State<ResultTab> {
                         teamB: playerBScore,
                         scoresHidden:
                             controller.matchResult.value?.scoresHidden ?? false,
+                        duelResultStyle: true,
                       )
                 : SizedBox.shrink(),
           ),
