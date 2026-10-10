@@ -423,6 +423,8 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             away,
             match.homeScore.round(),
             match.awayScore.round(),
+            homeLogo: match.homeTeamLogo,
+            awayLogo: match.awayTeamLogo,
           ),
         ),
         Icon(
@@ -491,7 +493,14 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   // Same card as the Results tab's match card: both teams and the score.
-  Widget _buildMatchCard(String home, String away, int homeScore, int awayScore) {
+  Widget _buildMatchCard(
+    String home,
+    String away,
+    int homeScore,
+    int awayScore, {
+    String homeLogo = '',
+    String awayLogo = '',
+  }) {
     return _cardShell(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -499,7 +508,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           Expanded(
             child: Row(
               children: [
-                _teamLogo(),
+                _teamLogo(homeLogo),
                 SizedBox(width: 8.w),
                 Expanded(
                   child: Text(
@@ -534,7 +543,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                   ),
                 ),
                 SizedBox(width: 8.w),
-                _teamLogo(),
+                _teamLogo(awayLogo),
               ],
             ),
           ),
@@ -563,7 +572,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     );
   }
 
-  Widget _teamLogo() {
+  Widget _teamLogo(String logo) {
     return Container(
       width: 32.w,
       height: 32.w,
@@ -573,7 +582,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           side: BorderSide(width: 1.w, color: const Color(0xFFB0B0B0)),
         ),
       ),
-      child: Center(child: Assets.icons.logo1.image(width: 16.w, height: 18.h)),
+      child: Center(child: logoAsset(logo).image(width: 16.w, height: 18.h)),
     );
   }
 

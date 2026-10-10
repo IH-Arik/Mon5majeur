@@ -75,6 +75,10 @@ class LiveMatchScore {
   final String? awayTeamName;
   final int homeJerseyIndex;
   final int awayJerseyIndex;
+  // Each team's saved logo (empty when the server sends none: the default one
+  // is then shown).
+  final String homeTeamLogo;
+  final String awayTeamLogo;
 
   final double homeScore;
   final double awayScore;
@@ -99,6 +103,8 @@ class LiveMatchScore {
     this.awayTeamName,
     this.homeJerseyIndex = 0,
     this.awayJerseyIndex = 0,
+    this.homeTeamLogo = '',
+    this.awayTeamLogo = '',
     required this.homeScore,
     required this.awayScore,
     required this.matchStatus,
@@ -121,6 +127,8 @@ class LiveMatchScore {
       awayTeamName: json['away_team_name'],
       homeJerseyIndex: (json['home_jersey_index'] as num?)?.toInt() ?? 0,
       awayJerseyIndex: (json['away_jersey_index'] as num?)?.toInt() ?? 0,
+      homeTeamLogo: json['home_team_logo']?.toString() ?? '',
+      awayTeamLogo: json['away_team_logo']?.toString() ?? '',
       homeScore: (json['home_score'] as num?)?.toDouble() ?? 0.0,
       awayScore: (json['away_score'] as num?)?.toDouble() ?? 0.0,
       matchStatus: json['match_status'] ?? 'upcoming',

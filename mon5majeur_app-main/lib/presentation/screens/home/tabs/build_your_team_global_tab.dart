@@ -737,7 +737,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           )
         else
           SizedBox(
-            height: 120.h,
+            height: gameCardListHeight,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 16.w),

@@ -515,6 +515,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       _removeBonus();
       return;
     }
+    if (_bonusLocked || isSubmitting) return;
 
     // Need at least one available charge to activate a new bonus.
     if (_availableFor(type) <= 0) {
@@ -528,6 +529,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       activeBonus = type;
       _adjustCharge(type, -1); // consume new
       showBonusOptions = false;
+      isConfirmed = false; // a changed bonus has to be confirmed again
       // Switching away from 6th man clears the on-court substitute slot.
       if (previous == BonusType.sixthMan) sixthManPlayer = null;
     });
@@ -537,21 +539,35 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
   // QA 30/09 #8 #5: a placed bonus can be taken off again. The charge is
   // given back, exactly as when switching to another bonus.
-  void _removeBonus() {
+  // Not possible once the night is locked, nor while something is being sent.
+  // The team goes back to "to confirm". If it had already been confirmed (so
+  // the server holds it with this bonus) it is sent again at once without the
+  // bonus, which is what gives the charge back on the server; otherwise the
+  // removal stays local.
+  Future<void> _removeBonus() async {
     final previous = activeBonus;
-    if (previous == null) return;
+    if (previous == null || _bonusLocked || isSubmitting) {
+      if (showBonusOptions) setState(() => showBonusOptions = false);
+      return;
+    }
+    final wasConfirmed = isConfirmed;
     setState(() {
       _adjustCharge(previous, 1);
       activeBonus = null;
       showBonusOptions = false;
+      isConfirmed = false;
       if (previous == BonusType.sixthMan) sixthManPlayer = null;
     });
+    if (wasConfirmed) await _submitPlayerSelection(afterBonusRemoval: true);
   }
+
+  // The night is locked: the bonus can no longer be placed, changed or removed.
+  bool get _bonusLocked => isLineupLocked(lockInSeconds);
 
   bool isSubmitting = false; // Add this
 
   // Add this method to submit players
-  Future<void> _submitPlayerSelection() async {
+  Future<void> _submitPlayerSelection({bool afterBonusRemoval = false}) async {
     // Validate that team is complete
     if (!isTeamComplete) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -650,9 +666,16 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             isConfirmed = true;
             lockInSeconds = responseData['lock_in_seconds'];
           });
-          await showTeamValidatedDialog(context);
-          if (mounted) {
-            await maybeShowNotificationPromptAfterFirstValidation(context);
+          if (afterBonusRemoval) {
+            // Only the bonus changed: no "team validated" pop-up, a short note.
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(AppString.bonusRemovedBack.tr)),
+            );
+          } else {
+            await showTeamValidatedDialog(context);
+            if (mounted) {
+              await maybeShowNotificationPromptAfterFirstValidation(context);
+            }
           }
 
           // Notify parent that team was saved
@@ -1067,7 +1090,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       ],
       // Bonus options menu - on top layer
       floating: [
-        if (showBonusOptions)
+        if (showBonusOptions && !_bonusLocked)
           Positioned(top: 94.h, right: 20.w, child: _buildBonusOptionsMenu()),
       ],
     );
@@ -1084,6 +1107,36 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // "Remove bonus" comes first, only while a bonus is placed. Its width
+          // is its content's (never double.infinity: that broke the whole menu).
+          if (activeBonus != null) ...[
+            GestureDetector(
+              onTap: _removeBonus,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: const Color(0xFFFF6B35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.close, color: const Color(0xFFFF6B35), size: 14.r),
+                    SizedBox(width: 4.w),
+                    Text(
+                      AppString.removeBonus.tr,
+                      style: TextStyle(
+                        color: const Color(0xFFFF6B35),
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 14.h),
+          ],
           Row(
             children: [
               _buildBonusOptionItem(
@@ -1111,35 +1164,6 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             isActivated: luxuryTaxActivated,
             onTap: () => _selectBonus(BonusType.luxuryTax),
           ),
-          if (activeBonus != null) ...[
-            SizedBox(height: 14.h),
-            GestureDetector(
-              onTap: _removeBonus,
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 8.h),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: const Color(0xFFFF6B35)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.close, color: const Color(0xFFFF6B35), size: 14.r),
-                    SizedBox(width: 4.w),
-                    Text(
-                      AppString.removeBonus.tr,
-                      style: TextStyle(
-                        color: const Color(0xFFFF6B35),
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -1252,6 +1276,21 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     const orange = Color(0xFFFF8C42);
     return GestureDetector(
       onTap: () {
+        // A send in progress: the case does not react (and says nothing).
+        if (isSubmitting) {
+          if (showBonusOptions) setState(() => showBonusOptions = false);
+          return;
+        }
+        // Locked night: no menu, just a short reason.
+        if (_bonusLocked) {
+          if (showBonusOptions) setState(() => showBonusOptions = false);
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(content: Text(AppString.bonusLockedNotice.tr)),
+            );
+          return;
+        }
         setState(() {
           showBonusOptions = !showBonusOptions;
         });
@@ -1260,12 +1299,11 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         width: 64.w,
         height: 56.h,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          // Same colours whether the menu is open or not (no colour flip).
+          gradient: const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: showBonusOptions
-                ? const [Color(0xFFFF6B35), Color(0xFFE85A24)]
-                : const [Color(0xFF2A1A10), Color(0xFF1A1A1A)],
+            colors: [Color(0xFF2A1A10), Color(0xFF1A1A1A)],
           ),
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: orange, width: 1.5.r),
@@ -1278,7 +1316,18 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         ),
         // When a bonus is active, show its icon; tap to change the bonus.
         // Placed bonus: no "Bonus" text, just its image, large.
-        child: activeIcon != null
+        child: isSubmitting
+            ? Center(
+                child: SizedBox(
+                  width: 20.r,
+                  height: 20.r,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFFFF8C42),
+                  ),
+                ),
+              )
+            : activeIcon != null
             ? Center(child: activeIcon.image(width: 40.w, height: 40.h, fit: BoxFit.contain))
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1346,7 +1395,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           )
         else
           SizedBox(
-            height: 120.h,
+            height: gameCardListHeight,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -1370,6 +1419,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     // Nothing to show until the lock data has loaded — never a placeholder
     // figure (QA 15/09/2026 item 6).
     if (lockInSeconds == null && isLoadingGames) return const SizedBox.shrink();
+    // Once locked, the red banner above already says so: no second line.
+    if (isLineupLocked(lockInSeconds)) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(

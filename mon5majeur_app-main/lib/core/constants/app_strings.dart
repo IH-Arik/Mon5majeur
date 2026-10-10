@@ -663,6 +663,8 @@ class AppString {
   static const String sixthManDropped = 'Not counted (6th Man)';
   static const String noLineupSubmitted = 'No lineup submitted';
   static const String removeBonus = 'Remove';
+  static const String bonusRemovedBack = 'bonusRemovedBack';
+  static const String bonusLockedNotice = 'bonusLockedNotice';
   static const String noPublishedResult = 'No published result yet';
   static const String bonusLabel = 'Bonus';
   static const String noBonus = 'No bonus';
