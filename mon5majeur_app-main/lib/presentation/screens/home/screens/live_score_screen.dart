@@ -408,6 +408,9 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     final home = match.homeTeamName ?? '${AppString.team.tr} A';
     final away = match.awayTeamName ?? '${AppString.team.tr} B';
     final open = _expanded.contains(match.matchId);
+    // Which side is mine, when known; otherwise both teams are treated as
+    // opponents (nothing about a bonus is ever given away).
+    final mineIsHome = controller.myTeamIsHome[match.matchId];
     return Column(
       children: [
         MatchStatusBadge(
@@ -435,8 +438,19 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         ),
         if (open)
           MatchLineupsField(
-            teamA: _toSquad(home, match.homePlayers, jersey: match.homeJerseyIndex),
-            teamB: _toSquad(away, match.awayPlayers, jersey: match.awayJerseyIndex),
+            teamA: _toSquad(
+              home,
+              match.homePlayers,
+              jersey: match.homeJerseyIndex,
+              side: mineIsHome == true ? _Side.mine : _Side.opponent,
+            ),
+            teamB: _toSquad(
+              away,
+              match.awayPlayers,
+              jersey: match.awayJerseyIndex,
+              side: mineIsHome == false ? _Side.mine : _Side.opponent,
+            ),
+            duelResultStyle: true,
           ),
       ],
     );
@@ -594,7 +608,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   /// The court draws the five starters by position; the 6th man rides along
   /// flagged, and the lineup widget lists him under the court.
   PlayerScore _toSquad(String teamName, List<LivePlayerScore> players,
-      {int jersey = 0}) {
+      {int jersey = 0, _Side side = _Side.none}) {
     final starters = inCourtOrder(
       players.where((p) => !p.isSixthMan).take(5).toList(),
       (p) => p.position,
@@ -608,6 +622,21 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           score: p.fantasyScoreLive.round(),
           isSixthMan: sixth,
         );
+    // Duel Live bonus zone, decided only by the lineup (never by a server
+    // bonus field): the 6th man is the only bonus seen; an opponent without
+    // one always shows the lock (nothing is given away); my own team without
+    // one shows an empty zone (an unknown value draws nothing).
+    String? bonus;
+    var bonusHidden = false;
+    if (side != _Side.none) {
+      if (sixth.isNotEmpty) {
+        bonus = 'sixth_man';
+      } else if (side == _Side.mine) {
+        bonus = '';
+      } else {
+        bonusHidden = true;
+      }
+    }
     return PlayerScore(
       playerId: 0,
       teamName: teamName,
@@ -619,7 +648,12 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         for (final p in sixth) toSel(p, sixth: true),
       ],
       jerseyIndex: jersey,
-      isMe: true,
+      isMe: side != _Side.opponent,
+      bonus: bonus,
+      bonusHidden: bonusHidden,
     );
   }
 }
+
+/// Whose team a Live squad is. [none] = the Global League view (no bonus).
+enum _Side { none, mine, opponent }
