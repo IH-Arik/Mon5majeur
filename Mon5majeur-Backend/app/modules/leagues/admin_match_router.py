@@ -113,6 +113,13 @@ async def list_matches(
     return MatchPage(data=rows, total=total, page=page, size=size)
 
 
+def _drop_cached_results() -> None:
+    """A corrected result must replace the kept copy of its published day."""
+    from app.modules.leagues.selection_service import clear_match_result_cache
+
+    clear_match_result_cache()
+
+
 @router.post(
     "/{match_id}/rescore/",
     response_model=MatchRow,
@@ -130,6 +137,7 @@ async def rescore_match(match_id: PydanticObjectId) -> MatchRow:
             "check that the NBA games for this night are marked final."
         )
     await update_standings(match.league_id)
+    _drop_cached_results()
 
     match = await LeagueMatch.get(match_id)
     league_by_id, user_by_id = await _hydrate([match])
@@ -158,6 +166,7 @@ async def override_score(match_id: PydanticObjectId, payload: ScoreOverrideReque
     await match.save()
 
     await update_standings(match.league_id)
+    _drop_cached_results()
 
     league_by_id, user_by_id = await _hydrate([match])
     return await _to_row(match, league_by_id, user_by_id)

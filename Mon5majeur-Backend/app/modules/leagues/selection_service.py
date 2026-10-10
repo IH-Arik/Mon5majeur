@@ -41,6 +41,36 @@ async def score_selection_for_date(selected_players: list[dict], nba_date: date)
     return round(total, 2)
 
 
+def total_from_scores(sel: FlutterPlayerSelection, scores_by_player: dict) -> float:
+    """Same rule as score_full_selection, from scores already loaded (one query
+    for the whole match day instead of one per player): 6th man = best 5 of 6,
+    Chef Curry = +3."""
+    def one(p: dict) -> float:
+        return scores_by_player.get(str(p.get("id", "")), 0.0)
+
+    scores = [one(p) for p in sel.selected_players]
+    if sel.sixth_man_player is not None:
+        scores.append(one(sel.sixth_man_player))
+        scores = sorted(scores, reverse=True)[:5]
+    total = sum(scores)
+    if sel.chef_curry:
+        total += 3
+    return round(total, 2)
+
+
+# A PUBLISHED match day never changes: its response is kept (per viewer, since
+# "is_me" and the reveal rules depend on who asks). Only completed days that
+# are not behind the score paywall are stored, so a cache entry can never show
+# anything earlier than the reveal rules allow (QA #10 16).
+_MATCH_RESULT_CACHE: dict[tuple, dict] = {}
+_MATCH_RESULT_CACHE_MAX = 3000
+
+
+def clear_match_result_cache() -> None:
+    """Call when a result is corrected or an account is deleted."""
+    _MATCH_RESULT_CACHE.clear()
+
+
 async def score_full_selection(sel: FlutterPlayerSelection, nba_date: date) -> float:
     """Duel score including strategic bonuses (spec §4.4):
     6th Man = top 5 of 6 (starters + the 6th man, best 5 counted);
@@ -358,6 +388,11 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
     from app.modules.leagues.positions import court_order
     from app.modules.players.model import PlayerGameStats
 
+    cache_key = (league_auto_id, match_day, str(viewer.id) if viewer is not None else None)
+    cached = _MATCH_RESULT_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
     league = await League.find_one(League.auto_id == league_auto_id)
     if not league:
         raise NotFoundException(f"League {league_auto_id} not found")
@@ -398,6 +433,35 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
     users = await User.find({"_id": {"$in": list(all_user_oids)}}).to_list()
     user_map = {u.id: u for u in users}
 
+    # ALL the day's lineups in one query, and the points of every player in
+    # them in one more (it was ~18 queries per team, so a day took seconds).
+    sel_docs = await FlutterPlayerSelection.find(
+        {
+            "league_auto_id": league_auto_id,
+            "match_day": match_day,
+            "user_id": {"$in": list(all_user_oids)},
+        }
+    ).to_list()
+    sel_by_user = {d.user_id: d for d in sel_docs}
+    pids: set = set()
+    for d in sel_docs:
+        for p in d.selected_players + ([d.sixth_man_player] if d.sixth_man_player else []):
+            try:
+                pids.add(PydanticObjectId(str(p.get("id", ""))))
+            except Exception:
+                pass
+    stats_rows = await PlayerGameStats.find(
+        {
+            "player_id": {"$in": list(pids)},
+            "nba_date": datetime.combine(nba_date, datetime.min.time()),
+            "score_computed": True,
+        }
+    ).to_list() if pids else []
+    scores_by_player = {
+        str(s.player_id): (s.fantasy_score if s.fantasy_score is not None else 0.0)
+        for s in stats_rows
+    }
+
     # Build per-user score data
     user_totals: dict = {}       # user ObjectId → total points (int)
     player_scores: list[dict] = []
@@ -408,11 +472,7 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             continue
 
         is_me = viewer_oid is not None and user_oid == viewer_oid
-        sel_doc = await FlutterPlayerSelection.find_one(
-            FlutterPlayerSelection.user_id == user_oid,
-            FlutterPlayerSelection.league_auto_id == league_auto_id,
-            FlutterPlayerSelection.match_day == match_day,
-        )
+        sel_doc = sel_by_user.get(user_oid)
 
         selection_items: list[dict] = []
         total = 0
@@ -438,19 +498,8 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
 
             if not selection_hidden:
                 async def _item(p: dict, is_sixth: bool) -> dict:
-                    fscore = 0
                     pid_str = p.get("id", "")
-                    try:
-                        player_oid = PydanticObjectId(pid_str)
-                        stats = await PlayerGameStats.find_one(
-                            PlayerGameStats.player_id == player_oid,
-                            PlayerGameStats.nba_date == nba_date,
-                            PlayerGameStats.score_computed == True,  # noqa: E712
-                        )
-                        if stats and stats.fantasy_score is not None:
-                            fscore = int(round(stats.fantasy_score))
-                    except Exception:
-                        pass
+                    fscore = int(round(scores_by_player.get(str(pid_str), 0.0)))
                     return {
                         "id": pid_str,
                         "name": p.get("name", ""),
@@ -471,7 +520,7 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             # the duel (score_full_selection) — top-5-of-6 + Chef Curry, not
             # a plain sum of the list above (which may include a dropped 6th
             # Man score, shown for transparency but not counted).
-            total = int(round(await score_full_selection(sel_doc, nba_date)))
+            total = int(round(total_from_scores(sel_doc, scores_by_player)))
 
         # An opponent's bonus stays secret until the results are published -
         # whether they have one or not, so its absence leaks nothing either.
@@ -531,7 +580,7 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             pr["score_b"] = 0
 
     first = matches[0]
-    return {
+    result = {
         "id": first.auto_id or 0,
         "league_id": league_auto_id,
         "league_name": league.name,
@@ -545,3 +594,10 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
         "scores_hidden": hidden,
         "scores_release_at": release_iso(nba_date) if hidden else None,
     }
+
+    # Published (completed) and not behind the paywall: never changes again.
+    if overall_status == "completed" and not hidden:
+        if len(_MATCH_RESULT_CACHE) >= _MATCH_RESULT_CACHE_MAX:
+            _MATCH_RESULT_CACHE.clear()
+        _MATCH_RESULT_CACHE[cache_key] = result
+    return result

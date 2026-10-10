@@ -175,6 +175,9 @@ class UserService:
 
         global_router.clear_leaderboard_cache()
         global_router.clear_result_cache()
+        from app.modules.leagues.selection_service import clear_match_result_cache
+
+        clear_match_result_cache()
         await UserBonusQuota.find(UserBonusQuota.user_id == user_id).delete()
         await UserBonusInventory.find(UserBonusInventory.user_id == user_id).delete()
         await TokenTransaction.find(TokenTransaction.user_id == user_id).delete()

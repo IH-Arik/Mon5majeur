@@ -75,6 +75,39 @@ class ResultController extends GetxController {
     fetchMatchResult();
   }
 
+  // Published match days never change: a day already shown (or prefetched) is
+  // displayed again at once, no request, no spinner (QA #10 16). Only
+  // COMPLETED days that are not behind the score paywall are kept, so the
+  // current day - where the opponent's lineup and bonus are still hidden - is
+  // always read fresh from the server and never leaks early.
+  final Map<String, MatchResultModel> _dayCache = {};
+  final Set<String> _prefetching = {};
+
+  String _cacheKey(int day) => '${leagueType.name}:${leagueId ?? 0}:$day';
+
+  bool _isFinal(MatchResultModel r) => r.status == 'completed' && !r.scoresHidden;
+
+  String _endpointFor(int day) => switch (leagueType) {
+        LeagueType.public => ApiUrl.publicMatchResult(leagueId!, day),
+        LeagueType.private => ApiUrl.privateMatchResult(leagueId!, day),
+        LeagueType.global => ApiUrl.globalMatchResult(day),
+      };
+
+  /// Loads a neighbouring day in the background and keeps it if published.
+  void _prefetch(int day) {
+    if (day < 1 || leagueType == LeagueType.global) return;
+    final key = _cacheKey(day);
+    if (_dayCache.containsKey(key) || !_prefetching.add(key)) return;
+    ApiClient()
+        .get(url: '${ApiUrl.baseUrl}${_endpointFor(day)}')
+        .then((response) {
+      if (response.statusCode == 200 && response.body is Map) {
+        final r = MatchResultModel.fromJson(response.body);
+        if (_isFinal(r)) _dayCache[key] = r;
+      }
+    }).catchError((_) {}).whenComplete(() => _prefetching.remove(key));
+  }
+
   void toggleCardExpansion(int index) {
     if (expandedCardIndex.value == index) {
       expandedCardIndex.value = null;
@@ -86,6 +119,17 @@ class ResultController extends GetxController {
   Future<void> fetchMatchResult() async {
     if (leagueType != LeagueType.global && leagueId == null) {
       logger.e("League ID is null");
+      return;
+    }
+
+    final cached = leagueType == LeagueType.global
+        ? null
+        : _dayCache[_cacheKey(currentMatchDay.value)];
+    if (cached != null) {
+      matchResult.value = cached;
+      expandedCardIndex.value = null;
+      _prefetch(currentMatchDay.value - 1);
+      _prefetch(currentMatchDay.value + 1);
       return;
     }
 
@@ -114,6 +158,13 @@ class ResultController extends GetxController {
       if (response.statusCode == 200) {
         final data = response.body;
         matchResult.value = MatchResultModel.fromJson(data);
+        if (leagueType != LeagueType.global && _isFinal(matchResult.value!)) {
+          _dayCache[_cacheKey(matchResult.value!.matchDay)] = matchResult.value!;
+        }
+        if (leagueType != LeagueType.global) {
+          _prefetch(matchResult.value!.matchDay - 1);
+          _prefetch(matchResult.value!.matchDay + 1);
+        }
 
         logger.i("✅ Match Result loaded successfully");
         logger.i("   - Match Day: ${matchResult.value?.matchDay}");
