@@ -152,6 +152,17 @@ async def games_today(
     return [_game_to_compat(g) for g in games]
 
 
+# The complete player list only changes when a night is published or the
+# roster syncs: keep a computed page for a few minutes instead of rebuilding
+# it (averages, prices, 600 rows) on every opening of the Data screen.
+_ALL_PLAYERS_TTL = 300.0
+_ALL_PLAYERS_CACHE: dict[tuple, tuple[float, "PlayersTodayPageResponse"]] = {}
+
+
+def clear_players_cache() -> None:
+    _ALL_PLAYERS_CACHE.clear()
+
+
 @router.get(
     "/players-today/",
     response_model=PlayersTodayPageResponse,
@@ -160,6 +171,10 @@ async def games_today(
 async def players_today(
     request: Request,
     page: int = Query(1, ge=1, description="Page number (1-based)"),
+    size: int = Query(
+        _PAGE_SIZE, ge=1, le=1000,
+        description="Page size; the Data screen asks for the whole list at once",
+    ),
     all: bool = Query(
         False,
         description="Every active player of the league, not only the teams "
@@ -167,6 +182,14 @@ async def players_today(
     ),
     _: User = Depends(get_current_user),
 ) -> PlayersTodayPageResponse:
+    import time
+
+    cache_key = (page, size)
+    if all:
+        hit = _ALL_PLAYERS_CACHE.get(cache_key)
+        if hit and time.monotonic() - hit[0] < _ALL_PLAYERS_TTL:
+            return hit[1]
+
     today = await _nba_today()
 
     games = await NBAGame.find(NBAGame.nba_date == today).to_list()
@@ -185,8 +208,8 @@ async def players_today(
 
     total = await Player.find(query_filter).count()
 
-    offset = (page - 1) * _PAGE_SIZE
-    players = await Player.find(query_filter).sort(-Player.daily_price, +Player.full_name).skip(offset).limit(_PAGE_SIZE).to_list()
+    offset = (page - 1) * size
+    players = await Player.find(query_filter).sort(-Player.daily_price, +Player.full_name).skip(offset).limit(size).to_list()
 
     has_next = offset + len(players) < total
     next_url: str | None = None
@@ -198,7 +221,7 @@ async def players_today(
         # load (same class of bug as the file-upload public_url fix).
         # PUBLIC_BASE_URL is already the correct external origin.
         base = settings.PUBLIC_BASE_URL or str(request.base_url).rstrip("/")
-        next_url = f"{base}/api/players-today/?page={page + 1}" + ("&all=true" if all else "")
+        next_url = f"{base}/api/players-today/?page={page + 1}&size={size}" + ("&all=true" if all else "")
 
     # Average only for players who played a game this season (not a 0).
     from app.modules.players.nba_night import season_start
@@ -214,11 +237,14 @@ async def players_today(
         ).to_list()
     }
 
-    return PlayersTodayPageResponse(
+    response = PlayersTodayPageResponse(
         count=total,
         next=next_url,
         results=[_player_to_compat(p, teams, has_stats=p.id in played_ids) for p in players],
     )
+    if all:
+        _ALL_PLAYERS_CACHE[cache_key] = (time.monotonic(), response)
+    return response
 
 
 @router.get(

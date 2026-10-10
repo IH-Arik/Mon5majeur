@@ -89,7 +89,6 @@ class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
     final steals = _num(averages['steals']);
     final turnovers = _num(averages['turnovers']);
     final fantasy = _num(averages['fantasy']);
-    final rating = _num(_info?['rating']);
     final selectedPercentage =
         ((_info?['selected_today_pct'] as num?)?.toInt() ?? 0).clamp(0, 100);
 
@@ -270,26 +269,6 @@ class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
                                   fontWeight: FontWeight.w600,
                                   height: 3.67,
                                 ),
-                              ),
-                            ),
-                            SizedBox(height: 12.h),
-                            Text(
-                              AppString.rating.tr,
-                              style: TextStyle(
-                                color: Color(0xFFB0B0B0),
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w600,
-                                height: 1.38,
-                              ),
-                            ),
-                            SizedBox(height: 8.h),
-                            Text(
-                              rating,
-                              style: TextStyle(
-                                color: Color(0xFFE8632C),
-                                fontSize: 20.sp,
-                                fontWeight: FontWeight.w600,
-                                height: 0.61,
                               ),
                             ),
                           ],

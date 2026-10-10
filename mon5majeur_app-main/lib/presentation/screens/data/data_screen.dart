@@ -65,6 +65,32 @@ const _nbaTeams = [
   'Toronto Raptors', 'Utah Jazz', 'Washington Wizards',
 ];
 
+/// Position groups of the "Poste" header / filter (validated mapping, QA #10
+/// 6): a multi-position player is in every matching group; labels outside the
+/// three groups (for example "NA") only appear under "All" (group 0).
+const positionGroupLabels = ['', 'Centers', 'Forwards', 'Guards'];
+const _positionGroups = <int, Set<String>>{
+  1: {'C', 'C-F', 'F-C'},
+  2: {'SF', 'PF', 'F', 'G-F', 'F-G', 'F-C', 'C-F'},
+  3: {'PG', 'SG', 'G', 'G-F', 'F-G'},
+};
+
+bool inPositionGroup(int group, String position) =>
+    group == 0 || (_positionGroups[group]?.contains(position.toUpperCase().trim()) ?? false);
+
+/// [key] 'avg' | 'price' | null (keep the incoming order); a missing average
+/// counts below every real one.
+List<Player> sortPlayers(List<Player> players, String? key, bool desc) {
+  if (key == null) return players;
+  num value(Player p) => key == 'avg' ? (p.avg ?? -1) : p.price;
+  final sorted = [...players];
+  sorted.sort((a, b) {
+    final c = value(a).compareTo(value(b));
+    return desc ? -c : c;
+  });
+  return sorted;
+}
+
 class DataScreen extends StatefulWidget {
   const DataScreen({super.key});
 
@@ -78,20 +104,47 @@ class _DataScreenState extends State<DataScreen> {
   final ApiClient _apiClient = ApiClient();
 
   bool _showFilterMenu = false;
+  // Where the filter panel starts: just under the search bar, measured, so the
+  // filter icon and the arrow stay visible and tappable while it is open.
+  final GlobalKey _stackKey = GlobalKey();
+  final GlobalKey _searchKey = GlobalKey();
+  double _panelTop = 80;
+
+  void _toggleFilter() {
+    setState(() => _showFilterMenu = !_showFilterMenu);
+    if (!_showFilterMenu) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final stack = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+      final search = _searchKey.currentContext?.findRenderObject() as RenderBox?;
+      if (stack == null || search == null || !mounted) return;
+      final bottom = stack.globalToLocal(search.localToGlobal(Offset(0, search.size.height))).dy;
+      setState(() => _panelTop = bottom + 4);
+    });
+  }
   String _searchQuery = '';
 
   // Filter states
   RangeValues _priceRange = RangeValues(0.w, 100.w);
-  final Set<String> _selectedPositions = {};
+  // Position group, cycled by the "Poste" header: 0 all, 1 centers,
+  // 2 forwards, 3 guards. A multi-position player is in every matching group.
+  int _posGroup = 0;
   final Set<String> _selectedTeams = {};
-  bool _sortAscending = true;
+  // One active sort at a time: 'avg' or 'price' (null = server order), with
+  // its direction (QA #10 6).
+  String? _sortKey;
+  bool _sortDesc = true;
+
+  static const _groupLabels = positionGroupLabels;
+
+  // The last list, kept in memory: reopening shows it at once and refreshes
+  // in the background (QA #10 5).
+  static List<Player>? _cachedPlayers;
 
   // API states
   List<Player> _allPlayers = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _errorMessage;
-  int _totalPlayers = 0;
   String? _nextPageUrl;
   bool _hasMorePages = false;
 
@@ -122,29 +175,30 @@ class _DataScreenState extends State<DataScreen> {
 
   Future<void> _fetchPlayers({bool refresh = false}) async {
     try {
-      if (refresh) {
+      final cached = _cachedPlayers;
+      if (!refresh && cached != null && cached.isNotEmpty) {
+        // shown instantly; the refresh below runs in the background
         setState(() {
-          _isLoading = true;
-          _allPlayers.clear();
+          _allPlayers = cached;
+          _isLoading = false;
           _errorMessage = null;
         });
       } else {
         setState(() {
           _isLoading = true;
+          if (refresh) _allPlayers = [];
           _errorMessage = null;
         });
       }
 
       // all=true: the complete player database, not only tonight's teams
       // (QA #9 4.1).
-      final url = '${ApiUrl.baseUrl}/api/players-today/?all=true';
+      final url = '${ApiUrl.baseUrl}/api/players-today/?all=true&size=1000';
 
       final response = await _apiClient.get(url: url, showResult: true);
 
       if (response.statusCode == 200 && response.body != null) {
         final data = response.body as Map<String, dynamic>;
-
-        _totalPlayers = data['count'] ?? 0;
         _nextPageUrl = data['next'];
         _hasMorePages = _nextPageUrl != null;
 
@@ -160,13 +214,11 @@ class _DataScreenState extends State<DataScreen> {
             _availableTeams.add(player.team);
           }
 
+          _cachedPlayers = players;
           setState(() {
             _allPlayers = players;
             _isLoading = false;
           });
-          // Sorting, search and filters must cover EVERY player, not only the
-          // first page on screen (QA #9 4.2): fetch the other pages now.
-          _loadAllRemaining();
         }
       } else {
         setState(() {
@@ -180,14 +232,6 @@ class _DataScreenState extends State<DataScreen> {
         _isLoading = false;
       });
       debugPrint('Error fetching players: $e');
-    }
-  }
-
-  Future<void> _loadAllRemaining() async {
-    while (mounted && _hasMorePages && _nextPageUrl != null) {
-      final before = _allPlayers.length;
-      await _loadMorePlayers();
-      if (_allPlayers.length == before) break; // a page failed: stop, no loop
     }
   }
 
@@ -206,8 +250,6 @@ class _DataScreenState extends State<DataScreen> {
 
       if (response.statusCode == 200 && response.body != null) {
         final data = response.body as Map<String, dynamic>;
-
-        _totalPlayers = data['count'] ?? 0;
         _nextPageUrl = data['next'];
         _hasMorePages = _nextPageUrl != null;
 
@@ -248,8 +290,7 @@ class _DataScreenState extends State<DataScreen> {
 
       // Position filter
       final matchesPosition =
-          _selectedPositions.isEmpty ||
-          _selectedPositions.contains(player.position);
+          inPositionGroup(_posGroup, player.position);
 
       // Team filter
       final matchesTeam =
@@ -262,11 +303,7 @@ class _DataScreenState extends State<DataScreen> {
       return matchesSearch && matchesPosition && matchesTeam && matchesPrice;
     }).toList();
 
-    // Sort by average score
-    filtered.sort((a, b) {
-      final x = a.avg ?? -1, y = b.avg ?? -1; // no game yet: below everyone
-      return _sortAscending ? x.compareTo(y) : y.compareTo(x);
-    });
+    filtered = sortPlayers(filtered, _sortKey, _sortDesc);
 
     return filtered;
   }
@@ -274,9 +311,9 @@ class _DataScreenState extends State<DataScreen> {
   void _clearFilters() {
     setState(() {
       _priceRange = RangeValues(0.w, 100.w);
-      _selectedPositions.clear();
+      _posGroup = 0;
+      _sortKey = null;
       _selectedTeams.clear();
-      _sortAscending = true;
       _searchController.clear();
     });
   }
@@ -308,6 +345,7 @@ class _DataScreenState extends State<DataScreen> {
         ],
       ),
       body: Stack(
+        key: _stackKey,
         children: [
           Column(
             children: [
@@ -315,6 +353,7 @@ class _DataScreenState extends State<DataScreen> {
               Padding(
                 padding: EdgeInsets.all(16.w),
                 child: Container(
+                  key: _searchKey,
                   decoration: BoxDecoration(
                     color: const Color(0xFF1a1a1a),
                     borderRadius: BorderRadius.circular(12.r),
@@ -359,11 +398,7 @@ class _DataScreenState extends State<DataScreen> {
                           ),
                         ),
                       IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _showFilterMenu = !_showFilterMenu;
-                          });
-                        },
+                        onPressed: _toggleFilter,
                         icon: Icon(
                           Icons.tune,
                           color: _showFilterMenu
@@ -372,12 +407,16 @@ class _DataScreenState extends State<DataScreen> {
                           size: 24.r,
                         ),
                       ),
-                      Icon(
-                        _showFilterMenu
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        color: Colors.white,
-                        size: 24.r,
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _toggleFilter,
+                        child: Icon(
+                          _showFilterMenu
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          color: Colors.white,
+                          size: 24.r,
+                        ),
                       ),
                       SizedBox(width: 8.w),
                     ],
@@ -385,33 +424,8 @@ class _DataScreenState extends State<DataScreen> {
                 ),
               ),
 
-              /// Player count indicator
-              if (!_isLoading)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Loaded: @n / @m players'.trParams({'n': '${_allPlayers.length}', 'm': '$_totalPlayers'}),
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.sp,
-                        ),
-                      ),
-                      if (_hasMorePages)
-                        Text(
-                          ' • Scroll for more'.tr,
-                          style: TextStyle(
-                            color: Color(0xFFFF6B35),
-                            fontSize: 12.sp,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
               /// Active Filters Display
-              if (_selectedPositions.isNotEmpty ||
+              if (_posGroup != 0 ||
                   _selectedTeams.isNotEmpty ||
                   _priceRange.start > 0 ||
                   _priceRange.end < 100.w)
@@ -434,9 +448,8 @@ class _DataScreenState extends State<DataScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              ..._selectedPositions.map(
-                                (pos) => _buildFilterChip(pos),
-                              ),
+                              if (_posGroup != 0)
+                                _buildFilterChip(_groupLabels[_posGroup].tr),
                               ..._selectedTeams.map(
                                 (team) => _buildFilterChip(team),
                               ),
@@ -460,58 +473,37 @@ class _DataScreenState extends State<DataScreen> {
 
               SizedBox(height: 8.h),
 
-              /// Table Header
+              /// Table Header: the SAME columns as the player cards (QA #10 6/7)
+              /// - the cards sit in a 16 margin + 12 padding, with a 28 jersey and
+              /// a 12 gap before the name - and tappable to sort / filter.
               if (!_isLoading)
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  padding: EdgeInsets.symmetric(horizontal: 28.w),
                   child: Row(
                     children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          AppString.playerName.tr,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      SizedBox(width: 40.w), // jersey column
+                      Expanded(flex: 3, child: _headerText(AppString.playerName.tr)),
                       Expanded(
                         flex: 2,
-                        child: Text(
-                          AppString.position.tr,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => setState(() => _posGroup = (_posGroup + 1) % 4),
+                          child: _headerText(
+                            _posGroup == 0
+                                ? AppString.position.tr
+                                : '${AppString.position.tr} : ${_groupLabels[_posGroup].tr}',
+                            align: TextAlign.center,
+                            active: _posGroup != 0,
                           ),
                         ),
                       ),
                       Expanded(
                         flex: 1,
-                        child: Text(
-                          AppString.avg.tr,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _sortHeader('avg', AppString.avg.tr, TextAlign.center),
                       ),
                       Expanded(
                         flex: 1,
-                        child: Text(
-                          AppString.price.tr,
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _sortHeader('price', AppString.price.tr, TextAlign.right),
                       ),
                     ],
                   ),
@@ -659,8 +651,18 @@ class _DataScreenState extends State<DataScreen> {
 
           /// Filter Menu Overlay
           if (_showFilterMenu)
+            // Tap outside the panel closes it.
+            Positioned.fill(
+              top: _panelTop,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() => _showFilterMenu = false),
+                child: Container(color: Colors.black38),
+              ),
+            ),
+          if (_showFilterMenu)
             Positioned(
-              top: 8.h,
+              top: _panelTop,
               bottom: 12.h,
               right: 16.w,
               child: Container(
@@ -768,7 +770,8 @@ class _DataScreenState extends State<DataScreen> {
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
-                                        _sortAscending = true;
+                                        _sortKey = 'avg';
+                                        _sortDesc = false;
                                       });
                                     },
                                     child: Container(
@@ -776,7 +779,7 @@ class _DataScreenState extends State<DataScreen> {
                                         vertical: 8.h,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: _sortAscending
+                                        color: (_sortKey == 'avg' && !_sortDesc)
                                             ? Color(0xFFFF6B35)
                                             : Color(0xFF2a2a2a),
                                         borderRadius: BorderRadius.circular(
@@ -787,7 +790,7 @@ class _DataScreenState extends State<DataScreen> {
                                         AppString.minToMax.tr,
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: _sortAscending
+                                          color: (_sortKey == 'avg' && !_sortDesc)
                                               ? Colors.white
                                               : Colors.grey,
                                           fontSize: 12.sp,
@@ -802,7 +805,8 @@ class _DataScreenState extends State<DataScreen> {
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
-                                        _sortAscending = false;
+                                        _sortKey = 'avg';
+                                        _sortDesc = true;
                                       });
                                     },
                                     child: Container(
@@ -810,7 +814,7 @@ class _DataScreenState extends State<DataScreen> {
                                         vertical: 8.h,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: !_sortAscending
+                                        color: (_sortKey == 'avg' && _sortDesc)
                                             ? Color(0xFFFF6B35)
                                             : Color(0xFF2a2a2a),
                                         borderRadius: BorderRadius.circular(
@@ -821,7 +825,7 @@ class _DataScreenState extends State<DataScreen> {
                                         AppString.maxToMin.tr,
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: !_sortAscending
+                                          color: (_sortKey == 'avg' && _sortDesc)
                                               ? Colors.white
                                               : Colors.grey,
                                           fontSize: 12.sp,
@@ -839,55 +843,43 @@ class _DataScreenState extends State<DataScreen> {
 
                       Divider(color: Color(0xFF333333), height: 1.h),
 
-                      /// Position
-                      if (_availablePositions.isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.all(16.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                AppString.position.tr,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                      /// Position: the same four states as the "Poste" header
+                      Padding(
+                        padding: EdgeInsets.all(16.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              AppString.position.tr,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
                               ),
-                              SizedBox(height: 12.h),
-                              Wrap(
-                                spacing: 8.w,
-                                runSpacing: 8.h,
-                                children: _availablePositions.map((position) {
-                                  final isSelected = _selectedPositions
-                                      .contains(position);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedPositions.remove(position);
-                                        } else {
-                                          _selectedPositions.add(position);
-                                        }
-                                      });
-                                    },
+                            ),
+                            SizedBox(height: 12.h),
+                            Wrap(
+                              spacing: 8.w,
+                              runSpacing: 8.h,
+                              children: [
+                                for (var g = 0; g < 4; g++)
+                                  GestureDetector(
+                                    onTap: () => setState(() => _posGroup = g),
                                     child: Container(
                                       padding: EdgeInsets.symmetric(
                                         horizontal: 16.w,
                                         vertical: 8.h,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? Color(0xFFFF6B35)
-                                            : Color(0xFF2a2a2a),
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
+                                        color: _posGroup == g
+                                            ? const Color(0xFFFF6B35)
+                                            : const Color(0xFF2a2a2a),
+                                        borderRadius: BorderRadius.circular(8.r),
                                       ),
                                       child: Text(
-                                        position,
+                                        (g == 0 ? 'All' : _groupLabels[g]).tr,
                                         style: TextStyle(
-                                          color: isSelected
+                                          color: _posGroup == g
                                               ? Colors.white
                                               : Colors.grey,
                                           fontSize: 12.sp,
@@ -895,12 +887,12 @@ class _DataScreenState extends State<DataScreen> {
                                         ),
                                       ),
                                     ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
+                      ),
 
                       Divider(color: Color(0xFF333333), height: 1.h),
 
@@ -977,6 +969,53 @@ class _DataScreenState extends State<DataScreen> {
         ],
       ),
       bottomNavigationBar: const NavigationWidget(currentIndex: 2),
+    );
+  }
+
+  Widget _headerText(String text, {TextAlign align = TextAlign.left, bool active = false}) {
+    return Text(
+      text,
+      textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: active ? const Color(0xFFFF6B35) : Colors.grey,
+        fontSize: 14.sp,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  /// Sortable column header: first tap = descending (best first), then it
+  /// alternates; tapping the other header replaces the sort.
+  Widget _sortHeader(String key, String label, TextAlign align) {
+    final active = _sortKey == key;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() {
+        if (_sortKey == key) {
+          _sortDesc = !_sortDesc;
+        } else {
+          _sortKey = key;
+          _sortDesc = true;
+        }
+      }),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: align == TextAlign.right ? Alignment.centerRight : Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _headerText(label, align: align, active: active),
+            if (active)
+              Icon(
+                _sortDesc ? Icons.arrow_downward : Icons.arrow_upward,
+                size: 12.r,
+                color: const Color(0xFFFF6B35),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
