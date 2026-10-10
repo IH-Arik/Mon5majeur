@@ -15,6 +15,7 @@ import '../../../../data/models/live_score_model.dart';
 import '../../../../core/utils/lineup_positions.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../../../widgets/match_widgets.dart';
+import '../controllers/home_controller.dart';
 import '../controllers/live_score_controller.dart';
 import '../widgets/league_tab_bar.dart';
 import '../widgets/match_lineups_field.dart';
@@ -444,7 +445,18 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   Widget _buildGlobalView(LiveGlobalScore? score) {
     if (score == null || !score.hasLiveGames) return _buildNoLiveState();
 
-    final name = AppString.myTeam.tr;
+    // The saved team name when the profile is already loaded, else the
+    // generic label.
+    final profileName = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>().userProfile.value?.teamName
+        : null;
+    final name = (profileName != null && profileName.isNotEmpty)
+        ? profileName
+        : AppString.myTeam.tr;
+    final squad = _toSquad(name, score.players, jersey: _myJersey);
+    // The score is the sum of the points shown on the court, so the two
+    // always agree (not the server's total).
+    final sum = squad.selection.fold<int>(0, (a, p) => a + p.score);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.all(16.w),
@@ -452,40 +464,31 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         children: [
           if (score.isStale) _buildStaleBanner(),
           const MatchStatusBadge(status: 'live'),
+          // Same court as the Global League Results tab; with no lineup it
+          // shows the same "no team" message.
+          MatchLineupsField(
+            teamA: squad,
+            teamB: null,
+            showOpponent: false,
+            globalResultStyle: true,
+          ),
           SizedBox(height: 12.h),
-          _cardShell(
-            child: Column(
-              children: [
-                Text(
-                  score.totalScore.toStringAsFixed(0),
-                  style: TextStyle(
-                    color: const Color(0xFFFF8C42),
-                    fontSize: 36.sp,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  AppString.pts.tr,
-                  style: TextStyle(color: Colors.white54, fontSize: 12.sp),
-                ),
-              ],
+          // Style identique à global_published_result.dart ; à extraire en composant partagé
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E0E0),
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Text(
+              AppString.totalPointsLabel(sum),
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          if (score.players.isEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 32.h),
-              child: Text(
-                AppString.noLineupSubmitted.tr,
-                style: TextStyle(color: Colors.white54, fontSize: 14.sp),
-              ),
-            )
-          else ...[
-            MatchLineupsField(
-              teamA: _toSquad(name, score.players, jersey: _myJersey),
-              teamB: null,
-              showOpponent: false,
-            ),
-          ],
           SizedBox(height: 16.h),
         ],
       ),
