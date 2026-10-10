@@ -13,6 +13,8 @@ class GlobalLeagueSelection {
   final int matchDay;
   final List<Player> selectedPlayers;
   final int totalPoints;
+  // Score of the last published night (Home "Score du soir").
+  final int lastPublishedPoints;
   final String maxBalance;
   final String currentBalance;
   // Real validated/lock state from the backend (Home "NBA Global League" card).
@@ -37,6 +39,7 @@ class GlobalLeagueSelection {
     required this.matchDay,
     required this.selectedPlayers,
     required this.totalPoints,
+    this.lastPublishedPoints = 0,
     required this.maxBalance,
     required this.currentBalance,
     this.lineupSubmitted = false,
@@ -54,6 +57,7 @@ class GlobalLeagueSelection {
               .toList() ??
           [],
       totalPoints: json['total_points'] ?? 0,
+      lastPublishedPoints: json['last_published_points'] ?? 0,
       maxBalance: json['max_balance'] ?? '100M',
       currentBalance: json['current_balance'] ?? '100M',
       lineupSubmitted: json['lineup_submitted'] ?? false,

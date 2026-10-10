@@ -1,4 +1,5 @@
 // lib/presentation/screens/home/screens/live_score_screen.dart
+import '../controllers/home_controller.dart';
 import '../../../../data/services/jersey_service.dart';
 import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../core/utils/logo_assets.dart';
@@ -432,6 +433,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         ),
         if (open)
           MatchLineupsField(
+            showSummary: false, // Live does not reveal bonuses
             teamA: _toSquad(home, match.homePlayers, jersey: match.homeJerseyIndex),
             teamB: _toSquad(away, match.awayPlayers, jersey: match.awayJerseyIndex),
           ),
@@ -442,7 +444,11 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   Widget _buildGlobalView(LiveGlobalScore? score) {
     if (score == null || !score.hasLiveGames) return _buildNoLiveState();
 
-    final name = AppString.myTeam.tr;
+    // The user's own team name, as in the Results tab.
+    final name = Get.isRegistered<HomeController>() &&
+            Get.find<HomeController>().userProfile.value?.teamName.isNotEmpty == true
+        ? Get.find<HomeController>().userProfile.value!.teamName
+        : AppString.myTeam.tr;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.all(16.w),
@@ -451,37 +457,23 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           if (score.isStale) _buildStaleBanner(),
           const MatchStatusBadge(status: 'live'),
           SizedBox(height: 12.h),
-          _cardShell(
-            child: Column(
-              children: [
-                Text(
-                  score.totalScore.toStringAsFixed(0),
-                  style: TextStyle(
-                    color: const Color(0xFFFF8C42),
-                    fontSize: 36.sp,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  AppString.pts.tr,
-                  style: TextStyle(color: Colors.white54, fontSize: 12.sp),
-                ),
-              ],
-            ),
-          ),
           if (score.players.isEmpty)
             Padding(
               padding: EdgeInsets.only(top: 32.h),
               child: Text(
-                AppString.noLineupSubmitted.tr,
+                AppString.noLineupTonight.tr,
                 style: TextStyle(color: Colors.white54, fontSize: 14.sp),
               ),
             )
           else ...[
+            // Same layout as the Global League Results tab: full court, name on
+            // the left, "X Points" pill below with the live total.
             MatchLineupsField(
               teamA: _toSquad(name, score.players, jersey: _myJersey),
               teamB: null,
               showOpponent: false,
+              showSummary: false,
+              totalPill: score.totalScore.round(),
             ),
           ],
           SizedBox(height: 16.h),

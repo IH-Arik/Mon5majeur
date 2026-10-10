@@ -48,8 +48,13 @@ async def archive_daily_scores(nba_date: date) -> int:
     if not league:
         return 0
 
+    # Only the lineups stamped for THIS night. It used to take every lineup
+    # a member ever saved (all their past match days) and score each against
+    # `nba_date`, so an old lineup could overwrite the real score of the night
+    # (QA #10 2: "Score du soir" at 0).
     selections = await FlutterPlayerSelection.find(
-        FlutterPlayerSelection.league_auto_id == league.auto_id
+        FlutterPlayerSelection.league_auto_id == league.auto_id,
+        FlutterPlayerSelection.nba_date == nba_date,
     ).to_list()
 
     count = 0

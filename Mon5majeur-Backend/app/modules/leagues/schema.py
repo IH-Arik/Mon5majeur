@@ -608,6 +608,9 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     match_day: int = 0
     selected_players: list[dict] = []
     total_points: int = 0
+    # "Score du soir" on Home: the user's score for the LAST PUBLISHED night,
+    # the same figure as Ligue Globale > Résultats for that night (QA #10 2).
+    last_published_points: int = 0
     max_balance: str = "100M"      # always "100M" for global
     current_balance: str = "100M"  # remaining after summing player prices
 

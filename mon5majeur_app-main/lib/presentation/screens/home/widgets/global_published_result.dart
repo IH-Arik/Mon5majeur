@@ -32,44 +32,80 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
   String? _error;
   Map<String, dynamic>? _data;
 
+  // A published night never changes: a night already shown (or prefetched) is
+  // displayed again at once without a request, and its neighbours are fetched
+  // in the background (QA #10 11 / 13).
+  final Map<int, Map<String, dynamic>> _cache = {};
+  final Set<int> _inFlight = {};
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<Map<String, dynamic>?> _fetch(int offset) async {
     try {
       final query = {
-        'offset': '$_offset',
+        'offset': '$offset',
         if (widget.userAutoId != null) 'user_auto_id': '${widget.userAutoId}',
       };
       final url = Uri.parse(
         '${ApiUrl.baseUrl}${ApiUrl.globalPublishedResult}',
       ).replace(queryParameters: query).toString();
       final response = await ApiClient().get(url: url);
-      if (!mounted) return;
       if (response.statusCode == 200 && response.body is Map) {
-        setState(() {
-          _data = Map<String, dynamic>.from(response.body as Map);
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Failed to load team (@code).'
-              .trParams({'code': '${response.statusCode}'});
-          _loading = false;
-        });
+        return Map<String, dynamic>.from(response.body as Map);
       }
-    } catch (e) {
-      if (!mounted) return;
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _load({bool force = false}) async {
+    final cached = force ? null : _cache[_offset];
+    if (cached != null) {
+      setState(() {
+        _data = cached;
+        _loading = false;
+        _error = null;
+      });
+      _prefetchNeighbours(cached);
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final asked = _offset;
+    final data = await _fetch(asked);
+    if (!mounted || asked != _offset) return;
+    if (data == null) {
       setState(() {
         _error = 'Could not load the result'.tr;
         _loading = false;
+      });
+      return;
+    }
+    _cache[asked] = data;
+    setState(() {
+      _data = data;
+      _loading = false;
+    });
+    _prefetchNeighbours(data);
+  }
+
+  void _prefetchNeighbours(Map<String, dynamic> d) {
+    for (final entry in {
+      _offset + 1: d['has_older'] == true,
+      _offset - 1: d['has_newer'] == true,
+    }.entries) {
+      final o = entry.key;
+      if (!entry.value || o < 0 || _cache.containsKey(o) || !_inFlight.add(o)) {
+        continue;
+      }
+      _fetch(o).then((v) {
+        _inFlight.remove(o);
+        if (v != null) _cache[o] = v;
       });
     }
   }
@@ -122,7 +158,10 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
     final hasNewer = d['has_newer'] == true;
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () {
+        _cache.clear();
+        return _load(force: true);
+      },
       color: const Color(0xFFFF8C42),
       backgroundColor: const Color(0xFF252838),
       child: SingleChildScrollView(
@@ -171,26 +210,18 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white54, fontSize: 14.sp),
               ),
-            ] else ...[
-              SizedBox(height: 8.h),
-              Text(
-                '${d['total_points']}',
-                style: TextStyle(
-                  color: const Color(0xFFFF8C42),
-                  fontSize: 36.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                AppString.pts.tr,
-                style: TextStyle(color: Colors.white54, fontSize: 12.sp),
-              ),
+            ] else
               MatchLineupsField(
                 teamA: _toTeam(d),
                 teamB: null,
                 showOpponent: false,
+                showSummary: false, // no bonuses in the Global League
+                // The score of THIS night, never a weekly total; 0 and an
+                // explicit message when no lineup was set that day.
+                totalPill: (d['total_points'] as num?)?.toInt() ?? 0,
+                emptyMessage:
+                    d['no_lineup'] == true ? AppString.noLineupThatDay.tr : null,
               ),
-            ],
             SizedBox(height: 16.h),
           ],
         ),

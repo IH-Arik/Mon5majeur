@@ -625,7 +625,7 @@ class _GlobalLeagueCard extends StatelessWidget {
             // Night score comes from the loaded selection; "—" until available.
             final nightScore = selection == null
                 ? AppString.noResultPlaceholder.tr
-                : '${controller.totalPoints.value} pts';
+                : '${selection.lastPublishedPoints} pts';
             // Real per-user validated/locked lineup flag from the backend.
             final validated = selection?.lineupSubmitted ?? false;
             final lockInSeconds = selection?.lockInSeconds;

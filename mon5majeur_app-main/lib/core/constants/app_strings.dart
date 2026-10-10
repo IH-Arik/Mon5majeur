@@ -645,6 +645,9 @@ class AppString {
   static const String sixthManDropped = 'Not counted (6th Man)';
   static const String noLineupSubmitted = 'No lineup submitted';
   static const String removeBonus = 'Remove';
+  static const String revealAt9 = '9:00';
+  static const String noLineupThatDay = 'No lineup that day';
+  static const String noLineupTonight = 'No lineup tonight';
   static const String noPublishedResult = 'No published result yet';
   static const String bonusLabel = 'Bonus';
   static const String noBonus = 'No bonus';
