@@ -169,6 +169,12 @@ class UserService:
         await FlutterPlayerSelection.find(FlutterPlayerSelection.user_id == user_id).delete()
         await LeagueMembership.find(LeagueMembership.user_id == user_id).delete()
         await GlobalLeagueDailyScore.find(GlobalLeagueDailyScore.user_id == user_id).delete()
+        # The deleted account must leave the rankings at once, not at the next
+        # publication (QA #10 12): drop the cached rankings and results.
+        from app.modules.leagues import global_router
+
+        global_router.clear_leaderboard_cache()
+        global_router.clear_result_cache()
         await UserBonusQuota.find(UserBonusQuota.user_id == user_id).delete()
         await UserBonusInventory.find(UserBonusInventory.user_id == user_id).delete()
         await TokenTransaction.find(TokenTransaction.user_id == user_id).delete()

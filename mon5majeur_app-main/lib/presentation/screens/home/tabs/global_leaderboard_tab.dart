@@ -69,46 +69,86 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
     _fetchLeaderboard();
   }
 
+  // A ranking already shown (or prefetched) comes back at once, without a
+  // spinner or a request: finished periods never change and the server
+  // computes the current ones once per publication (QA #10 12).
+  final Map<String, Map<String, dynamic>> _cache = {};
+  final Set<String> _inFlight = {};
+
+  String _key(bool weekly, int off) => '${weekly ? 'weekly' : 'monthly'}:$off';
+
+  Future<Map<String, dynamic>?> _request(bool weekly, int off) async {
+    try {
+      final response = await ApiClient().get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.globalLeaderboard(weekly ? 'weekly' : 'monthly', off)}',
+      );
+      if (response.statusCode == 200 && response.body is Map<String, dynamic>) {
+        return response.body as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  void _apply(Map<String, dynamic> body) {
+    final rawTeams = body['teams'] as List<dynamic>? ?? const [];
+    _weekNumber = (body['week_number'] as num?)?.toInt();
+    _monthNumber = (body['month_number'] as num?)?.toInt();
+    _year = (body['year'] as num?)?.toInt() ?? 0;
+    _teams = rawTeams
+        .whereType<Map<String, dynamic>>()
+        .map(_LeaderboardEntry.fromJson)
+        .toList();
+  }
+
+  void _prefetch(bool weekly, int off) {
+    final k = _key(weekly, off);
+    if (off < 0 || _cache.containsKey(k) || !_inFlight.add(k)) return;
+    _request(weekly, off).then((body) {
+      _inFlight.remove(k);
+      if (body != null) _cache[k] = body;
+    });
+  }
+
+  void _prefetchAround() {
+    // the neighbours of what is shown, and the current week and month
+    _prefetch(isWeekly, offset + 1);
+    _prefetch(isWeekly, offset - 1);
+    _prefetch(true, 0);
+    _prefetch(false, 0);
+  }
+
   Future<void> _fetchLeaderboard() async {
+    final k = _key(isWeekly, offset);
+    final cached = _cache[k];
+    if (cached != null) {
+      setState(() {
+        _apply(cached);
+        _isLoading = false;
+        _error = null;
+      });
+      _prefetchAround();
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
     });
-    try {
-      final period = isWeekly ? 'weekly' : 'monthly';
-      final response = await ApiClient().get(
-        url: '${ApiUrl.baseUrl}${ApiUrl.globalLeaderboard(period, offset)}',
-        showResult: true,
-      );
-      if (!mounted) return;
-
-      if (response.statusCode == 200 && response.body is Map<String, dynamic>) {
-        final body = response.body as Map<String, dynamic>;
-        final rawTeams = body['teams'] as List<dynamic>? ?? const [];
-        setState(() {
-          _weekNumber = (body['week_number'] as num?)?.toInt();
-          _monthNumber = (body['month_number'] as num?)?.toInt();
-          _year = (body['year'] as num?)?.toInt() ?? 0;
-          _teams = rawTeams
-              .whereType<Map<String, dynamic>>()
-              .map(_LeaderboardEntry.fromJson)
-              .toList();
-          _isLoading = false;
-        });
-        return;
-      }
-
+    final weekly = isWeekly, off = offset;
+    final body = await _request(weekly, off);
+    if (!mounted || weekly != isWeekly || off != offset) return;
+    if (body == null) {
       setState(() {
-        _error = 'Failed to load standings (@code).'.trParams({'code': '${response.statusCode}'});
+        _error = 'Failed to load standings'.tr;
         _isLoading = false;
       });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Failed to load standings: @e'.trParams({'e': '$e'});
-        _isLoading = false;
-      });
+      return;
     }
+    _cache[k] = body;
+    setState(() {
+      _apply(body);
+      _isLoading = false;
+    });
+    _prefetchAround();
   }
 
   void _setWeekly(bool weekly) {

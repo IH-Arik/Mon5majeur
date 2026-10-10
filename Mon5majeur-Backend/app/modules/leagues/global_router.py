@@ -495,6 +495,23 @@ async def get_global_match_result(
     )
 
 
+# Rankings are computed once per publication, not each time the tab opens
+# (QA #10 12). An entry stays valid until a new night is archived (the token is
+# the latest archived date) or it is cleared (admin deleted an account).
+_LEADERBOARD_CACHE: dict[tuple, tuple[str, "GlobalLeaderboardResponse"]] = {}
+
+
+def clear_leaderboard_cache() -> None:
+    _LEADERBOARD_CACHE.clear()
+
+
+async def _leaderboard_token(league: League) -> str:
+    last = await GlobalLeagueDailyScore.find(
+        GlobalLeagueDailyScore.league_id == league.id
+    ).sort(-GlobalLeagueDailyScore.nba_date).first_or_none()
+    return str(last.nba_date) if last else "none"
+
+
 @router.get(
     "/leaderboard/",
     response_model=GlobalLeaderboardResponse,
@@ -508,6 +525,20 @@ async def get_global_leaderboard(
     league = await _get_global_league()
     today = await _nba_today()
 
+    cache_key = (period, offset, str(today))
+    token = await _leaderboard_token(league)
+    hit = _LEADERBOARD_CACHE.get(cache_key)
+    if hit and hit[0] == token:
+        return hit[1]
+
+    response = await _compute_leaderboard(league, period, offset, today)
+    _LEADERBOARD_CACHE[cache_key] = (token, response)
+    return response
+
+
+async def _compute_leaderboard(
+    league: League, period: str, offset: int, today: date
+) -> GlobalLeaderboardResponse:
     ranked, week_number, month_number, year = await get_leaderboard_for_period(
         league, period, today, offset
     )

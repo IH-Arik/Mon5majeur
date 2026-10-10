@@ -536,6 +536,7 @@ class FrenchTranslation {
     AppString.sixthManDropped: 'Non comptabilisé (6ème homme)',
     AppString.noLineupSubmitted: 'Aucune équipe soumise',
     AppString.removeBonus: 'Retirer',
+    "Failed to load standings": "Impossible de charger le classement",
     "Centers": "Pivots",
     "Forwards": "Ailiers",
     "Guards": "Arrières",

@@ -79,6 +79,14 @@ async def archive_daily_scores(nba_date: date) -> int:
         count += 1
 
     logger.info("Archived %d Global League daily scores for %s", count, nba_date)
+    # A new night is published: cached rankings and night results are stale.
+    try:
+        from app.modules.leagues import global_router
+
+        global_router.clear_leaderboard_cache()
+        global_router.clear_result_cache()
+    except Exception:  # noqa: BLE001 - a cache must never fail the close
+        logger.warning("could not clear the ranking cache", exc_info=True)
     return count
 
 
