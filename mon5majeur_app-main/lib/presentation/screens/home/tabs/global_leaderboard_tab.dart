@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/services/api_service.dart';
+import '../../../../data/services/global_leaderboard_cache.dart';
 import '../../../../data/services/api_url.dart';
 import '../screens/global_team_detail_screen.dart';
 
@@ -50,12 +51,16 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
   int offset = 0;
   String searchQuery = '';
 
-  bool _isLoading = true;
+  bool _isLoading = true; // nothing known yet for the shown period
+  bool _refreshing = false; // thin progress bar: a refresh is running
   String? _error;
   int? _weekNumber;
   int? _monthNumber;
   int _year = 0;
   List<_LeaderboardEntry> _teams = const [];
+
+  String? _userId; // the account the cache is bound to
+  final Set<String> _inFlight = {};
 
   String get _periodLabel {
     if (_weekNumber != null) return formatWeekLabel(_weekNumber!);
@@ -66,48 +71,91 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
   @override
   void initState() {
     super.initState();
-    _fetchLeaderboard();
+    _show();
   }
 
-  Future<void> _fetchLeaderboard() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  void _apply(Map<String, dynamic> body) {
+    final rawTeams = body['teams'] as List<dynamic>? ?? const [];
+    _weekNumber = (body['week_number'] as num?)?.toInt();
+    _monthNumber = (body['month_number'] as num?)?.toInt();
+    _year = (body['year'] as num?)?.toInt() ?? 0;
+    _teams = rawTeams
+        .whereType<Map<String, dynamic>>()
+        .map(_LeaderboardEntry.fromJson)
+        .toList();
+    _isLoading = false;
+    _error = null;
+  }
+
+  /// Shows the shown period at once from the cache when it is known, and
+  /// fetches only if that data is not fresh enough (or unknown).
+  Future<void> _show() async {
+    final weekly = isWeekly;
+    final period = offset;
+    _userId = await GlobalLeaderboardCache.bindToCurrentUser();
+    if (!mounted || weekly != isWeekly || period != offset) return;
+
+    final cached = GlobalLeaderboardCache.get(weekly, period);
+    if (cached != null) {
+      setState(() => _apply(cached.body));
+      if (cached.isFresh(period)) return;
+    } else {
+      setState(() {
+        _teams = const [];
+        _isLoading = true;
+        _error = null;
+      });
+    }
+    await _fetchLeaderboard(weekly, period, hadData: cached != null);
+  }
+
+  Future<void> _fetchLeaderboard(
+    bool weekly,
+    int period, {
+    required bool hadData,
+  }) async {
+    final key = '${weekly ? 'weekly' : 'monthly'}:$period';
+    if (!_inFlight.add(key)) return;
+    final userId = _userId;
+    if (mounted) setState(() => _refreshing = true);
+
+    // True while the period asked for is still the one on screen.
+    bool onScreen() => mounted && weekly == isWeekly && period == offset;
+
     try {
-      final period = isWeekly ? 'weekly' : 'monthly';
       final response = await ApiClient().get(
-        url: '${ApiUrl.baseUrl}${ApiUrl.globalLeaderboard(period, offset)}',
+        url:
+            '${ApiUrl.baseUrl}${ApiUrl.globalLeaderboard(weekly ? 'weekly' : 'monthly', period)}',
         showResult: true,
       );
-      if (!mounted) return;
-
       if (response.statusCode == 200 && response.body is Map<String, dynamic>) {
         final body = response.body as Map<String, dynamic>;
-        final rawTeams = body['teams'] as List<dynamic>? ?? const [];
+        if (userId != null) {
+          GlobalLeaderboardCache.put(userId, weekly, period, body);
+        }
+        if (onScreen()) {
+          setState(() => _apply(body));
+        }
+      } else if (onScreen() && !hadData) {
         setState(() {
-          _weekNumber = (body['week_number'] as num?)?.toInt();
-          _monthNumber = (body['month_number'] as num?)?.toInt();
-          _year = (body['year'] as num?)?.toInt() ?? 0;
-          _teams = rawTeams
-              .whereType<Map<String, dynamic>>()
-              .map(_LeaderboardEntry.fromJson)
-              .toList();
+          _error = 'Failed to load standings (@code).'.trParams({
+            'code': '${response.statusCode}',
+          });
           _isLoading = false;
         });
-        return;
       }
-
-      setState(() {
-        _error = 'Failed to load standings (@code).'.trParams({'code': '${response.statusCode}'});
-        _isLoading = false;
-      });
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Failed to load standings: @e'.trParams({'e': '$e'});
-        _isLoading = false;
-      });
+      if (onScreen() && !hadData) {
+        setState(() {
+          _error = 'Failed to load standings: @e'.trParams({'e': '$e'});
+          _isLoading = false;
+        });
+      }
+    } finally {
+      _inFlight.remove(key);
+      // The bar stops once nothing is left in flight; a failed refresh keeps
+      // the list that was already shown.
+      if (mounted && _inFlight.isEmpty) setState(() => _refreshing = false);
     }
   }
 
@@ -117,14 +165,14 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
       isWeekly = weekly;
       offset = 0;
     });
-    _fetchLeaderboard();
+    _show();
   }
 
   void _changeOffset(int delta) {
     final next = offset + delta;
     if (next < 0) return;
     setState(() => offset = next);
-    _fetchLeaderboard();
+    _show();
   }
 
   List<_LeaderboardEntry> get _filteredTeams {
@@ -135,29 +183,45 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16.w),
-      child: Column(
-        children: [
-          SizedBox(height: 8.h),
-          Text(
-            AppString.leagueStandings.tr,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w600,
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            children: [
+              SizedBox(height: 8.h),
+              Text(
+                AppString.leagueStandings.tr,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              _buildTabSelector(),
+              SizedBox(height: 16.h),
+              _buildPeriodSelector(),
+              SizedBox(height: 16.h),
+              _buildSearchBar(),
+              SizedBox(height: 16.h),
+              _buildBody(),
+            ],
+          ),
+        ),
+        // Thin bar while the standings refresh in the background.
+        if (_refreshing)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(
+              minHeight: 2.h,
+              color: const Color(0xFFFF6B3D),
+              backgroundColor: Colors.transparent,
             ),
           ),
-          SizedBox(height: 16.h),
-          _buildTabSelector(),
-          SizedBox(height: 16.h),
-          _buildPeriodSelector(),
-          SizedBox(height: 16.h),
-          _buildSearchBar(),
-          SizedBox(height: 16.h),
-          _buildBody(),
-        ],
-      ),
+      ],
     );
   }
 
