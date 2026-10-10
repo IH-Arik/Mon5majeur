@@ -52,9 +52,16 @@ class _ResultTabState extends State<ResultTab> {
   }
 
   @override
+  void dispose() {
+    controller.leave(); // nothing more is loaded once the tab is left
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (controller.isLoading.value) {
+      // Full-screen spinner only when there is nothing at all to show yet.
+      if (controller.isLoading.value && controller.matchResult.value == null) {
         return const Center(
           child: CircularProgressIndicator(color: Color(0xFFFF8C42)),
         );
@@ -81,24 +88,40 @@ class _ResultTabState extends State<ResultTab> {
         return _buildGlobalResults(matchData);
       }
 
+      // A day that is not cached is loading: the selector stays, the body
+      // waits; a cached day shown while refreshing keeps its body.
+      final loadingDay = controller.isLoading.value;
+      final busy = loadingDay || controller.isRefreshing.value;
       return SingleChildScrollView(
         padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
-            SizedBox(height: 16.h),
+            // Thin, discreet progress bar while a day loads or refreshes.
+            SizedBox(
+              height: 2.h,
+              child: busy
+                  ? LinearProgressIndicator(
+                      color: const Color(0xFFFF6B3D),
+                      backgroundColor: Colors.transparent,
+                    )
+                  : null,
+            ),
+            SizedBox(height: 14.h),
             _buildMatchdaySelector(),
             SizedBox(height: 16.h),
-            _buildMatchInfo(matchData),
-            SizedBox(height: 16.h),
-            ...matchData.pairs.asMap().entries.map((entry) {
-              final index = entry.key;
-              final pair = entry.value;
-              return Padding(
-                padding: EdgeInsets.only(bottom: 12.h),
-                child: _buildMatchCard(index, pair),
-              );
-            }),
-            SizedBox(height: 16.h),
+            if (!loadingDay) ...[
+              _buildMatchInfo(matchData),
+              SizedBox(height: 16.h),
+              ...matchData.pairs.asMap().entries.map((entry) {
+                final index = entry.key;
+                final pair = entry.value;
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 12.h),
+                  child: _buildMatchCard(index, pair),
+                );
+              }),
+              SizedBox(height: 16.h),
+            ],
           ],
         ),
       );
@@ -269,14 +292,22 @@ class _ResultTabState extends State<ResultTab> {
                 ),
               ),
             ),
-            IconButton(
-              onPressed: controller.nextMatchDay,
-              icon: Icon(
-                Icons.chevron_right,
-                color: const Color(0xFFB1B1B1),
-                size: 24.r,
-              ),
-            ),
+            Obx(() {
+              // Stops at the last match day known for the league.
+              final bound = controller.lastMatchDay.value;
+              final canNext =
+                  bound == null || controller.currentMatchDay.value < bound;
+              return IconButton(
+                onPressed: canNext ? controller.nextMatchDay : null,
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: canNext
+                      ? const Color(0xFFB1B1B1)
+                      : Colors.grey.shade700,
+                  size: 24.r,
+                ),
+              );
+            }),
           ],
         ),
       ],
