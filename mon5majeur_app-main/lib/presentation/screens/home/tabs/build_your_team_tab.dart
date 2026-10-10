@@ -1251,6 +1251,13 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     const orange = Color(0xFFFF8C42);
     return GestureDetector(
       onTap: () {
+        // A placed bonus is taken off by tapping its box (QA #10 15, third
+        // report): the box goes back to its empty state; tapping it again
+        // opens the bonus selection window as before.
+        if (activeBonus != null) {
+          if (!isLineupLocked(lockInSeconds)) _removeBonus(); // not after the lock
+          return;
+        }
         setState(() {
           showBonusOptions = !showBonusOptions;
         });
@@ -1262,9 +1269,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: showBonusOptions
-                ? const [Color(0xFFFF6B35), Color(0xFFE85A24)]
-                : const [Color(0xFF2A1A10), Color(0xFF1A1A1A)],
+            // One look whatever the state: no colour flip on tap (QA #10 15).
+            colors: const [Color(0xFF2A1A10), Color(0xFF1A1A1A)],
           ),
           borderRadius: BorderRadius.circular(10.r),
           border: Border.all(color: orange, width: 1.5.r),
