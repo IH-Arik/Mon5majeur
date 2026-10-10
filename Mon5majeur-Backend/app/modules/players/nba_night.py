@@ -117,3 +117,17 @@ async def published_night(now: datetime | None = None) -> date | None:
         if _started(tip, now) and now >= publication_cutoff(night):
             return night
     return None
+
+
+def polling_nights(now: datetime | None = None) -> list[date]:
+    """Every night whose games may be on the court right now, oldest first.
+
+    A night's games run past 00:00 UTC, so at 02:30 Paris two dates are in play:
+    the night that began yesterday (still being played) and the one that begins
+    today. Following only one date is what froze every game after the first
+    in the live score (QA #10 18): once the schedule for the coming days was
+    loaded, "the current night" flipped to the next date at 00:00 UTC while
+    the games tipping off at 02:00 Paris still belonged to the previous one."""
+    now = now or datetime.now(timezone.utc)
+    today = now.date()
+    return [today - timedelta(days=1), today]

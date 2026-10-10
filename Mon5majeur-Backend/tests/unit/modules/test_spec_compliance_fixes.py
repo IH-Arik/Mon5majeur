@@ -115,7 +115,7 @@ def test_live_job_skips_the_external_call_when_nothing_is_in_progress():
     the Goalserve call must be gated on a game actually being in progress."""
     from app.cron import jobs
 
-    src = inspect.getsource(jobs.sync_live_games_job)
+    src = inspect.getsource(jobs._poll_night)  # the per-night body of the job
     worth = src.index("_worth_polling")
     call = src.index("sync_scores_for_date")
     assert worth < call, "the in-progress check must gate the Goalserve call"

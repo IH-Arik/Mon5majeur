@@ -475,85 +475,86 @@ async def sync_today_schedule_job() -> None:
 
 async def sync_live_games_job() -> None:
     """
-    Poll Goalserve for today's live/finished games (one call gets scores +
-    full box score for every game on the date — see goalserve_client.py).
-    For each finished game: compute fantasy scores.
+    Poll Goalserve for the live/finished games of EVERY night in play (one call
+    per date gets scores + full box score for every game on it — see
+    goalserve_client.py). For each finished game: compute fantasy scores.
     This feeds PlayerGameStats so that daily_close_job at 09:00 finds data ready.
+
+    Every game is followed on its own: each minute, any date with a game that
+    is live, or whose tip-off has passed, is polled in full, so a game that
+    tips off at 02:00 is picked up like the one at 01:00 (QA #10 18).
     """
+    from app.modules.players.nba_night import polling_nights
+
+    for night in polling_nights():
+        try:
+            await _poll_night(night)
+        except Exception as exc:
+            logger.error("CRON sync_live_games_job failed for %s: %s", night, exc, exc_info=True)
+
+
+async def _poll_night(today: date) -> None:
     from app.modules.players.model import NBAGame
     from app.modules.players.service import PlayerService
     from app.modules.players.repository import PlayerRepository
 
-    # The NBA night, not the UTC date: after 00:00 UTC (02:00 Paris) the UTC
-    # date is already tomorrow while tonight's late games are still being played.
-    from app.modules.players.nba_night import current_nba_night
+    games = await NBAGame.find(NBAGame.nba_date == today).to_list()
+    if not games:
+        logger.debug("CRON sync_live_games_job: no games for %s, skipping", today)
+        return
 
-    today = await current_nba_night()
+    # Goalserve must only be called while a game is actually in progress -
+    # "LIVE games only". A game is worth polling when it is already live, or
+    # when it is scheduled and its tip-off has passed (that is the call that
+    # flips it to live). Once every game is final there is nothing left to
+    # learn until tomorrow.
+    now = datetime.now(timezone.utc)
 
-    try:
-        games = await NBAGame.find(NBAGame.nba_date == today).to_list()
-        if not games:
-            logger.debug("CRON sync_live_games_job: no games today, skipping")
-            return
+    def _worth_polling(g: NBAGame) -> bool:
+        if g.status == "live":
+            return True
+        if g.status != "scheduled":
+            return False
+        # No tip-off time recorded -> poll rather than risk missing the
+        # start; a missing timestamp must not freeze the live score.
+        if g.tip_off_time is None:
+            return True
+        tip = g.tip_off_time
+        if tip.tzinfo is None:      # Mongo round-trips datetimes as naive UTC
+            tip = tip.replace(tzinfo=timezone.utc)
+        return now >= tip
 
-        # This job runs every minute (spec §4.5: premium live score refreshes
-        # each minute), but Goalserve must only be called while a game is
-        # actually in progress — "LIVE games only". A game is worth polling
-        # when it is already live, or when it is scheduled and its tip-off
-        # has passed (that is the call that flips it to live). Once every
-        # game is final there is nothing left to learn until tomorrow.
-        now = datetime.now(timezone.utc)
+    if not any(_worth_polling(g) for g in games):
+        logger.debug("CRON sync_live_games_job: no game in progress for %s, skipping poll", today)
+        return
 
-        def _worth_polling(g: NBAGame) -> bool:
-            if g.status == "live":
-                return True
-            if g.status != "scheduled":
-                return False
-            # No tip-off time recorded → poll rather than risk missing the
-            # start; a missing timestamp must not freeze the live score.
-            if g.tip_off_time is None:
-                return True
-            tip = g.tip_off_time
-            if tip.tzinfo is None:      # Mongo round-trips datetimes as naive UTC
-                tip = tip.replace(tzinfo=timezone.utc)
-            return now >= tip
+    logger.info("CRON sync_live_games_job: polling live games for %s", today)
+    svc = PlayerService(PlayerRepository())
 
-        if not any(_worth_polling(g) for g in games):
-            logger.debug(
-                "CRON sync_live_games_job: no game in progress for %s, skipping poll", today
+    # Scores + box score for every one of the date's games that has started -
+    # also updates each NBAGame's status/score in the process.
+    synced = await svc.sync_scores_for_date(today)
+    logger.info("CRON: synced %d player-stat rows for %s", synced, today)
+
+    # Re-read: the sync above just advanced statuses (scheduled -> live ->
+    # final), so the pre-poll copies are stale for the loop below.
+    games = await NBAGame.find(NBAGame.nba_date == today).to_list()
+
+    # Flip the date's matches from upcoming -> live (feeds Night's Results
+    # LIVE badge + Live Score; only the 09:00 close ever marks "completed")
+    from app.modules.leagues.engine import sync_match_live_status
+    flipped = await sync_match_live_status(today)
+    if flipped:
+        logger.info("CRON: marked %d matches live", flipped)
+
+    for game in games:
+        if game.status != "final":
+            continue
+
+        # Compute fantasy scores for this game's stats (idempotent)
+        scored = await svc.finalize_game_scores(game.goalserve_id)
+        if scored:
+            logger.info(
+                "CRON: computed %d fantasy scores for finished game %s",
+                scored, game.goalserve_id,
             )
-            return
-
-        logger.info("CRON sync_live_games_job: polling live games for %s", today)
-        svc = PlayerService(PlayerRepository())
-
-        # Scores + box score for every one of today's games that has
-        # started — also updates each NBAGame's status/score in the process.
-        synced = await svc.sync_scores_for_date(today)
-        logger.info("CRON: synced %d player-stat rows for %s", synced, today)
-
-        # Re-read: the sync above just advanced statuses (scheduled → live →
-        # final), so the pre-poll copies are stale for the loop below.
-        games = await NBAGame.find(NBAGame.nba_date == today).to_list()
-
-        # Flip tonight's matches from upcoming -> live (feeds Night's Results
-        # LIVE badge + Live Score; only the 09:00 close ever marks "completed")
-        from app.modules.leagues.engine import sync_match_live_status
-        flipped = await sync_match_live_status(today)
-        if flipped:
-            logger.info("CRON: marked %d matches live", flipped)
-
-        for game in games:
-            if game.status != "final":
-                continue
-
-            # Compute fantasy scores for this game's stats (idempotent)
-            scored = await svc.finalize_game_scores(game.goalserve_id)
-            if scored:
-                logger.info(
-                    "CRON: computed %d fantasy scores for finished game %s",
-                    scored, game.goalserve_id,
-                )
-
-    except Exception as exc:
-        logger.error("CRON sync_live_games_job failed: %s", exc, exc_info=True)

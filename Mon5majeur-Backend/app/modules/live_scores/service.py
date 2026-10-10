@@ -118,8 +118,22 @@ class LiveScoreService:
         if not league:
             raise NotFoundException("Global league not found")
 
-        today = await _nba_today()
-        sel = await _get_selection(user.id, league, league.current_match_day)
+        # The night Live is still showing (it may be yesterday's date after
+        # 00:00 UTC: QA #10 19 - the screen looked at the next date and said
+        # "no live match" while games were being played).
+        from app.modules.players.nba_night import live_night
+
+        today = await live_night() or await _nba_today()
+
+        # The lineup that is PLAYING that night: the selection stamped with its
+        # date, else the one of the current match day.
+        from app.modules.lineups.compat_model import FlutterPlayerSelection
+
+        sel = await FlutterPlayerSelection.find_one(
+            FlutterPlayerSelection.user_id == user.id,
+            FlutterPlayerSelection.league_auto_id == league.auto_id,
+            FlutterPlayerSelection.nba_date == today,
+        ) or await _get_selection(user.id, league, league.current_match_day)
 
         if not sel:
             return LiveGlobalScore(
