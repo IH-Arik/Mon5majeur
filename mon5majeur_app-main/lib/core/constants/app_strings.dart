@@ -110,6 +110,8 @@ class AppString {
   static const String noPlayoffBracketYet = 'noPlayoffBracketYet';
   static const String regularSeason = 'Regular Season';
   static const String playOff = 'Play-Off';
+  static const String leaguePhaseCompleted = 'leaguePhaseCompleted';
+  static const String leaguePhaseCancelled = 'leaguePhaseCancelled';
   static const String quarterFinalMatchday1 = 'Quarter Final Matchday 1';
   static const String you = 'You';
   static const String vs = 'Vs';

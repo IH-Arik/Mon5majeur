@@ -72,7 +72,6 @@ class MyLeaguesController extends GetxController {
                   userRank: privateLeague.rank,
                   matchday: privateLeague.currentMatchDay,
                   week: privateLeague.currentWeek,
-                  season: 'Regular Season',
                   isPrivate: true, // Mark as private league
                 ),
               )
@@ -123,7 +122,6 @@ class MyLeaguesController extends GetxController {
                   userRank: publicLeague.rank,
                   matchday: publicLeague.currentMatchDay,
                   week: publicLeague.currentWeek,
-                  season: 'Regular Season',
                   isPrivate: false, // Mark as public league
                 ),
               )

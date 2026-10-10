@@ -1,4 +1,5 @@
 // lib/data/models/my_league_model.dart
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/logo_assets.dart';
 import 'package:mon5majeur_app/core/custom_assets/assets.gen.dart';
 import 'private_league_model.dart';
@@ -20,7 +21,7 @@ class MyLeagueModel {
     this.userRank = 0,
     this.currentMatchday = 0,
     this.currentWeek = 0,
-    this.season = 'Regular Season',
+    this.season = AppString.regularSeason,
     required this.status,
     this.isPrivate = true, // Default to private
   });
@@ -49,10 +50,25 @@ class MyLeagueModel {
       userRank: userRank ?? 0,
       currentMatchday: matchday ?? 0,
       currentWeek: week ?? 0,
-      season: season ?? 'Regular Season',
+      season: season ?? seasonKeyFor(league.status),
       status: status,
       isPrivate: isPrivate, // Pass the parameter
     );
+  }
+
+  /// The AppString key of the phase shown on the league cards. Compared
+  /// ignoring case and spaces; absent, null or unknown means regular season.
+  static String seasonKeyFor(String? status) {
+    switch (status?.trim().toLowerCase()) {
+      case 'playoffs':
+        return AppString.playOff;
+      case 'completed':
+        return AppString.leaguePhaseCompleted;
+      case 'cancelled':
+        return AppString.leaguePhaseCancelled;
+      default:
+        return AppString.regularSeason;
+    }
   }
 
   // Getters for easy access

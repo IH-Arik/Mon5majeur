@@ -104,6 +104,8 @@ class EnglishTranslation {
     AppString.noPlayoffBracketYet: 'No playoff bracket yet.',
     AppString.regularSeason: 'Regular Season',
     AppString.playOff: 'Play-Off',
+    AppString.leaguePhaseCompleted: 'Completed',
+    AppString.leaguePhaseCancelled: 'Cancelled',
     AppString.quarterFinalMatchday1: 'Semifinal',
     AppString.you: 'You',
     AppString.vs: 'Vs',
