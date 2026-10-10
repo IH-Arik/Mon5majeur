@@ -19,13 +19,16 @@ Rows that still cannot be resolved are left as None and reported, never
 assigned an approximate date.
 
 Usage:
-    ./.venv/Scripts/python.exe backfill_lineup_nba_date.py            # dry run
-    ./.venv/Scripts/python.exe backfill_lineup_nba_date.py --apply    # write
+    ./.venv/Scripts/python.exe scripts/backfill_lineup_nba_date.py            # dry run
+    ./.venv/Scripts/python.exe scripts/backfill_lineup_nba_date.py --apply    # write
 """
 from __future__ import annotations
 
 import asyncio
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # backend root, so `app` imports from anywhere
 from collections import Counter
 from datetime import date, datetime
 

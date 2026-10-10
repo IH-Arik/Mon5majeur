@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
-sys.path.insert(0, r"c:\Users\ittes\Desktop\Arik\Desktop\ARIK\Mon5majeur\Mon5majeur-Backend")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # backend root, so `app` imports from anywhere
 
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient

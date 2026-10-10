@@ -16,9 +16,23 @@ This repository is organized as a unified monorepo containing the backend API, l
 ```
 Mon5majeur/
 ├── Mon5majeur-Backend/        # FastAPI backend service (Python 3.12, Beanie/MongoDB)
+│   ├── app/                   #   the API: modules/<feature>/, cron/, core/
+│   ├── tests/                 #   unit + integration tests
+│   ├── scripts/               #   one-off CLIs (promote_admin, seeds, DB compare/measure)
+│   ├── docs/                  #   backend docs (Atlas migration runbook, rules/ spec PDFs)
+│   ├── docker/                #   nginx config
+│   ├── secrets/               #   server-only keys (git-ignored), e.g. firebase-service-account.json
+│   └── logs/                  #   local run logs (git-ignored)
 ├── Mon5majeur-landing page/   # Marketing & subscriber registration (Next.js JS)
 ├── mon5majeur-dashboard/      # Administrator & analytics dashboard (Next.js TS)
-└── mon5majeur_app-main/       # Mobile client application (Flutter / Dart)
+├── mon5majeur_app-main/       # Mobile client application (Flutter / Dart)
+├── docs/                      # project documents (not code)
+│   ├── qa-reports/            #   client QA reports and recaps
+│   ├── specs/                 #   product specs, briefs, audits
+│   ├── design-assets/         #   icons and images received from the client
+│   └── security/              #   malware incident evidence (git-ignored)
+├── scripts/                   # repo-wide tooling (git hooks helper: check-postcss.sh)
+└── _secrets/                  # keys and platform config copies (git-ignored, never commit)
 ```
 
 ---

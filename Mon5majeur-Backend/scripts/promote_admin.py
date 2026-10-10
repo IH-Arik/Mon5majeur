@@ -5,13 +5,16 @@ has to be promoted from outside the system, and after that admins can be
 managed through the User Management screen.
 
 Usage:
-    ./.venv/Scripts/python.exe promote_admin.py user@example.com           # grant
-    ./.venv/Scripts/python.exe promote_admin.py user@example.com --revoke  # revoke
+    ./.venv/Scripts/python.exe scripts/promote_admin.py user@example.com           # grant
+    ./.venv/Scripts/python.exe scripts/promote_admin.py user@example.com --revoke  # revoke
 """
 from __future__ import annotations
 
 import asyncio
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # backend root, so `app` imports from anywhere
 
 from app.database.session import init_db
 from app.modules.users.model import User

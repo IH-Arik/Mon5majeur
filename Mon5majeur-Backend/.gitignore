@@ -43,3 +43,6 @@ Thumbs.db
 
 # server-only secrets (Firebase service account ...)
 secrets/
+
+# local run logs
+logs/

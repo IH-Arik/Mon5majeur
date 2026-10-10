@@ -95,6 +95,11 @@ key.properties
 
 # Malware incident evidence (kept locally only)
 malware_evidence/
+docs/security/
+
+# Keys / platform config copies kept out of the way, and local logs
+_secrets/
+logs/
 
 # Flutter desktop build artifacts (desktop support removed)
 mon5majeur_app-main/macos/

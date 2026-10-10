@@ -18,6 +18,11 @@ league's current match day — no other collections are modified.
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # backend root
+
 import asyncio
 from datetime import datetime, timedelta, timezone
 
