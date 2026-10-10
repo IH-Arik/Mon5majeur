@@ -8,7 +8,10 @@ import '../../../../core/utils/lineup_positions.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/global_result_cache.dart';
 import 'match_lineups_field.dart';
+
+typedef _Result = ({Map<String, dynamic>? body, String? error});
 
 /// A Global League lineup with the points it scored, for a night whose
 /// results are already published (QA #9 7.1 / 7.3). It replaces the hourglass
@@ -28,55 +31,170 @@ class GlobalPublishedResult extends StatefulWidget {
 
 class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
   int _offset = 0;
-  bool _loading = true;
+  bool _loading = true; // nothing at all to show yet
+  bool _busy = false; // thin bar under the selector: a load is running
   String? _error;
   Map<String, dynamic>? _data;
+
+  String? _userId; // the account the cache is bound to
+  late final String _member = GlobalResultCache.memberKey(widget.userAutoId);
+  int _token = 0; // bumped on every new request: older answers are not shown
+  bool _revalidated = false; // offset 0 re-read once per opening
+  Future<void> _prefetchChain = Future.value();
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _start();
   }
 
-  Future<void> _load() async {
+  Future<void> _start() async {
+    _userId = await GlobalResultCache.bindToCurrentUser();
+    if (!mounted) return;
+    _show();
+  }
+
+  /// The night [_offset] is on screen with its own data (not a previous one).
+  bool get _shown =>
+      _data != null && (_data!['offset'] as num?)?.toInt() == _offset;
+
+  /// Shows the night at [_offset]: at once from the cache when known, else
+  /// fetched. Offset 0 is re-read once per opening to notice a new publication.
+  void _show({bool force = false}) {
+    final offset = _offset;
+    final token = ++_token;
+    final cached = force ? null : GlobalResultCache.page(_member, offset);
+    if (cached != null) {
+      setState(() {
+        _data = cached;
+        _loading = false;
+        _error = null;
+      });
+      if (offset == 0 && !_revalidated) {
+        _revalidated = true;
+        _fetchShown(offset, token);
+      } else {
+        setState(() => _busy = false);
+        _prefetchNeighbors(token);
+      }
+      return;
+    }
     setState(() {
-      _loading = true;
+      _busy = true;
       _error = null;
+      if (_data == null) _loading = true;
     });
+    if (offset == 0) _revalidated = true;
+    _fetchShown(offset, token);
+  }
+
+  Future<void> _fetchShown(int offset, int token) async {
+    final result = await _request(offset);
+    if (!mounted) return;
+    final body = result.body;
+    var reset = false;
+    if (body != null) {
+      reset = GlobalResultCache.put(_userId, _member, offset, body);
+    }
+    if (token != _token) {
+      // Another day was asked for meanwhile: not shown (cached for its date).
+      if (reset) _jumpToLatest();
+      return;
+    }
+    if (body != null) {
+      setState(() {
+        _data = body;
+        _loading = false;
+        _busy = false;
+        _error = null;
+      });
+      if (reset) {
+        _jumpToLatest();
+      } else {
+        _prefetchNeighbors(token);
+      }
+    } else {
+      setState(() {
+        _busy = false;
+        _loading = false;
+        // A failed refresh keeps what is on screen.
+        if (!_shown) _error = result.error;
+      });
+    }
+  }
+
+  /// A new night was published: go back to the latest one, freshly read.
+  void _jumpToLatest() {
+    if (!mounted) return;
+    _offset = 0;
+    _show(force: true);
+  }
+
+  final Map<int, Future<_Result>> _running = {};
+
+  /// One call per night at a time: asking again for a night already on its way
+  /// (a prefetch the user caught up with) shares that call.
+  Future<_Result> _request(int offset) {
+    final running = _running[offset];
+    if (running != null) return running;
+    return _running[offset] = _requestNow(offset).whenComplete(() {
+      _running.remove(offset);
+    });
+  }
+
+  Future<_Result> _requestNow(int offset) async {
     try {
       final query = {
-        'offset': '$_offset',
+        'offset': '$offset',
         if (widget.userAutoId != null) 'user_auto_id': '${widget.userAutoId}',
       };
       final url = Uri.parse(
         '${ApiUrl.baseUrl}${ApiUrl.globalPublishedResult}',
       ).replace(queryParameters: query).toString();
       final response = await ApiClient().get(url: url);
-      if (!mounted) return;
       if (response.statusCode == 200 && response.body is Map) {
-        setState(() {
-          _data = Map<String, dynamic>.from(response.body as Map);
-          _loading = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Failed to load team (@code).'
-              .trParams({'code': '${response.statusCode}'});
-          _loading = false;
-        });
+        return (
+          body: Map<String, dynamic>.from(response.body as Map),
+          error: null,
+        );
       }
+      return (
+        body: null,
+        error: 'Failed to load team (@code).'.trParams({
+          'code': '${response.statusCode}',
+        }),
+      );
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Could not load the result'.tr;
-        _loading = false;
-      });
+      return (body: null, error: 'Could not load the result'.tr);
     }
   }
 
+  /// Warms the day before and the day after the one on screen, one call at a
+  /// time, silently, and stops as soon as the user moves on.
+  void _prefetchNeighbors(int token) {
+    final base = _offset;
+    final hasOlder = _data?['has_older'] == true;
+    final targets = [if (base > 0) base - 1, if (hasOlder) base + 1];
+    _prefetchChain = _prefetchChain.then((_) async {
+      for (final k in targets) {
+        if (!mounted || token != _token) return;
+        if (GlobalResultCache.page(_member, k) != null) continue;
+        final result = await _request(k);
+        if (!mounted || result.body == null) continue;
+        if (GlobalResultCache.put(_userId, _member, k, result.body!) &&
+            token == _token) {
+          _jumpToLatest();
+          return;
+        }
+      }
+    });
+  }
+
   void _go(int delta) {
-    setState(() => _offset = (_offset + delta).clamp(0, 9999));
-    _load();
+    final next = _offset + delta;
+    if (next < 0) return;
+    setState(() => _offset = next);
+    _show();
   }
 
   PlayerScore _toTeam(Map<String, dynamic> d) {
@@ -103,7 +221,7 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
         child: CircularProgressIndicator(color: Color(0xFFFF8C42)),
       );
     }
-    if (_error != null) {
+    if (_error != null && _data == null) {
       return Center(
         child: Padding(
           padding: EdgeInsets.all(24.w),
@@ -117,12 +235,14 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
     }
 
     final d = _data!;
-    final available = d['available'] == true;
-    final hasOlder = d['has_older'] == true;
-    final hasNewer = d['has_newer'] == true;
+    final shown = _shown;
+    final available = shown && d['available'] == true;
+    // Older nights are only offered once the one on screen says there is one.
+    final hasOlder = shown && d['has_older'] == true;
+    final hasNewer = _offset > 0;
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () async => _show(force: true),
       color: const Color(0xFFFF8C42),
       backgroundColor: const Color(0xFF252838),
       child: SingleChildScrollView(
@@ -138,7 +258,9 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                   onPressed: hasOlder ? () => _go(1) : null,
                   icon: Icon(
                     Icons.chevron_left,
-                    color: hasOlder ? const Color(0xFFB1B1B1) : Colors.grey.shade800,
+                    color: hasOlder
+                        ? const Color(0xFFB1B1B1)
+                        : Colors.grey.shade800,
                     size: 28.r,
                   ),
                 ),
@@ -156,15 +278,40 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                   onPressed: hasNewer ? () => _go(-1) : null,
                   icon: Icon(
                     Icons.chevron_right,
-                    color: hasNewer ? const Color(0xFFB1B1B1) : Colors.grey.shade800,
+                    color: hasNewer
+                        ? const Color(0xFFB1B1B1)
+                        : Colors.grey.shade800,
                     size: 28.r,
                   ),
                 ),
               ],
             ),
-            if (!available) ...[
+            // Discrete sign that a night is loading; the arrows stay usable.
+            SizedBox(
+              height: 2.h,
+              child: _busy
+                  ? LinearProgressIndicator(
+                      color: const Color(0xFFFF6B3D),
+                      backgroundColor: Colors.transparent,
+                    )
+                  : null,
+            ),
+            if (!shown) ...[
+              if (_error != null) ...[
+                SizedBox(height: 60.h),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                ),
+              ],
+            ] else if (!available) ...[
               SizedBox(height: 60.h),
-              Icon(Icons.emoji_events_outlined, color: Colors.white38, size: 48.r),
+              Icon(
+                Icons.emoji_events_outlined,
+                color: Colors.white38,
+                size: 48.r,
+              ),
               SizedBox(height: 12.h),
               Text(
                 AppString.noPublishedResult.tr,
@@ -177,7 +324,10 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                   final team = _toTeam(d);
                   // The score is the sum of the players' points shown on the
                   // court, so the two always agree.
-                  final sum = team.selection.fold<int>(0, (a, p) => a + p.score);
+                  final sum = team.selection.fold<int>(
+                    0,
+                    (a, p) => a + p.score,
+                  );
                   return Column(
                     children: [
                       MatchLineupsField(
