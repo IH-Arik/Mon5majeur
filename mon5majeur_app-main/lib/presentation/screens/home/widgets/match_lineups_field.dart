@@ -98,7 +98,11 @@ class MatchLineupsField extends StatelessWidget {
               child: Container(color: Colors.black.withValues(alpha: 0.3)),
             ),
             if (aPlayers.isEmpty && bPlayers.isEmpty && !aHidden && !bHidden)
-              Positioned.fill(child: Center(child: _notReadyCard())),
+              Positioned.fill(
+                child: Center(
+                  child: globalResultStyle ? _noTeamCard() : _notReadyCard(),
+                ),
+              ),
 
             // ── Top team
             if (teamA != null)
@@ -247,7 +251,20 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
-  Widget _notReadyCard() {
+  Widget _notReadyCard() => _messageCard(
+        AppString.teamsNotReady.tr,
+        AppString.teamsNotReadyDesc.tr,
+      );
+
+  // Global League: the server confirmed the night but no lineup was played.
+  Widget _noTeamCard() => _messageCard(
+        AppString.globalNoTeamTitle.tr,
+        (teamA?.isMe ?? false)
+            ? AppString.globalNoTeamMine.tr
+            : AppString.globalNoTeamOther.tr,
+      );
+
+  Widget _messageCard(String title, String message) {
     return Container(
       margin: EdgeInsets.all(32.w),
       padding: EdgeInsets.all(24.w),
@@ -262,7 +279,7 @@ class MatchLineupsField extends StatelessWidget {
           Icon(Icons.groups_outlined, color: Colors.orange, size: 48.r),
           SizedBox(height: 16.h),
           Text(
-            AppString.teamsNotReady.tr,
+            title,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
@@ -272,7 +289,7 @@ class MatchLineupsField extends StatelessWidget {
           ),
           SizedBox(height: 8.h),
           Text(
-            AppString.teamsNotReadyDesc.tr,
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white70, fontSize: 14.sp),
           ),

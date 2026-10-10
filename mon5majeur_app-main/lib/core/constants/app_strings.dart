@@ -709,6 +709,9 @@ class AppString {
   static const String youNeedOnePlayer = 'youNeedOnePlayer';
   static const String teamsNotReady = 'teamsNotReady';
   static const String teamsNotReadyDesc = 'teamsNotReadyDesc';
+  static const String globalNoTeamTitle = 'globalNoTeamTitle';
+  static const String globalNoTeamMine = 'globalNoTeamMine';
+  static const String globalNoTeamOther = 'globalNoTeamOther';
   static const String teamNotReadyTemplate = 'teamNotReadyTemplate';
   static const String viewSeries = 'viewSeries';
   static const String semifinalGameTemplate = 'semifinalGameTemplate';

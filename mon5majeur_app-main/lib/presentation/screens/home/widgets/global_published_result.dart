@@ -186,27 +186,25 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                         showOpponent: false,
                         globalResultStyle: true,
                       ),
-                      if (team.selection.isNotEmpty) ...[
-                        SizedBox(height: 12.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20.w,
-                            vertical: 8.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE0E0E0),
-                            borderRadius: BorderRadius.circular(20.r),
-                          ),
-                          child: Text(
-                            AppString.totalPointsLabel(sum),
-                            style: TextStyle(
-                              color: const Color(0xFF1A1A1A),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
+                      SizedBox(height: 12.h),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          AppString.totalPointsLabel(sum),
+                          style: TextStyle(
+                            color: const Color(0xFF1A1A1A),
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      ],
+                      ),
                     ],
                   );
                 },
