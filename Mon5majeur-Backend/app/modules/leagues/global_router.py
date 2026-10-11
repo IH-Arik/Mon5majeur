@@ -211,20 +211,10 @@ async def _build_response(
     weekly_rank, monthly_rank = await get_weekly_monthly_rank(league, user_id, today)
     enriched_players = await _enrich_with_scores(selected_players)
 
-    # Same data source as the Results tab (one function, not a second
-    # computation); it moves at 09:00 when a new night is published.
-    last_published_points = 0
-    nights = await _published_nights(league)
-    if nights:
-        me = await User.get(user_id)
-        if me:
-            last_published_points = (await _night_payload(league, me, nights[0]))["total_points"]
-
     return GlobalLeagueSelectionResponse(
         match_day=league.current_match_day,
         selected_players=enriched_players,
         total_points=total_points,
-        last_published_points=last_published_points,
         max_balance=f"{int(_MAX_BALANCE)}M",
         current_balance=f"{remaining:.0f}M",
         lineup_submitted=submitted,

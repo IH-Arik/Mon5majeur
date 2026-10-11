@@ -1,4 +1,3 @@
-import '../widgets/todays_games.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +17,7 @@ import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
 import '../../tutorial/tutorial_skip_button.dart';
 import '../screens/select_player_screen.dart';
+import '../widgets/game_card.dart';
 import '../widgets/lineup_widgets.dart';
 import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
@@ -701,12 +701,58 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     );
   }
 
-  // The same component as the duel leagues (QA #10 9).
-  Widget _buildTodaysGames() => TodaysGamesSection(
-        isLoading: isLoadingGames,
-        errorMessage: gamesErrorMessage,
-        games: todaysGames,
-      );
+  Widget _buildTodaysGames() {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              AppString.todaysGames.tr,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 12.h),
+        if (isLoadingGames)
+          Center(
+            child: CircularProgressIndicator(
+              color: const Color(0xFFFF8C42),
+            ),
+          )
+        else if (gamesErrorMessage != null)
+          Text(
+            gamesErrorMessage!,
+            style: TextStyle(color: Colors.red, fontSize: 12.sp),
+          )
+        else if (todaysGames.isEmpty)
+          Text(
+            'No games today',
+            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+          )
+        else
+          SizedBox(
+            height: gameCardListHeight,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              itemCount: todaysGames.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: EdgeInsets.only(right: 12.w),
+                  child: GameCard(game: todaysGames[index]),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
 
   Widget _buildTimeLeft() {
     final lock = _controller.globalLeagueSelection.value?.lockInSeconds;

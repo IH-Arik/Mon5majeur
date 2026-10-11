@@ -61,6 +61,11 @@ class AppString {
   static const String position = 'Position';
   static const String avg = 'Avg';
   static const String price = 'Price';
+  // Position groups of the Data list header.
+  static const String positionGroupCenters = 'positionGroupCenters';
+  static const String positionGroupForwards = 'positionGroupForwards';
+  static const String positionGroupGuards = 'positionGroupGuards';
+  static const String positionGroupAll = 'positionGroupAll';
   static const String noPlayersFoundFor = 'No players found for';
   static const String noPlayersMatchFilters = 'No players match your filters';
   static const String priceRange = 'Price Range';
@@ -105,6 +110,9 @@ class AppString {
   static const String noPlayoffBracketYet = 'noPlayoffBracketYet';
   static const String regularSeason = 'Regular Season';
   static const String playOff = 'Play-Off';
+  static const String leaguePhaseCompleted = 'leaguePhaseCompleted';
+  static const String leaguePhaseCancelled = 'leaguePhaseCancelled';
+  static const String bonusRevealTime = 'bonusRevealTime';
   static const String quarterFinalMatchday1 = 'Quarter Final Matchday 1';
   static const String you = 'You';
   static const String vs = 'Vs';
@@ -286,6 +294,16 @@ class AppString {
   static const String searchTeamsByName = 'Search Teams by name';
   static const String parisFC = 'Paris FC';
   static String totalPoints(int n) => '$n Points';
+
+  // "N Point" / "N Points" with the right singular. French: 0 and 1 are
+  // singular; English: only 1 is.
+  static const String totalPointsOne = 'totalPointsOne';
+  static const String totalPointsMany = 'totalPointsMany';
+  static String totalPointsLabel(int n) {
+    final french = Get.locale?.languageCode == 'fr';
+    final singular = french ? n <= 1 : n == 1;
+    return (singular ? totalPointsOne : totalPointsMany).trParams({'n': '$n'});
+  }
   static const String kikiFC = 'Kiki FC';
   static const String rockFC = 'Rock FC';
   static const String courtFC = 'Court FC';
@@ -485,6 +503,19 @@ class AppString {
   static const String matches = 'matches';
   static const String wins = 'wins';
   static const String victories = 'victories';
+  // Letters of the profile W / L tile (V / D in French).
+  static const String statWinLetter = 'statWinLetter';
+  static const String statLossLetter = 'statLossLetter';
+  // Trophy details sheet (Profile).
+  static const String trophyLeagueChampionName = 'trophyLeagueChampionName';
+  static const String trophyLeagueChampionDesc = 'trophyLeagueChampionDesc';
+  static const String trophyBestOfMonthName = 'trophyBestOfMonthName';
+  static const String trophyBestOfMonthDesc = 'trophyBestOfMonthDesc';
+  static const String trophyBestOfWeekName = 'trophyBestOfWeekName';
+  static const String trophyBestOfWeekDesc = 'trophyBestOfWeekDesc';
+  static const String trophyLastPlaceName = 'trophyLastPlaceName';
+  static const String trophyLastPlaceDesc = 'trophyLastPlaceDesc';
+  static const String trophyObtainedTimes = 'trophyObtainedTimes';
   static const String trophies = 'Trophies';
   static const String performanceHighlights = 'Duel stats';
   static const String avgPointScoredValue = '92.3';
@@ -648,6 +679,8 @@ class AppString {
   static const String revealAt9 = '9:00';
   static const String noLineupThatDay = 'No lineup that day';
   static const String noLineupTonight = 'No lineup tonight';
+  static const String bonusRemovedBack = 'bonusRemovedBack';
+  static const String bonusLockedNotice = 'bonusLockedNotice';
   static const String noPublishedResult = 'No published result yet';
   static const String bonusLabel = 'Bonus';
   static const String noBonus = 'No bonus';
@@ -682,6 +715,9 @@ class AppString {
   static const String youNeedOnePlayer = 'youNeedOnePlayer';
   static const String teamsNotReady = 'teamsNotReady';
   static const String teamsNotReadyDesc = 'teamsNotReadyDesc';
+  static const String globalNoTeamTitle = 'globalNoTeamTitle';
+  static const String globalNoTeamMine = 'globalNoTeamMine';
+  static const String globalNoTeamOther = 'globalNoTeamOther';
   static const String teamNotReadyTemplate = 'teamNotReadyTemplate';
   static const String viewSeries = 'viewSeries';
   static const String semifinalGameTemplate = 'semifinalGameTemplate';
@@ -694,6 +730,13 @@ class AppString {
   static const String liveTabLabel = 'liveTabLabel';
   static const String semifinalRound = 'semifinalRound';
   static const String finalRound = 'finalRound';
+
+  // Bottom navigation bar labels.
+  static const String navHome = 'navHome';
+  static const String navResults = 'navResults';
+  static const String navData = 'navData';
+  static const String navShop = 'navShop';
+  static const String navProfile = 'navProfile';
 
   // See youNeedMorePlayersTemplate above — same @n-placeholder pattern so
   // the amount survives translation (QA 28/08/2026 #4).

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'package:mon5majeur_app/core/constants/app_strings.dart';
 
+import '../../../../core/utils/logo_assets.dart';
 import '../../../../core/utils/score_style.dart';
 import '../../../../data/models/playoff_bracket_model.dart';
 import '../controllers/leaderboard_controller.dart';
@@ -85,6 +86,7 @@ class PlayOffView extends StatelessWidget {
               Expanded(
                 child: _buildMatchCard(
                   series.teamAName,
+                  series.teamALogo,
                   series.winsA,
                   aWon,
                   aWon ? wonLabel : null,
@@ -99,6 +101,7 @@ class PlayOffView extends StatelessWidget {
               Expanded(
                 child: _buildMatchCard(
                   series.teamBName,
+                  series.teamBLogo,
                   series.winsB,
                   bWon,
                   bWon ? wonLabel : null,
@@ -164,7 +167,13 @@ class PlayOffView extends StatelessWidget {
     );
   }
 
-  Widget _buildMatchCard(String teamName, int wins, bool isWinner, String? tag) {
+  Widget _buildMatchCard(
+    String teamName,
+    String teamLogo,
+    int wins,
+    bool isWinner,
+    String? tag,
+  ) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: ShapeDecoration(
@@ -183,6 +192,9 @@ class PlayOffView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // The team's saved logo, same call and size as the standings.
+              logoAsset(teamLogo).image(width: 20.w, height: 20.w),
+              SizedBox(width: 8.w),
               // Full team name, wrapped — never truncated.
               Expanded(
                 child: Text(

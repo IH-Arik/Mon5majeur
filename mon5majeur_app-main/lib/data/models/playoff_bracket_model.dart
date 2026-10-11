@@ -54,6 +54,10 @@ class PlayoffSeries {
   final String teamAName;
   final int teamBId;
   final String teamBName;
+  // Saved team avatars (User.team_logo); empty when the server does not send
+  // them, which shows the app's default logo.
+  final String teamALogo;
+  final String teamBLogo;
   final int winsA;
   final int winsB;
   final List<PlayoffGame> games;
@@ -71,6 +75,8 @@ class PlayoffSeries {
     required this.teamAName,
     required this.teamBId,
     required this.teamBName,
+    this.teamALogo = '',
+    this.teamBLogo = '',
     required this.winsA,
     required this.winsB,
     required this.games,
@@ -88,6 +94,8 @@ class PlayoffSeries {
       teamAName: json['team_a_name'] ?? '',
       teamBId: json['team_b_id'] ?? 0,
       teamBName: json['team_b_name'] ?? '',
+      teamALogo: json['team_a_logo'] is String ? json['team_a_logo'] as String : '',
+      teamBLogo: json['team_b_logo'] is String ? json['team_b_logo'] as String : '',
       winsA: json['wins_a'] ?? 0,
       winsB: json['wins_b'] ?? 0,
       games:

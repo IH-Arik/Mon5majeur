@@ -43,6 +43,10 @@ class LiveScoreController extends GetxController {
   });
 
   List<String>? _resolvedMatchIds;
+  // For each match whose lookup is known: true when I am the home team, false
+  // when I am the away team. A match missing here (Live opened straight with a
+  // match id, or a match I am not in) has no known side.
+  final Map<String, bool> myTeamIsHome = {};
   // League name known before any live data (from the match-result lookup).
   final leagueName = ''.obs;
 
@@ -184,6 +188,7 @@ class LiveScoreController extends GetxController {
         if (id == null) continue;
         final isMine =
             me != null && (pair.playerAId == me || pair.playerBId == me);
+        if (isMine) myTeamIsHome[id] = pair.playerAId == me;
         (isMine ? mine : others).add(id);
       }
       return [...mine, ...others];

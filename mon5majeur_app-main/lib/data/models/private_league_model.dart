@@ -17,6 +17,9 @@ class PrivateLeagueModel {
   final bool? isStarted;
   final bool? isActive;
   final int? creator;
+  // League phase as the server stores it (waiting, regular_season, playoffs,
+  // completed, cancelled). Null when the server does not send it.
+  final String? status;
   // Per-user "today" lineup validation state (My Leagues launch spec).
   final bool lineupSubmitted;
   // The server sends seconds-until-lock as of the moment it answered. The
@@ -51,6 +54,7 @@ class PrivateLeagueModel {
     this.isStarted,
     this.isActive,
     this.creator,
+    this.status,
     this.lineupSubmitted = false,
     int? lockInSeconds,
   }) : _lockAtReceipt = lockInSeconds;
@@ -90,6 +94,7 @@ class PrivateLeagueModel {
       isStarted: json['is_started'],
       isActive: json['is_active'],
       creator: json['creator'],
+      status: json['status'] is String ? json['status'] as String : null,
       lineupSubmitted: json['lineup_submitted'] ?? false,
       lockInSeconds: json['lock_in_seconds'],
     );

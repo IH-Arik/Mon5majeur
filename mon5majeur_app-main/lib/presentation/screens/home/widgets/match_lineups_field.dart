@@ -24,13 +24,16 @@ class MatchLineupsField extends StatelessWidget {
   final bool scoresHidden;
   // Global League live view: only the user's own five, no opponent.
   final bool showOpponent;
-  // Below the court: bonus / 6th man cards of each team. The Global League has
-  // no bonuses, so it turns them off (QA #10 10).
-  final bool showSummary;
-  // "28 Points" pill centred under the court (Global League); null = none.
-  final int? totalPill;
-  // Text of the empty-court card (default: "teams not ready").
-  final String? emptyMessage;
+  // Global League "Results" look (and "view team"): the top half of the same
+  // full court the duel results use, the team name at the top left, and no
+  // summary card under the court (there is no bonus in the Global League).
+  // False everywhere else, so no other screen changes.
+  final bool globalResultStyle;
+  // Duel "Results" look (QA #10 17): the team name labels sit at the left of
+  // the court, and the two bonus cards are replaced by one two-column card
+  // (left column = [teamA], right = [teamB], like the match card above).
+  // False everywhere else, so no other screen changes.
+  final bool duelResultStyle;
 
   const MatchLineupsField({
     super.key,
@@ -38,9 +41,8 @@ class MatchLineupsField extends StatelessWidget {
     required this.teamB,
     this.scoresHidden = false,
     this.showOpponent = true,
-    this.showSummary = true,
-    this.totalPill,
-    this.emptyMessage,
+    this.globalResultStyle = false,
+    this.duelResultStyle = false,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -61,30 +63,13 @@ class MatchLineupsField extends StatelessWidget {
     return Column(
       children: [
         _court(b),
-        if (totalPill != null) _pointsPill(totalPill!),
-        if (showSummary && showOpponent) _bonusCard(),
-        if (showSummary && !showOpponent) ..._summary(teamA),
+        if (duelResultStyle)
+          ..._duelBonusCard()
+        else ...[
+          if (!globalResultStyle) ..._summary(teamA),
+          if (showOpponent) ..._summary(teamB),
+        ],
       ],
-    );
-  }
-
-  // Light grey rounded pill, bold dark text: "28 Points".
-  Widget _pointsPill(int total) {
-    return Container(
-      margin: EdgeInsets.only(top: 12.h),
-      padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 10.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE6E6E6),
-        borderRadius: BorderRadius.circular(24.r),
-      ),
-      child: Text(
-        '$total ${AppString.points.tr}',
-        style: TextStyle(
-          color: const Color(0xFF1A1A1A),
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
     );
   }
 
@@ -98,28 +83,45 @@ class MatchLineupsField extends StatelessWidget {
       margin: EdgeInsets.only(top: 12.h),
       width: double.infinity,
       constraints: BoxConstraints(maxWidth: 362.w),
-      // One team: the same 600 high court as "Créer une équipe", so the
-      // baseline and the basket are fully visible (QA #10 10).
-      height: showOpponent ? 700.h : 600.h,
+      height: globalResultStyle ? 350.h : (showOpponent ? 700.h : 380.h),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
         child: Stack(
           children: [
-            Positioned.fill(
-              child: showOpponent
-                  ? Assets.images.fullplayground.image(fit: BoxFit.cover)
-                  : Assets.images.playground.image(fit: BoxFit.cover),
-            ),
+            if (globalResultStyle)
+              // The duel court at its full 700 height: only its top half shows.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 700.h,
+                child: Assets.images.fullplayground.image(fit: BoxFit.cover),
+              )
+            else
+              Positioned.fill(
+                child: showOpponent
+                    ? Assets.images.fullplayground.image(fit: BoxFit.cover)
+                    : Assets.images.playground.image(fit: BoxFit.cover),
+              ),
             Positioned.fill(
               child: Container(color: Colors.black.withValues(alpha: 0.3)),
             ),
             if (aPlayers.isEmpty && bPlayers.isEmpty && !aHidden && !bHidden)
-              Positioned.fill(child: Center(child: _notReadyCard())),
+              Positioned.fill(
+                child: Center(
+                  child: globalResultStyle ? _noTeamCard() : _notReadyCard(),
+                ),
+              ),
 
             // ── Top team
             if (teamA != null)
-              _teamLabel(teamA!.teamName, Colors.red, top: showOpponent ? 8.h : 16.h),
+              _teamLabel(
+                teamA!.teamName,
+                Colors.red,
+                top: 8.h,
+                leftAligned: globalResultStyle || duelResultStyle,
+              ),
             if (aHidden)
               _hiddenCard(top: 130.h)
             else
@@ -129,7 +131,13 @@ class MatchLineupsField extends StatelessWidget {
               _teamNotReady(teamA?.teamName ?? 'Team A', Colors.red, top: 100.h),
 
             // ── Bottom team
-            if (b != null) _teamLabel(b.teamName, Colors.blue, bottom: 8.h),
+            if (b != null)
+              _teamLabel(
+                b.teamName,
+                Colors.blue,
+                bottom: 8.h,
+                leftAligned: duelResultStyle,
+              ),
             if (bHidden)
               _hiddenCard(bottom: 130.h)
             else
@@ -146,76 +154,45 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
-  // ── Under the court: ONE card, one column per team (QA #10 17) ────────────
+  // ── Duel results: one card, one column per team ──────────────────────────
 
-  /// Left column = the left team of the game card, right column = the right
-  /// team, a vertical line between. Each column: the username on one line,
-  /// the bonus visual (no bonus name), and for the 6th man a small line with
-  /// his name and points. Three states: the visual / "Aucun bonus" / a
-  /// padlock with "9h00" while the opponent's bonus is not revealed yet.
-  Widget _bonusCard() {
-    final a = teamA, b = teamB;
-    if (a == null || b == null) return const SizedBox.shrink();
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(maxWidth: 362.w),
-      margin: EdgeInsets.only(top: 8.h),
-      padding: EdgeInsets.symmetric(vertical: 12.h),
-      decoration: ShapeDecoration(
-        color: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Color(0xFF2C2C2C)),
-          borderRadius: BorderRadius.circular(8.r),
+  static const double _bonusImageSize = 44;
+
+  List<Widget> _duelBonusCard() {
+    if (teamA == null && teamB == null) return const [];
+    return [
+      Container(
+        width: double.infinity,
+        constraints: BoxConstraints(maxWidth: 362.w),
+        margin: EdgeInsets.only(top: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Color(0xFF2C2C2C)),
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _bonusColumn(teamA)),
+              Container(width: 1.w, color: const Color(0xFF2C2C2C)),
+              Expanded(child: _bonusColumn(teamB)),
+            ],
+          ),
         ),
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _bonusColumn(a)),
-            VerticalDivider(width: 1, thickness: 1, color: const Color(0xFF2C2C2C)),
-            Expanded(child: _bonusColumn(b)),
-          ],
-        ),
-      ),
-    );
+    ];
   }
 
-  Widget _bonusColumn(PlayerScore t) {
+  Widget _bonusColumn(PlayerScore? t) {
+    if (t == null) return const SizedBox.shrink();
     final sixth = _sixth(t);
-    final AssetGenImage? visual = switch (t.bonus) {
-      'sixth_man' => Assets.icons.sixman,
-      'chef_curry' => Assets.icons.chefcurry,
-      'luxury_tax' => Assets.icons.luxarytax,
-      _ => null,
-    };
-
-    Widget bonusArea;
-    if (t.bonusHidden) {
-      bonusArea = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.lock_outline, color: Colors.white54, size: 28.r),
-          SizedBox(height: 2.h),
-          Text(
-            AppString.revealAt9.tr,
-            style: TextStyle(color: Colors.white54, fontSize: 11.sp),
-          ),
-        ],
-      );
-    } else if (visual != null) {
-      bonusArea = visual.image(width: 44.w, height: 44.w, fit: BoxFit.contain);
-    } else {
-      bonusArea = Text(
-        AppString.noBonus.tr,
-        style: TextStyle(color: Colors.grey, fontSize: 12.sp),
-      );
-    }
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 8.w),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             t.teamName,
@@ -224,19 +201,36 @@ class MatchLineupsField extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
-              fontSize: 13.sp,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w700,
             ),
           ),
           SizedBox(height: 8.h),
-          bonusArea,
-          if (!t.bonusHidden && t.bonus == 'sixth_man' && sixth != null) ...[
+          SizedBox(
+            height: _bonusImageSize.w,
+            child: Center(child: _bonusZone(t)),
+          ),
+          if (sixth != null) ...[
             SizedBox(height: 6.h),
-            Text(
-              scoresHidden ? sixth.name : '${sixth.name} · ${sixth.score}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Colors.white70, fontSize: 10.sp),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    sixth.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+                  ),
+                ),
+                Text(
+                  ' · ',
+                  style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+                ),
+                scoresHidden
+                    ? Icon(Icons.lock_outline, color: Colors.grey, size: 13.r)
+                    : Text('${sixth.score}', style: scoreTextStyle(size: 14)),
+              ],
             ),
           ],
         ],
@@ -244,9 +238,124 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
-  // ── Global League: single team, no bonus ──────────────────────────────────
+  /// Decided only by what the server sends: [PlayerScore.bonusHidden] first,
+  /// then [PlayerScore.bonus] (null = no bonus; an unknown value = empty).
+  Widget _bonusZone(PlayerScore t) {
+    if (t.bonusHidden) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lock_outline, color: Colors.grey, size: 18.r),
+          SizedBox(height: 2.h),
+          Text(
+            AppString.bonusRevealTime.tr,
+            style: TextStyle(color: Colors.grey, fontSize: 11.sp),
+          ),
+        ],
+      );
+    }
+    final AssetGenImage? image;
+    switch (t.bonus) {
+      case 'sixth_man':
+        image = Assets.icons.sixman;
+      case 'chef_curry':
+        image = Assets.icons.chefcurry;
+      case 'luxury_tax':
+        image = Assets.icons.luxarytax;
+      case null:
+        return Text(
+          AppString.noBonus.tr,
+          style: TextStyle(color: Colors.grey, fontSize: 11.sp),
+        );
+      default:
+        return const SizedBox.shrink(); // unknown value: nothing, no error
+    }
+    return image.image(
+      width: _bonusImageSize.w,
+      height: _bonusImageSize.w,
+      fit: BoxFit.contain,
+    );
+  }
 
-  List<Widget> _summary(PlayerScore? t) => const [];
+  // ── Under the court: each team's bonus and 6th man ────────────────────────
+
+  List<Widget> _summary(PlayerScore? t) {
+    if (t == null) return const [];
+    final sixth = _sixth(t);
+    final bonusText = _bonusText(t);
+    if (bonusText == null && sixth == null) return const [];
+    return [
+      Container(
+        width: double.infinity,
+        constraints: BoxConstraints(maxWidth: 362.w),
+        margin: EdgeInsets.only(top: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        decoration: ShapeDecoration(
+          color: const Color(0xFF1A1A1A),
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: Color(0xFF2C2C2C)),
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.teamName,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (bonusText != null) ...[
+              SizedBox(height: 4.h),
+              Text(
+                bonusText,
+                style: TextStyle(
+                  color: const Color(0xFFFF8C42),
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            if (sixth != null) ...[
+              SizedBox(height: 4.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${AppString.sixthMan.tr}: ${sixth.name}',
+                      style: TextStyle(color: Colors.white70, fontSize: 11.sp),
+                    ),
+                  ),
+                  scoresHidden
+                      ? Icon(Icons.lock_outline, color: Colors.grey, size: 13.r)
+                      : Text('${sixth.score}', style: scoreTextStyle(size: 14)),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    ];
+  }
+
+  /// "Bonus : Chef Curry" / "Aucun bonus" / "Bonus révélé à 9h".
+  String? _bonusText(PlayerScore t) {
+    if (t.bonusHidden) return AppString.bonusHidden.tr;
+    switch (t.bonus) {
+      case 'chef_curry':
+        return '${AppString.bonusLabel.tr} : ${AppString.chefCurry.tr}';
+      case 'luxury_tax':
+        return '${AppString.bonusLabel.tr} : ${AppString.luxuryTax.tr}';
+      case 'sixth_man':
+        return '${AppString.bonusLabel.tr} : ${AppString.sixthMan.tr}';
+      default:
+        // Only say "no bonus" once the lineup itself is known.
+        return t.selection.isEmpty ? null : AppString.noBonus.tr;
+    }
+  }
 
   // ── Court pieces ──────────────────────────────────────────────────────────
 
@@ -281,7 +390,20 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
-  Widget _notReadyCard() {
+  Widget _notReadyCard() => _messageCard(
+        AppString.teamsNotReady.tr,
+        AppString.teamsNotReadyDesc.tr,
+      );
+
+  // Global League: the server confirmed the night but no lineup was played.
+  Widget _noTeamCard() => _messageCard(
+        AppString.globalNoTeamTitle.tr,
+        (teamA?.isMe ?? false)
+            ? AppString.globalNoTeamMine.tr
+            : AppString.globalNoTeamOther.tr,
+      );
+
+  Widget _messageCard(String title, String message) {
     return Container(
       margin: EdgeInsets.all(32.w),
       padding: EdgeInsets.all(24.w),
@@ -296,7 +418,7 @@ class MatchLineupsField extends StatelessWidget {
           Icon(Icons.groups_outlined, color: Colors.orange, size: 48.r),
           SizedBox(height: 16.h),
           Text(
-            emptyMessage ?? AppString.teamsNotReady.tr,
+            title,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
@@ -304,47 +426,48 @@ class MatchLineupsField extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          if (emptyMessage == null) ...[
-            SizedBox(height: 8.h),
-            Text(
-              AppString.teamsNotReadyDesc.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 14.sp),
-            ),
-          ],
+          SizedBox(height: 8.h),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+          ),
         ],
       ),
     );
   }
 
-  Widget _teamLabel(String name, Color color, {double? top, double? bottom}) {
-    // On the left of the court, like the Global League (QA #10 10 / 17).
+  Widget _teamLabel(
+    String name,
+    Color color, {
+    double? top,
+    double? bottom,
+    bool leftAligned = false,
+  }) {
+    final label = Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12.sp,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+    if (leftAligned) {
+      return Positioned(top: top, bottom: bottom, left: 8.w, child: label);
+    }
     return Positioned(
       top: top,
       bottom: bottom,
-      left: 16.w,
-      right: 16.w,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          constraints: BoxConstraints(maxWidth: 220.w),
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(8.r),
-          ),
-          child: Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
+      left: 0,
+      right: 0,
+      child: Center(child: label),
     );
   }
 
@@ -385,20 +508,17 @@ class MatchLineupsField extends StatelessWidget {
     PlayerScore? team, {
     required bool isTopTeam,
   }) {
-    // One team = the "Créer une équipe" court (center 120, wings 150, guards
-    // 320 on a 600 high court); two teams = a half court each.
-    final single = !showOpponent;
     final double y = switch (index) {
-      1 => single ? 120.h : 44.h, // center, closest to the basket
-      0 || 2 => single ? 150.h : 74.h, // wings
-      _ => single ? 320.h : 190.h, // guards, behind the 3-point line
+      1 => 44.h, // center, closest to the basket
+      0 || 2 => 74.h, // wings
+      _ => 190.h, // guards, behind the 3-point line
     };
     double? left, right;
     switch (index) {
       case 0:
-        left = single ? 40.w : 12.w;
+        left = 12.w;
       case 2:
-        right = single ? 40.w : 12.w;
+        right = 12.w;
       case 3:
         left = 62.w;
       case 4:

@@ -249,7 +249,7 @@ class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
                           ),
                         ),
 
-                        /// Active Badge & Rating
+                        /// Active Badge
                         Column(
                           children: [
                             Container(

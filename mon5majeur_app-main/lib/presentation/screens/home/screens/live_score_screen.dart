@@ -1,5 +1,4 @@
 // lib/presentation/screens/home/screens/live_score_screen.dart
-import '../controllers/home_controller.dart';
 import '../../../../data/services/jersey_service.dart';
 import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../core/utils/logo_assets.dart';
@@ -16,6 +15,7 @@ import '../../../../data/models/live_score_model.dart';
 import '../../../../core/utils/lineup_positions.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../../../widgets/match_widgets.dart';
+import '../controllers/home_controller.dart';
 import '../controllers/live_score_controller.dart';
 import '../widgets/league_tab_bar.dart';
 import '../widgets/match_lineups_field.dart';
@@ -408,6 +408,9 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     final home = match.homeTeamName ?? '${AppString.team.tr} A';
     final away = match.awayTeamName ?? '${AppString.team.tr} B';
     final open = _expanded.contains(match.matchId);
+    // Which side is mine, when known; otherwise both teams are treated as
+    // opponents (nothing about a bonus is ever given away).
+    final mineIsHome = controller.myTeamIsHome[match.matchId];
     return Column(
       children: [
         MatchStatusBadge(
@@ -424,6 +427,8 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             away,
             match.homeScore.round(),
             match.awayScore.round(),
+            homeLogo: match.homeTeamLogo,
+            awayLogo: match.awayTeamLogo,
           ),
         ),
         Icon(
@@ -433,9 +438,19 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         ),
         if (open)
           MatchLineupsField(
-            showSummary: false, // Live does not reveal bonuses
-            teamA: _toSquad(home, match.homePlayers, jersey: match.homeJerseyIndex),
-            teamB: _toSquad(away, match.awayPlayers, jersey: match.awayJerseyIndex),
+            teamA: _toSquad(
+              home,
+              match.homePlayers,
+              jersey: match.homeJerseyIndex,
+              side: mineIsHome == true ? _Side.mine : _Side.opponent,
+            ),
+            teamB: _toSquad(
+              away,
+              match.awayPlayers,
+              jersey: match.awayJerseyIndex,
+              side: mineIsHome == false ? _Side.mine : _Side.opponent,
+            ),
+            duelResultStyle: true,
           ),
       ],
     );
@@ -444,11 +459,18 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   Widget _buildGlobalView(LiveGlobalScore? score) {
     if (score == null || !score.hasLiveGames) return _buildNoLiveState();
 
-    // The user's own team name, as in the Results tab.
-    final name = Get.isRegistered<HomeController>() &&
-            Get.find<HomeController>().userProfile.value?.teamName.isNotEmpty == true
-        ? Get.find<HomeController>().userProfile.value!.teamName
+    // The saved team name when the profile is already loaded, else the
+    // generic label.
+    final profileName = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>().userProfile.value?.teamName
+        : null;
+    final name = (profileName != null && profileName.isNotEmpty)
+        ? profileName
         : AppString.myTeam.tr;
+    final squad = _toSquad(name, score.players, jersey: _myJersey);
+    // The score is the sum of the points shown on the court, so the two
+    // always agree (not the server's total).
+    final sum = squad.selection.fold<int>(0, (a, p) => a + p.score);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.all(16.w),
@@ -456,26 +478,31 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         children: [
           if (score.isStale) _buildStaleBanner(),
           const MatchStatusBadge(status: 'live'),
+          // Same court as the Global League Results tab; with no lineup it
+          // shows the same "no team" message.
+          MatchLineupsField(
+            teamA: squad,
+            teamB: null,
+            showOpponent: false,
+            globalResultStyle: true,
+          ),
           SizedBox(height: 12.h),
-          if (score.players.isEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 32.h),
-              child: Text(
-                AppString.noLineupTonight.tr,
-                style: TextStyle(color: Colors.white54, fontSize: 14.sp),
-              ),
-            )
-          else ...[
-            // Same layout as the Global League Results tab: full court, name on
-            // the left, "X Points" pill below with the live total.
-            MatchLineupsField(
-              teamA: _toSquad(name, score.players, jersey: _myJersey),
-              teamB: null,
-              showOpponent: false,
-              showSummary: false,
-              totalPill: score.totalScore.round(),
+          // Style identique à global_published_result.dart ; à extraire en composant partagé
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E0E0),
+              borderRadius: BorderRadius.circular(20.r),
             ),
-          ],
+            child: Text(
+              AppString.totalPointsLabel(sum),
+              style: TextStyle(
+                color: const Color(0xFF1A1A1A),
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
           SizedBox(height: 16.h),
         ],
       ),
@@ -483,7 +510,14 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   // Same card as the Results tab's match card: both teams and the score.
-  Widget _buildMatchCard(String home, String away, int homeScore, int awayScore) {
+  Widget _buildMatchCard(
+    String home,
+    String away,
+    int homeScore,
+    int awayScore, {
+    String homeLogo = '',
+    String awayLogo = '',
+  }) {
     return _cardShell(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -491,7 +525,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           Expanded(
             child: Row(
               children: [
-                _teamLogo(),
+                _teamLogo(homeLogo),
                 SizedBox(width: 8.w),
                 Expanded(
                   child: Text(
@@ -526,7 +560,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
                   ),
                 ),
                 SizedBox(width: 8.w),
-                _teamLogo(),
+                _teamLogo(awayLogo),
               ],
             ),
           ),
@@ -555,7 +589,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     );
   }
 
-  Widget _teamLogo() {
+  Widget _teamLogo(String logo) {
     return Container(
       width: 32.w,
       height: 32.w,
@@ -565,7 +599,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           side: BorderSide(width: 1.w, color: const Color(0xFFB0B0B0)),
         ),
       ),
-      child: Center(child: Assets.icons.logo1.image(width: 16.w, height: 18.h)),
+      child: Center(child: logoAsset(logo).image(width: 16.w, height: 18.h)),
     );
   }
 
@@ -574,7 +608,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   /// The court draws the five starters by position; the 6th man rides along
   /// flagged, and the lineup widget lists him under the court.
   PlayerScore _toSquad(String teamName, List<LivePlayerScore> players,
-      {int jersey = 0}) {
+      {int jersey = 0, _Side side = _Side.none}) {
     final starters = inCourtOrder(
       players.where((p) => !p.isSixthMan).take(5).toList(),
       (p) => p.position,
@@ -588,6 +622,21 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           score: p.fantasyScoreLive.round(),
           isSixthMan: sixth,
         );
+    // Duel Live bonus zone, decided only by the lineup (never by a server
+    // bonus field): the 6th man is the only bonus seen; an opponent without
+    // one always shows the lock (nothing is given away); my own team without
+    // one shows an empty zone (an unknown value draws nothing).
+    String? bonus;
+    var bonusHidden = false;
+    if (side != _Side.none) {
+      if (sixth.isNotEmpty) {
+        bonus = 'sixth_man';
+      } else if (side == _Side.mine) {
+        bonus = '';
+      } else {
+        bonusHidden = true;
+      }
+    }
     return PlayerScore(
       playerId: 0,
       teamName: teamName,
@@ -599,7 +648,12 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
         for (final p in sixth) toSel(p, sixth: true),
       ],
       jerseyIndex: jersey,
-      isMe: true,
+      isMe: side != _Side.opponent,
+      bonus: bonus,
+      bonusHidden: bonusHidden,
     );
   }
 }
+
+/// Whose team a Live squad is. [none] = the Global League view (no bonus).
+enum _Side { none, mine, opponent }

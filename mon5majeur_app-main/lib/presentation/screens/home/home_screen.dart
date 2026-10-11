@@ -12,6 +12,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../../../core/utils/score_style.dart';
 import '../../../data/models/my_league_model.dart';
 import '../../widgets/match_widgets.dart';
 import '../../widgets/navigation.dart';
@@ -183,85 +184,86 @@ class _HomeScreenState extends State<HomeScreen>
           SafeArea(
             child: Column(
               children: [
-                /// 🔹 Animated Team Logo and Name (API-driven)
-                AnimatedBuilder(
-                  animation: _logoController,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _logoScale.value,
-                      child: Transform.rotate(
-                        angle: _logoRotation.value,
-                        child: Obx(() {
-                          return Column(
-                            children: [
-                              Hero(
-                                tag: AppString.teamLogoTag,
-                                child: Container(
-                                  width: 50.w,
-                                  height: 50.w,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFFFF6B35),
-                                      width: 3.r,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        // color: const Color(
-                                        //   0xFFFF6B35,
-                                        // ).withOpacity(0.5),
-                                        // blurRadius: 20.r,
-                                        // spreadRadius: 2.r,
+                /// 🔹 Animated Team Logo and Name (API-driven) — the
+                /// notification bell and menu sit in the top-right corner of
+                /// this same row (they used to have a row of their own).
+                SizedBox(
+                  width: double.infinity,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                        AnimatedBuilder(
+                          animation: _logoController,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _logoScale.value,
+                              child: Transform.rotate(
+                                angle: _logoRotation.value,
+                                child: Obx(() {
+                                  return Column(
+                                    children: [
+                                      Hero(
+                                        tag: AppString.teamLogoTag,
+                                        child: Container(
+                                          width: 50.w,
+                                          height: 50.w,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: const Color(0xFFFF6B35),
+                                              width: 3.r,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                // color: const Color(
+                                                //   0xFFFF6B35,
+                                                // ).withOpacity(0.5),
+                                                // blurRadius: 20.r,
+                                                // spreadRadius: 2.r,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: homeController.isLoading.value
+                                                ? SizedBox(
+                                                    width: 20.w,
+                                                    height: 20.w,
+                                                    child:
+                                                        const CircularProgressIndicator(
+                                                          color: Color(0xFFFF6B35),
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  )
+                                                : homeController.displayTeamLogo.image(
+                                                    width: 30.w,
+                                                    height: 30.w,
+                                                    fit: BoxFit.contain,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        homeController.displayTeamName,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18.sp,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                  child: Center(
-                                    child: homeController.isLoading.value
-                                        ? SizedBox(
-                                            width: 20.w,
-                                            height: 20.w,
-                                            child:
-                                                const CircularProgressIndicator(
-                                                  color: Color(0xFFFF6B35),
-                                                  strokeWidth: 2,
-                                                ),
-                                          )
-                                        : homeController.displayTeamLogo.image(
-                                            width: 30.w,
-                                            height: 30.w,
-                                            fit: BoxFit.contain,
-                                          ),
-                                  ),
-                                ),
+                                  );
+                                }),
                               ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                homeController.displayTeamName,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      ),
-                    );
-                  },
-                ),
-
-                /// Header Section
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 4.h,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      /// Notification + Menu
-                      Row(
+                            );
+                          },
+                        ),
+                      Positioned(
+                        top: 0,
+                        right: 8.w,
+                        child: SizedBox(
+                          height: 50.w < 44 ? 44 : 50.w,
+                          child: Row(
                         children: [
                           /// Pulsing Notification Icon
                           Builder(
@@ -272,12 +274,24 @@ class _HomeScreenState extends State<HomeScreen>
                                 onTap: () => context.go(
                                   RoutePath.notificationsScreen.addBasePath,
                                 ),
-                                child: AnimatedBuilder(
+                                child: Obx(() {
+                                  // Read here so Obx tracks the unread flag.
+                                  final unread = notifController.hasUnread;
+                                  return AnimatedBuilder(
                                   animation: _pulseAnimation,
                                   builder: (context, child) {
                                     return Transform.scale(
-                                      scale: _pulseAnimation.value,
+                                      // Pulses only while there are unread
+                                      // notifications; fixed otherwise.
+                                      scale: unread
+                                          ? _pulseAnimation.value
+                                          : 1.0,
                                       child: Container(
+                                        constraints: const BoxConstraints(
+                                          minWidth: 44,
+                                          minHeight: 44,
+                                        ),
+                                        alignment: Alignment.center,
                                         padding: EdgeInsets.all(8.r),
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
@@ -286,9 +300,9 @@ class _HomeScreenState extends State<HomeScreen>
                                           clipBehavior: Clip.none,
                                           children: [
                                             Icon(
-                                              Icons.notifications,
-                                              color: Colors.yellow,
-                                              size: 24.r,
+                                              Icons.notifications_none_outlined,
+                                              color: Colors.white,
+                                              size: 26.r,
                                             ),
                                             Obx(
                                               () => notifController
@@ -303,7 +317,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                           shape:
                                                               BoxShape.circle,
                                                           color: Color(
-                                                            0xFFFF3B30,
+                                                            0xFFFF6B35,
                                                           ),
                                                         ),
                                                       ),
@@ -315,22 +329,29 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                     );
                                   },
-                                ),
+                                  );
+                                }),
                               );
                             },
                           ),
-                          SizedBox(width: 12.w),
                           Builder(
                             builder: (context) => GestureDetector(
+                              behavior: HitTestBehavior.opaque,
                               onTap: () => Scaffold.of(context).openEndDrawer(),
-                              child: Icon(
-                                Icons.menu,
-                                color: Colors.white,
-                                size: 28.r,
+                              child: SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Icons.menu,
+                                  color: Colors.white,
+                                  size: 28.r,
+                                ),
                               ),
                             ),
                           ),
                         ],
+                      ),
+                        ),
                       ),
                     ],
                   ),
@@ -622,10 +643,10 @@ class _GlobalLeagueCard extends StatelessWidget {
             }
 
             final selection = controller.globalLeagueSelection.value;
-            // Night score comes from the loaded selection; "—" until available.
-            final nightScore = selection == null
-                ? AppString.noResultPlaceholder.tr
-                : '${selection.lastPublishedPoints} pts';
+            // Night score = last published night (same source as Results); "—" until loaded.
+            final publishedScore = controller.lastPublishedScore.value;
+            final nightScore =
+                publishedScore?.toString() ?? AppString.noResultPlaceholder.tr;
             // Real per-user validated/locked lineup flag from the backend.
             final validated = selection?.lineupSubmitted ?? false;
             final lockInSeconds = selection?.lockInSeconds;
@@ -640,36 +661,34 @@ class _GlobalLeagueCard extends StatelessWidget {
                   children: [
                     /// Left: stats column
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Assets.icons.basketBall.image(
-                                width: 12.r,
-                                height: 12.r,
-                              ),
-                              SizedBox(width: 4.w),
-                              _statLine(
-                                '${AppString.nightScore.tr} $nightScore',
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 6.h),
-                          _statLine(
-                            '${AppString.weekly.tr} #${selection?.weeklyRank ?? AppString.noResultPlaceholder.tr}',
-                          ),
-                          SizedBox(height: 6.h),
-                          _statLine(
-                            '${AppString.monthly.tr} #${selection?.monthlyRank ?? AppString.noResultPlaceholder.tr}',
-                          ),
-                        ],
-                      ),
+                      child: _statsTable([
+                        (
+                          AppString.nightScore.tr,
+                          nightScore,
+                          const Color(0xFFFF6B35),
+                          publishedScore == null ? null : 'pts',
+                          17,
+                        ),
+                        (
+                          AppString.weekly.tr,
+                          _rankText(selection?.weeklyRank),
+                          _rankColor(selection?.weeklyRank),
+                          null,
+                          _rankSize,
+                        ),
+                        (
+                          AppString.monthly.tr,
+                          _rankText(selection?.monthlyRank),
+                          _rankColor(selection?.monthlyRank),
+                          null,
+                          _rankSize,
+                        ),
+                      ]),
                     ),
                     SizedBox(width: 12.w),
 
                     /// Right: team status / CTA
-                    _validationStatus(validated, lockInSeconds),
+                    _TeamStatus(validated: validated, lockInSeconds: lockInSeconds),
                   ],
                 ),
               ],
@@ -680,49 +699,94 @@ class _GlobalLeagueCard extends StatelessWidget {
     );
   }
 
+  static String _rankText(int? rank) =>
+      rank == null ? AppString.noResultPlaceholder.tr : '#$rank';
+
+  // Rank value ("#1") is ~10% smaller than the night score (17).
+  static const double _rankSize = 15.3;
+
+  // Podium colours for the rank ("#" and digit share it): gold, silver,
+  // bronze; white from 4th on and while the rank is still loading.
+  static Color _rankColor(int? rank) {
+    switch (rank) {
+      case 1:
+        return const Color(0xFFFFD54A);
+      case 2:
+        return const Color(0xFFC9D1D9);
+      case 3:
+        return const Color(0xFFCD7F32);
+      default:
+        return Colors.white;
+    }
+  }
+
+  /// Two aligned columns: labels (width of the longest one) and values, all
+  /// sitting on a shared baseline. FittedBox keeps a three-digit score on one
+  /// line on small screens.
+  static Widget _statsTable(
+    List<(String, String, Color, String?, double)> rows,
+  ) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Table(
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          defaultVerticalAlignment: TableCellVerticalAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            for (var i = 0; i < rows.length; i++)
+              TableRow(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(
+                      top: i == 0 ? 0 : 6.h,
+                      right: 10.w,
+                    ),
+                    child: Text(
+                      rows[i].$1,
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(top: i == 0 ? 0 : 6.h),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          rows[i].$2,
+                          style: scoreTextStyle(size: rows[i].$5, color: rows[i].$3),
+                        ),
+                        if (rows[i].$4 != null) ...[
+                          SizedBox(width: 3.w),
+                          Text(
+                            rows[i].$4!,
+                            style: TextStyle(
+                              color: Colors.grey[300],
+                              fontSize: 10.sp,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static Widget _statLine(String text) {
     return Text(
       text,
       style: TextStyle(color: Colors.grey[300], fontSize: 12.sp),
-    );
-  }
-
-  // Right-side team status / CTA — see _homeCardCta for the 4-state logic.
-  static Widget _validationStatus(bool validated, int? lockInSeconds) {
-    final cta = _homeCardCta(validated, lockInSeconds);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8.w,
-              height: 8.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cta.dotColor,
-              ),
-            ),
-            SizedBox(width: 6.w),
-            Text(
-              cta.ctaText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        if (cta.subLabelText != null) ...[
-          SizedBox(height: 2.h),
-          Text(
-            cta.subLabelText!,
-            style: TextStyle(color: Colors.grey, fontSize: 8.sp),
-          ),
-        ],
-      ],
     );
   }
 }
@@ -756,6 +820,79 @@ _HomeCardCta _homeCardCta(bool validated, int? lockInSeconds) {
   return validated
       ? _HomeCardCta(const Color(0xFF22C55E), AppString.editYourFive.tr, subLabel)
       : _HomeCardCta(const Color(0xFFEF4444), AppString.setYourFive.tr, subLabel);
+}
+
+/// Team status shown on the right of both Home league cards: a glowing
+/// ring-and-dot indicator, the status in the scoreboard face and, when there
+/// is one, a lighter grey second line. The state itself comes from
+/// [_homeCardCta]; this only draws it.
+class _TeamStatus extends StatelessWidget {
+  final bool validated;
+  final int? lockInSeconds;
+
+  const _TeamStatus({required this.validated, required this.lockInSeconds});
+
+  @override
+  Widget build(BuildContext context) {
+    final cta = _homeCardCta(validated, lockInSeconds);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dot inside a thin ring of the same colour, with a soft halo.
+            Container(
+              width: 14.w,
+              height: 14.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: cta.dotColor.withValues(alpha: 0.7),
+                  width: 1.w,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: cta.dotColor.withValues(alpha: 0.45),
+                    blurRadius: 6.r,
+                  ),
+                ],
+              ),
+              child: Container(
+                width: 7.w,
+                height: 7.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cta.dotColor,
+                ),
+              ),
+            ),
+            SizedBox(width: 6.w),
+            Flexible(
+              child: Text(
+                cta.ctaText,
+                textAlign: TextAlign.end,
+                style: scoreTextStyle(size: 14, letterSpacing: 0.5),
+              ),
+            ),
+          ],
+        ),
+        if (cta.subLabelText != null) ...[
+          SizedBox(height: 2.h),
+          Text(
+            cta.subLabelText!,
+            textAlign: TextAlign.end,
+            style: scoreTextStyle(
+              size: 10,
+              color: Colors.grey,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 /// Locale-specific clock time for the lock label - FR: "1h30" (24-hour, no
@@ -1021,13 +1158,14 @@ class _AnimatedLeagueCard extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // The league's own logo, left of the name, drawn
-                                // like the "Résultats de la nuit" card; no circle
-                                // and no plain basketball (QA #10 3).
-                                league.getLeagueLogoAsset().image(
-                                  width: 20.r,
-                                  height: 20.r,
-                                  fit: BoxFit.contain,
+                                Padding(
+                                  padding: EdgeInsets.only(top: 2.h),
+                                  // The logo chosen at league creation.
+                                  child: league.getLeagueLogoAsset().image(
+                                    width: 20.r,
+                                    height: 20.r,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                                 SizedBox(width: 8.w),
                                 // Full name, wrapped onto as many lines as it needs
@@ -1046,9 +1184,29 @@ class _AnimatedLeagueCard extends StatelessWidget {
                                 // Validation status (right side) — real
                                 // per-user "5 validated" state + lock
                                 // countdown from the backend.
-                                _leagueValidationStatus(
-                                  league.lineupSubmitted,
-                                  league.lockInSeconds,
+                                // A one-line status (no secondary line) is
+                                // centred on the name's first line instead of
+                                // sitting above it.
+                                Builder(
+                                  builder: (_) {
+                                    final status = _TeamStatus(
+                                      validated: league.lineupSubmitted,
+                                      lockInSeconds: league.lockInSeconds,
+                                    );
+                                    final oneLine = _homeCardCta(
+                                      league.lineupSubmitted,
+                                      league.lockInSeconds,
+                                    ).subLabelText == null;
+                                    return oneLine
+                                        ? SizedBox(
+                                            height: 4.h + 20.r,
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: status,
+                                            ),
+                                          )
+                                        : status;
+                                  },
                                 ),
                               ],
                             ),
@@ -1129,47 +1287,6 @@ class _AnimatedLeagueCard extends StatelessWidget {
       default:
         return '${number}th';
     }
-  }
-
-  // Right-side validation status:
-  // See _homeCardCta for the 4-state logic (shared with the Global League
-  // card above).
-  static Widget _leagueValidationStatus(bool validated, int? lockInSeconds) {
-    final cta = _homeCardCta(validated, lockInSeconds);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8.w,
-              height: 8.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cta.dotColor,
-              ),
-            ),
-            SizedBox(width: 6.w),
-            Text(
-              cta.ctaText,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        if (cta.subLabelText != null) ...[
-          SizedBox(height: 2.h),
-          Text(
-            cta.subLabelText!,
-            style: TextStyle(color: Colors.grey, fontSize: 8.sp),
-          ),
-        ],
-      ],
-    );
   }
 
   // Thin vertical separator between info-row items.

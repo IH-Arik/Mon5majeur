@@ -253,7 +253,6 @@ class HomeController extends GetxController {
                 userRank: league.rank,
                 matchday: league.currentMatchDay,
                 week: league.currentWeek,
-                season: 'Regular Season',
                 isPrivate: isPrivate,
               ),
             )

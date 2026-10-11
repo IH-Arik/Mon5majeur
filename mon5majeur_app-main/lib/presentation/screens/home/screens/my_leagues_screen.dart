@@ -342,7 +342,7 @@ class LeagueCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // The league's logo left of the name, no circle (QA #10 3).
+                      // The logo chosen at league creation.
                       league.getLeagueLogoAsset().image(
                         width: 20.r,
                         height: 20.r,

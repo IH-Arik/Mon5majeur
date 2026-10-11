@@ -9,6 +9,15 @@ import 'package:mon5majeur_app/core/constants/app_strings.dart';
 import '../../../../data/models/standings_model.dart';
 import '../controllers/leaderboard_controller.dart';
 
+// Playoff-spot accents: the app's orange (the one of this screen's spinner),
+// softened on large surfaces. Tune the opacities here.
+const Color _playoffAccent = Color(0xFFFF6B35);
+const double _spotRowBorderOpacity = 0.35;
+const double _bannerFillOpacity = 0.14;
+const double _bannerBorderOpacity = 0.5;
+const double _bannerTextOpacity = 0.9; // off-white
+const Color _cardColor = Color(0xFF1A1A1A);
+
 class RegularSeasonView extends StatelessWidget {
   final LeaderboardController controller;
 
@@ -107,11 +116,11 @@ class RegularSeasonView extends StatelessWidget {
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
+        color: _cardColor,
         borderRadius: BorderRadius.circular(8.r),
         border: Border.all(
           color: team.isPlayoffSpot
-              ? const Color(0xFF007EF3)
+              ? _playoffAccent.withValues(alpha: _spotRowBorderOpacity)
               : const Color(0xFF2C2C2C),
           width: 1.r,
         ),
@@ -225,10 +234,18 @@ class RegularSeasonView extends StatelessWidget {
 
   Widget _buildPlayoffInfo(int playoffSpots) {
     return Container(
-      padding: EdgeInsets.all(16.w),
+      // The border takes 1.r inside the box: less padding keeps the same size.
+      padding: EdgeInsets.all(16.w - 1.r),
       decoration: BoxDecoration(
-        color: const Color(0xFF007EF3),
+        color: Color.alphaBlend(
+          _playoffAccent.withValues(alpha: _bannerFillOpacity),
+          _cardColor,
+        ),
         borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(
+          color: _playoffAccent.withValues(alpha: _bannerBorderOpacity),
+          width: 1.r,
+        ),
       ),
       child: Row(
         children: [
@@ -237,7 +254,7 @@ class RegularSeasonView extends StatelessWidget {
             child: Text(
               AppString.top4Playoff.tr,
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.white.withValues(alpha: _bannerTextOpacity),
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w500,
               ),

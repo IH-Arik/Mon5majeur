@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/local_db/local_db.dart';
+import '../../../../core/utils/logo_assets.dart';
 import '../../../../data/models/playoff_bracket_model.dart';
 import '../../../widgets/match_widgets.dart';
 
@@ -198,14 +199,22 @@ class SeriesDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    series.teamAName,
-                    softWrap: true,
-                    style: TextStyle(
-                      color: const Color(0xFFAAAAAA),
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    children: [
+                      logoAsset(series.teamALogo).image(width: 16.w, height: 16.w),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          series.teamAName,
+                          softWrap: true,
+                          style: TextStyle(
+                            color: const Color(0xFFAAAAAA),
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(
@@ -227,15 +236,23 @@ class SeriesDialog extends StatelessWidget {
                               )),
                 ),
                 Expanded(
-                  child: Text(
-                    series.teamBName,
-                    textAlign: TextAlign.right,
-                    softWrap: true,
-                    style: TextStyle(
-                      color: const Color(0xFFAAAAAA),
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          series.teamBName,
+                          textAlign: TextAlign.right,
+                          softWrap: true,
+                          style: TextStyle(
+                            color: const Color(0xFFAAAAAA),
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      logoAsset(series.teamBLogo).image(width: 16.w, height: 16.w),
+                    ],
                   ),
                 ),
                 if (tappable)
