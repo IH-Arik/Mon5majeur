@@ -34,6 +34,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import tempfile
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -163,7 +164,8 @@ async def merge(apply: bool) -> None:
         return
 
     # Backup first: every document about to change, on disk before any write.
-    out = Path(f"qa12_merge_backup_{datetime.now():%Y%m%d_%H%M%S}.json")
+    # The container runs as a non-root user: /tmp is always writable there.
+    out = Path(tempfile.gettempdir()) / f"qa12_merge_backup_{datetime.now():%Y%m%d_%H%M%S}.json"
     backup = []
     for item in plan:
         pid = [str(item["old"].id)]
