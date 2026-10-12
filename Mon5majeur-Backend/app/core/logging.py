@@ -18,6 +18,11 @@ def configure_logging() -> None:
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
+    # httpx logs every request URL at INFO, and the Goalserve feed URL carries
+    # the API key: never let it reach the logs, whatever the log level.
+    for leaky in ("httpx", "httpcore"):
+        logging.getLogger(leaky).setLevel(logging.WARNING)
+
     # Silence noisy third-party loggers in production
     if not settings.DEBUG:
         for noisy in ("uvicorn.access", "sqlalchemy.engine"):

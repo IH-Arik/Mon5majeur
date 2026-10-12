@@ -25,6 +25,11 @@ PARIS_TZ = "Europe/Paris"
 #
 # Exposed as a function so the schedule can be asserted on without starting
 # the scheduler.
+# The nightly close jobs are idempotent and must not be lost when the scheduler
+# restarts a little after their slot (QA #12: a restart at 09:19 skipped the
+# 09:00 close): they still run, once, up to this long after their time.
+_CLOSE_GRACE_SECONDS = 3 * 3600
+
 LIVE_POLL_HOURS = "19-23,0-9"
 LIVE_POLL_MINUTES = "*"
 
@@ -90,7 +95,7 @@ def start_scheduler() -> None:
         CronTrigger(hour=8, minute=30, timezone=PARIS_TZ),
         id="prepare_night",
         replace_existing=True,
-        misfire_grace_time=300,
+        misfire_grace_time=_CLOSE_GRACE_SECONDS,
         max_instances=1,
     )
 
@@ -100,7 +105,7 @@ def start_scheduler() -> None:
         CronTrigger(hour=9, minute=0, timezone=PARIS_TZ),
         id="daily_close",
         replace_existing=True,
-        misfire_grace_time=300,
+        misfire_grace_time=_CLOSE_GRACE_SECONDS,
     )
 
     # 09:05 Paris — weekly Top-8 / monthly winner rewards (after daily_close archives scores)
@@ -109,7 +114,7 @@ def start_scheduler() -> None:
         CronTrigger(hour=9, minute=5, timezone=PARIS_TZ),
         id="weekly_monthly_rewards",
         replace_existing=True,
-        misfire_grace_time=300,
+        misfire_grace_time=_CLOSE_GRACE_SECONDS,
     )
 
     # 09:10 Paris — delete leagues the creator never started within 7 days
