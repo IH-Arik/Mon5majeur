@@ -617,6 +617,7 @@ class FrenchTranslation {
     AppString.seriesChampion: "Champion",
     AppString.noGamesInSeriesYet: "Aucun match joué pour l'instant",
     AppString.matchDetailTitle: "Détail du match",
+    AppString.matchDetailNotFound: "Match introuvable",
     AppString.liveTabLabel: "Live",
     AppString.semifinalRound: "Demi-finale",
     AppString.finalRound: "Finale",

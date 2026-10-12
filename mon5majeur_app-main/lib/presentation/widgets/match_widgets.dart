@@ -33,11 +33,15 @@ void openMatchDetail(
   required int matchDay,
   bool isPrivate = true,
   String? matchObjectId,
+  int? teamAId,
+  int? teamBId,
 }) {
   final query = StringBuffer(
     'leagueId=$leagueId&matchDay=$matchDay&isPrivate=$isPrivate',
   );
   if (matchObjectId != null) query.write('&matchObjectId=$matchObjectId');
+  if (teamAId != null) query.write('&teamA=$teamAId');
+  if (teamBId != null) query.write('&teamB=$teamBId');
   context.push('${RoutePath.matchDetailScreen.addBasePath}?$query');
 }
 
