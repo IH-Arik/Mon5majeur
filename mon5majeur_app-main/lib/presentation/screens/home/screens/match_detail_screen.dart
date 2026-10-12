@@ -231,7 +231,12 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
               ],
             ),
           ),
-          MatchLineupsField(teamA: a, teamB: b, scoresHidden: hidden),
+          MatchLineupsField(
+            teamA: a,
+            teamB: b,
+            scoresHidden: hidden,
+            matchFinished: result.status == 'completed',
+          ),
           SizedBox(height: 24.h),
         ],
       ),

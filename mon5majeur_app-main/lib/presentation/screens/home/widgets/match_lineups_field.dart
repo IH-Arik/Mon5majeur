@@ -34,6 +34,10 @@ class MatchLineupsField extends StatelessWidget {
   // (left column = [teamA], right = [teamB], like the match card above).
   // False everywhere else, so no other screen changes.
   final bool duelResultStyle;
+  // The match is over: a side with no lineup then means the player never set
+  // one, not that the match is waiting for it. False everywhere else, so the
+  // Live and the Global League keep the "not ready" wording.
+  final bool matchFinished;
 
   const MatchLineupsField({
     super.key,
@@ -43,6 +47,7 @@ class MatchLineupsField extends StatelessWidget {
     this.showOpponent = true,
     this.globalResultStyle = false,
     this.duelResultStyle = false,
+    this.matchFinished = false,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -110,7 +115,9 @@ class MatchLineupsField extends StatelessWidget {
             if (aPlayers.isEmpty && bPlayers.isEmpty && !aHidden && !bHidden)
               Positioned.fill(
                 child: Center(
-                  child: globalResultStyle ? _noTeamCard() : _notReadyCard(),
+                  child: globalResultStyle
+                      ? _noTeamCard()
+                      : (matchFinished ? _noLineupCard() : _notReadyCard()),
                 ),
               ),
 
@@ -395,6 +402,12 @@ class MatchLineupsField extends StatelessWidget {
         AppString.teamsNotReadyDesc.tr,
       );
 
+  // Finished duel where neither player set a lineup.
+  Widget _noLineupCard() => _messageCard(
+        AppString.noLineupTitle.tr,
+        AppString.noLineupDesc.tr,
+      );
+
   // Global League: the server confirmed the night but no lineup was played.
   Widget _noTeamCard() => _messageCard(
         AppString.globalNoTeamTitle.tr,
@@ -485,7 +498,10 @@ class MatchLineupsField extends StatelessWidget {
             borderRadius: BorderRadius.circular(8.r),
           ),
           child: Text(
-            AppString.teamNotReadyTemplate.trParams({'name': name}),
+            (matchFinished
+                    ? AppString.playerNoLineupTemplate
+                    : AppString.teamNotReadyTemplate)
+                .trParams({'name': name}),
             style: TextStyle(
               color: Colors.white,
               fontSize: 14.sp,

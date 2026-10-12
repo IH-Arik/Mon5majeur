@@ -728,6 +728,9 @@ class AppString {
   static const String noGamesInSeriesYet = 'noGamesInSeriesYet';
   static const String matchDetailTitle = 'matchDetailTitle';
   static const String matchDetailNotFound = 'matchDetailNotFound';
+  static const String noLineupTitle = 'noLineupTitle';
+  static const String noLineupDesc = 'noLineupDesc';
+  static const String playerNoLineupTemplate = 'playerNoLineupTemplate';
   static const String liveTabLabel = 'liveTabLabel';
   static const String semifinalRound = 'semifinalRound';
   static const String finalRound = 'finalRound';
