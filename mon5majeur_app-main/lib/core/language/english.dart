@@ -605,6 +605,7 @@ class EnglishTranslation {
     AppString.seriesChampion: "Champion",
     AppString.noGamesInSeriesYet: "No games played yet",
     AppString.matchDetailTitle: "Match detail",
+    AppString.matchDetailNotFound: "Match not found",
     AppString.liveTabLabel: "Live",
     AppString.semifinalRound: "Semifinal",
     AppString.finalRound: "Final",

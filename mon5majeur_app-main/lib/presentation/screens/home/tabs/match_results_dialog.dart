@@ -151,6 +151,8 @@ class SeriesDialog extends StatelessWidget {
                 leagueId: leagueId,
                 matchDay: g.matchDay!,
                 isPrivate: isPrivate,
+                teamAId: series.teamAId,
+                teamBId: series.teamBId,
               );
             }
           : null,

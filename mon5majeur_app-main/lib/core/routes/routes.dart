@@ -349,6 +349,8 @@ class AppRouter {
             matchDay: int.tryParse(q['matchDay'] ?? '') ?? 1,
             isPrivate: q['isPrivate'] != 'false',
             matchObjectId: q['matchObjectId'],
+            teamAId: int.tryParse(q['teamA'] ?? ''),
+            teamBId: int.tryParse(q['teamB'] ?? ''),
           );
         },
       ),

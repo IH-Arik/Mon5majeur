@@ -24,6 +24,10 @@ class MatchDetailScreen extends StatefulWidget {
   final int matchDay;
   final bool isPrivate;
   final String? matchObjectId;
+  // The two teams of the tapped match, used to pick the right duel of the day
+  // when no match id is known (playoff series popup).
+  final int? teamAId;
+  final int? teamBId;
 
   const MatchDetailScreen({
     super.key,
@@ -31,6 +35,8 @@ class MatchDetailScreen extends StatefulWidget {
     required this.matchDay,
     this.isPrivate = true,
     this.matchObjectId,
+    this.teamAId,
+    this.teamBId,
   });
 
   @override
@@ -66,16 +72,12 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     }
   }
 
-  MatchPair? get _pair {
-    final r = _result;
-    if (r == null || r.pairs.isEmpty) return null;
-    final id = widget.matchObjectId;
-    if (id != null) {
-      final hit = r.pairs.where((p) => p.matchObjectId == id);
-      if (hit.isNotEmpty) return hit.first;
-    }
-    return r.pairs.first;
-  }
+  MatchPair? get _pair => pickMatchPair(
+        _result?.pairs ?? const [],
+        matchObjectId: widget.matchObjectId,
+        teamAId: widget.teamAId,
+        teamBId: widget.teamBId,
+      );
 
   PlayerScore? _scoreOf(int playerId) {
     return _result?.playerScores.firstWhereOrNull((s) => s.playerId == playerId);
@@ -133,7 +135,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     if (result == null || pair == null) {
       return Center(
         child: Text(
-          AppString.noMatchesToday.tr,
+          AppString.matchDetailNotFound.tr,
           style: TextStyle(color: Colors.white54, fontSize: 14.sp),
         ),
       );
@@ -235,4 +237,24 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
       ),
     );
   }
+}
+
+/// The duel to show: the one with [matchObjectId] when known, otherwise the one
+/// opposing [teamAId] and [teamBId] (either order). Never falls back to an
+/// arbitrary duel of the day — two duels share a match day.
+MatchPair? pickMatchPair(
+  List<MatchPair> pairs, {
+  String? matchObjectId,
+  int? teamAId,
+  int? teamBId,
+}) {
+  if (matchObjectId != null) {
+    return pairs.firstWhereOrNull((p) => p.matchObjectId == matchObjectId);
+  }
+  if (teamAId == null || teamBId == null) return null;
+  return pairs.firstWhereOrNull(
+    (p) =>
+        (p.playerAId == teamAId && p.playerBId == teamBId) ||
+        (p.playerAId == teamBId && p.playerBId == teamAId),
+  );
 }
