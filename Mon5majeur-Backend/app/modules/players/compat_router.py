@@ -284,7 +284,7 @@ async def players_today_scores(
         PlayerGameStats.nba_date == today,
         PlayerGameStats.did_not_play == False,
         PlayerGameStats.score_computed == True,
-    ).sort(-PlayerGameStats.fantasy_score).to_list()
+    ).to_list()
 
     if not stats:
         return PlayersTodayScoresResponse(results=[])
@@ -306,6 +306,9 @@ async def players_today_scores(
             score=round(s.fantasy_score or 0),
         ))
 
+    # Complete list, score descending; ties broken by name then id so every
+    # refresh returns the same order (QA #12 item 5).
+    items.sort(key=lambda i: (-i.score, i.name.lower(), i.id))
     return PlayersTodayScoresResponse(results=items)
 
 

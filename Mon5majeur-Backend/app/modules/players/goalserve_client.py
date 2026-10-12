@@ -38,16 +38,26 @@ _BASE = "https://www.goalserve.com/getfeed"
 # recognized falls through to "live" — deliberately, since the unrecognized
 # case in practice is always some in-progress clock state ("1st Quarter",
 # "Halftime", "OT", etc.), never a pre-game or truly-finished state.
-_FINAL_STATUSES = {"final", "final ot", "finished", "ft"}
+_FINAL_STATUSES = {
+    "final", "final ot", "finished", "ft", "ended", "completed", "closed",
+    "after over time", "after ot", "after overtime", "aot",
+}
 _SCHEDULED_STATUSES = {"not started", "postponed", "scheduled"}
+# In-progress clock states we know about (anything else is logged once).
+_LIVE_HINTS = ("quarter", "halftime", "half time", "ot", "overtime", "break", "q1", "q2", "q3", "q4")
 
 
 def _status_of(raw: str) -> str:
-    s = (raw or "").strip().lower()
-    if s in _FINAL_STATUSES:
+    """Every end-of-game status is "final", overtime included (QA #12 item 1):
+    Goalserve ends an overtime game with "After Over Time" / "After 2nd OT",
+    which used to read as "live" forever and blocked the scoring."""
+    s = " ".join((raw or "").strip().lower().replace("/", " ").split())
+    if s in _FINAL_STATUSES or s.startswith("final") or s.startswith("after"):
         return "final"
     if s in _SCHEDULED_STATUSES:
         return "scheduled"
+    if s and not any(h in s for h in _LIVE_HINTS) and not s[0].isdigit():
+        logger.warning("Unknown Goalserve game status %r treated as live", raw)
     return "live"
 
 

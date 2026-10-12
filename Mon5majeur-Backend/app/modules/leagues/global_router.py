@@ -107,11 +107,7 @@ async def _lock_info(user_id: PydanticObjectId, league: League) -> tuple[bool, i
     locked, >0 = seconds until lock."""
     today = await _nba_today()
 
-    submitted = await FlutterPlayerSelection.find_one({
-        "user_id": user_id,
-        "league_auto_id": league.auto_id,
-        "match_day": league.current_match_day,
-    }) is not None
+    submitted = await _tonight_selection(league, user_id) is not None
 
     earliest_game = await NBAGame.find(
         NBAGame.nba_date == today,
@@ -333,6 +329,33 @@ async def _global_selection_items(
     return items
 
 
+async def _tonight_selection(
+    league: League, user_id: PydanticObjectId
+) -> FlutterPlayerSelection | None:
+    """The user's lineup for the night being composed, or None.
+
+    Matched on the night it was stamped for, not only on the match day, so a
+    past night's lineup is never shown as tonight's (QA #12 item 4: after 9:00
+    the court is empty and the home card says "Compose ton 5"). Rows written
+    before the stamp existed (nba_date None) keep matching on the match day."""
+    night = await _nba_today()
+    doc = await FlutterPlayerSelection.find_one(
+        FlutterPlayerSelection.user_id == user_id,
+        FlutterPlayerSelection.league_auto_id == (league.auto_id or 0),
+        FlutterPlayerSelection.nba_date == night,
+    )
+    if doc:
+        return doc
+    legacy = await FlutterPlayerSelection.find_one(
+        FlutterPlayerSelection.user_id == user_id,
+        FlutterPlayerSelection.league_auto_id == (league.auto_id or 0),
+        FlutterPlayerSelection.match_day == league.current_match_day,
+    )
+    if legacy and legacy.nba_date is None:
+        return legacy
+    return None
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get(
@@ -345,11 +368,7 @@ async def get_global_selection(
 ) -> GlobalLeagueSelectionResponse:
     league = await _get_global_league()
 
-    doc = await FlutterPlayerSelection.find_one({
-        "user_id": current_user.id,
-        "league_auto_id": league.auto_id,
-        "match_day": league.current_match_day,
-    })
+    doc = await _tonight_selection(league, current_user.id)
 
     if not doc:
         return await _build_response(league, [], current_user.id)
@@ -380,16 +399,23 @@ async def post_global_selection(
     if payload.luxury_tax or payload.chef_curry or payload.sixth_man_player is not None:
         raise ForbiddenException("Bonuses are not available in the Global League")
 
-    doc = await FlutterPlayerSelection.find_one({
-        "user_id": current_user.id,
-        "league_auto_id": league.auto_id,
-        "match_day": league.current_match_day,
-    })
-
     # The Global League has no LeagueMatch rows to read a night from, so the
     # night is the NBA date currently in play — the same one the lock
     # countdown above is computed against, keeping the two consistent.
     night = await _nba_today()
+
+    doc = await _tonight_selection(league, current_user.id)
+    if doc is None:
+        taken = await FlutterPlayerSelection.find_one(
+            FlutterPlayerSelection.user_id == current_user.id,
+            FlutterPlayerSelection.league_auto_id == (league.auto_id or 0),
+            FlutterPlayerSelection.match_day == league.current_match_day,
+        )
+        if taken:
+            # The 9:00 close did not move the match day: do it now rather than
+            # overwrite the lineup of a night already played.
+            league.current_match_day += 1
+            await league.save()
 
     # Same checks as the duel leagues (5 distinct players, 2-2-1 positions,
     # each plays tonight and is not OUT). With no game scheduled tonight there

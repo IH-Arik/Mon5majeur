@@ -334,8 +334,9 @@ class PlayerService:
         feed available on this account — see goalserve_client.py) — on a
         match, backfills that Player's goalserve_id/team_goalserve_id from
         this NBA-CDN-sourced legacy value to Goalserve's own IDs so future
-        lookups are a direct id match; unmatched players get a new minimal
-        Player record."""
+        lookups are a direct id match; unmatched players are logged and
+        skipped (QA #12: an import never creates a player)."""
+        self._name_index = None  # rebuilt once per sync
         from app.modules.players.goalserve_client import fetch_scores_for_date
 
         try:
@@ -421,37 +422,56 @@ class PlayerService:
         return count
 
     async def _resolve_goalserve_player(self, p: dict) -> Player | None:
-        """Match a Goalserve box-score player entry to our Player collection
-        by full name — the only identity signal we have without a roster
-        feed. On match, backfill goalserve_id/team_goalserve_id (still
-        holding NBA-CDN-era values) to Goalserve's own IDs. No match creates
-        a new minimal Player record from the box-score data alone."""
-        full_name = p["full_name"].strip()
-        if not full_name:
-            return None
+        """Match a Goalserve box-score player entry to our Player collection.
 
-        player = await Player.find_one(Player.full_name == full_name)
+        The Goalserve id comes first, never the name alone (QA #12 item 2).
+        Fallback: the normalized name (no accents, punctuation or Jr/Sr suffix,
+        lowercase), preferring the record that has a team. A stats import never
+        creates a player: an unknown one is logged and skipped, so "Hugo
+        Gonzalez" can no longer shadow "Hugo González"."""
+        gs_id = p["goalserve_player_id"]
+        player = await Player.find_one(Player.goalserve_id == gs_id)
         if player:
-            if player.goalserve_id != p["goalserve_player_id"] or player.team_goalserve_id != p["team_goalserve_id"]:
-                player.goalserve_id = p["goalserve_player_id"]
+            if p["team_goalserve_id"] and player.team_goalserve_id != p["team_goalserve_id"]:
                 player.team_goalserve_id = p["team_goalserve_id"]
                 await player.save()
             return player
 
-        name_parts = full_name.split(" ", 1)
-        try:
-            return await Player(
-                goalserve_id=p["goalserve_player_id"],
-                first_name=name_parts[0],
-                last_name=name_parts[1] if len(name_parts) > 1 else "",
-                full_name=full_name,
-                position=p["position"] or None,
-                team_goalserve_id=p["team_goalserve_id"],
-            ).insert()
-        except Exception as exc:
-            # goalserve_id is unique — a race with another sync could collide
-            logger.warning("Could not create new Player for %s: %s", full_name, exc)
-            return await Player.find_one(Player.goalserve_id == p["goalserve_player_id"])
+        full_name = p["full_name"].strip()
+        if not full_name:
+            return None
+
+        from app.modules.players.espn_roster import normalize_name
+
+        key = normalize_name(full_name)
+        cache = getattr(self, "_name_index", None)
+        if cache is None:
+            cache = self._name_index = {}
+            for q in await Player.find_all().to_list():
+                cache.setdefault(normalize_name(q.full_name), []).append(q)
+        candidates = cache.get(key, [])
+        # The real record: it has a team; nameless copies made by older
+        # imports come last.
+        candidates = sorted(candidates, key=lambda q: not q.team_name)
+        for player in candidates:
+            if player.goalserve_id.startswith("espn:") or not player.team_name:
+                try:
+                    player.goalserve_id = gs_id
+                    player.team_goalserve_id = p["team_goalserve_id"]
+                    await player.save()
+                except Exception as exc:
+                    logger.warning("Could not link %s to Goalserve id %s: %s", full_name, gs_id, exc)
+                    continue
+                return player
+            # Already linked to another Goalserve id: same person, different id
+            # (a trade or an older import). Use it as is, never overwrite.
+            return player
+
+        logger.warning(
+            "Goalserve player %s (%s) matches no known player: skipped, not created",
+            full_name, gs_id,
+        )
+        return None
 
     # ------------------------------------------------------------------
     # Scoring: compute fantasy scores for a game (called after final)

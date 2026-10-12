@@ -57,6 +57,11 @@ async def archive_daily_scores(nba_date: date) -> int:
         FlutterPlayerSelection.nba_date == nba_date,
     ).to_list()
 
+    first_archive = await GlobalLeagueDailyScore.find_one(
+        GlobalLeagueDailyScore.league_id == league.id,
+        GlobalLeagueDailyScore.nba_date == nba_date,
+    ) is None
+
     count = 0
     for sel in selections:
         score = await _score_selection(sel.selected_players, nba_date)
@@ -79,6 +84,14 @@ async def archive_daily_scores(nba_date: date) -> int:
         count += 1
 
     logger.info("Archived %d Global League daily scores for %s", count, nba_date)
+    # The Global League has no LeagueMatch rows, so the duel close never moves
+    # its match day, and GET players-selection kept returning the previous
+    # night's team after 9:00 (QA #12 item 4). Advance once per night: only the
+    # run that creates the night's first scores, so a re-run does not skip a day.
+    if first_archive and count > 0:
+        league.current_match_day += 1
+        await league.save()
+        logger.info("Global League moved to match day %d", league.current_match_day)
     # A new night is published: cached rankings and night results are stale.
     try:
         from app.modules.leagues import global_router
