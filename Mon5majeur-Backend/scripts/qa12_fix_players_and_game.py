@@ -245,11 +245,12 @@ async def game(game_id: str, apply: bool) -> None:
     if not apply:
         print("dry run: would set status=final and stamp those rows")
         return
+    from app.modules.players.repository import PlayerRepository
     from app.modules.players.service import PlayerService
 
     g.status = "final"
     await g.save()
-    count = await PlayerService().finalize_game_scores(game_id)
+    count = await PlayerService(PlayerRepository()).finalize_game_scores(game_id)
     print("stamped", count, "rows")
     print(f"next: archive_daily_scores({g.nba_date}) and run_daily_close({g.nba_date}) for the duels")
 
