@@ -442,6 +442,8 @@ class _ResultTabState extends State<ResultTab> {
                         scoresHidden:
                             controller.matchResult.value?.scoresHidden ?? false,
                         duelResultStyle: true,
+                        matchFinished:
+                            controller.matchResult.value?.status == 'completed',
                       )
                 : SizedBox.shrink(),
           ),
