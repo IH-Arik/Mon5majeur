@@ -5,6 +5,7 @@ dry-run output.
     python scripts/qa12_fix_players_and_game.py merge                 # list the groups
     python scripts/qa12_fix_players_and_game.py merge --apply         # merge them
     python scripts/qa12_fix_players_and_game.py hide "Anthony Edwards" ...   # mask dormant twins
+    python scripts/qa12_fix_players_and_game.py recompute 2026-10-10 ...   # duels, standings, Global archive
     python scripts/qa12_fix_players_and_game.py game 329138           # show the plan
     python scripts/qa12_fix_players_and_game.py game 329138 --apply   # finalize it
 
@@ -129,14 +130,23 @@ async def merge(apply: bool) -> None:
         for old in others:
             stats = await PlayerGameStats.find(PlayerGameStats.player_id == old.id).to_list()
             clash = {s.goalserve_game_id for s in stats} & kept_games
-            if clash:
-                print(f"SKIP  {key}: '{old.full_name}' shares games {sorted(clash)} with the kept record")
+            real_clash = {g for g in clash if not str(g).startswith("qa_")}
+            if real_clash:
+                print(f"SKIP  {key}: '{old.full_name}' shares games {sorted(real_clash)} with the kept record")
                 continue
+            # QA test games (qa_fresh_N): the copy on the old record is dropped.
+            dropped = [s for s in stats if s.goalserve_game_id in clash]
+            stats = [s for s in stats if s.goalserve_game_id not in clash]
             kept_games |= {s.goalserve_game_id for s in stats}
-            newest = max(stats, key=lambda s: s.nba_date) if stats else None
-            plan.append({"key": key, "old": old, "kept": kept, "stats": stats,
-                         "usage": usage[old.id], "take_gid": bool(newest)})
+            kept_stats = await PlayerGameStats.find(PlayerGameStats.player_id == kept.id).to_list()
+            candidates = [s for s in stats + kept_stats if not str(s.goalserve_game_id).startswith("qa_")]
+            newest = max(candidates, key=lambda s: s.nba_date) if candidates else None
+            plan.append({"key": key, "old": old, "kept": kept, "stats": stats, "dropped": dropped,
+                         "usage": usage[old.id],
+                         "gid": newest.goalserve_player_id if newest else None})
             nights.update(s.nba_date for s in stats)
+            if dropped:
+                print(f"      ({len(dropped)} QA test stat row(s) {sorted(clash)} dropped from the old record)")
             print(
                 f"MERGE {key}: '{old.full_name}' (gid={old.goalserve_id}, team={old.team_name}, "
                 f"active={old.is_active}, stats={usage[old.id][0]}, lineups={usage[old.id][1]}, "
@@ -164,6 +174,7 @@ async def merge(apply: bool) -> None:
             "old": json.loads(item["old"].model_dump_json()),
             "kept_before": json.loads(item["kept"].model_dump_json()),
             "stat_ids": [str(s.id) for s in item["stats"]],
+            "dropped_stats": [json.loads(s.model_dump_json()) for s in item["dropped"]],
             "selection_ids": [str(s.id) for s in sels],
             "selections_before": [json.loads(s.model_dump_json()) for s in sels],
         })
@@ -172,16 +183,26 @@ async def merge(apply: bool) -> None:
 
     for item in plan:
         old, kept, stats = item["old"], item["kept"], item["stats"]
-        new_gid, new_team_gid = old.goalserve_id, old.team_goalserve_id
         moved = await _repoint(old, kept)
+        old_team_gid = old.team_goalserve_id
         await old.delete()  # frees the unique goalserve_id
+        for s in item["dropped"]:
+            await s.delete()
         for s in stats:
             s.player_id = kept.id
             await s.save()
-        if item["take_gid"]:
-            kept.goalserve_id = new_gid
-            if new_team_gid:
-                kept.team_goalserve_id = new_team_gid
+        # The Goalserve id the real box scores carry (read from the newest real
+        # stat row, never from a legacy placeholder id), so the next import
+        # lands on the kept record.
+        gid = item["gid"]
+        if gid and gid != kept.goalserve_id:
+            holder = await Player.find_one(Player.goalserve_id == gid)
+            if holder is None:
+                kept.goalserve_id = gid
+                if old_team_gid:
+                    kept.team_goalserve_id = old_team_gid
+            else:
+                print(f"   warning: id {gid} is held by another record, not changed")
         if not kept.is_active:
             kept.is_active = True
         await kept.save()
@@ -231,6 +252,70 @@ async def game(game_id: str, apply: bool) -> None:
     print(f"next: archive_daily_scores({g.nba_date}) and run_daily_close({g.nba_date}) for the duels")
 
 
+async def _duel_scores(league, match, night):
+    from app.modules.leagues.selection_service import score_full_selection
+
+    async def one(uid):
+        sel = await FlutterPlayerSelection.find_one(
+            FlutterPlayerSelection.user_id == uid,
+            FlutterPlayerSelection.league_auto_id == league.auto_id,
+            FlutterPlayerSelection.match_day == match.match_day,
+        )
+        return await score_full_selection(sel, night) if sel else 0.0
+
+    return await one(match.home_user_id), await one(match.away_user_id)
+
+
+async def recompute(nights: list[str], apply: bool) -> None:
+    """Re-score the duels, standings and Global archive of the given nights
+    (run once, after the merge and the game fix). Every step is idempotent: the
+    duel scores are overwritten, the standings are rebuilt from the completed
+    matches, the Global archive is an upsert."""
+    from datetime import date as _date
+
+    from app.modules.leagues.engine import score_match_day, update_standings
+    from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
+    from app.modules.leagues.global_score_service import _score_selection, archive_daily_scores
+    from app.modules.leagues.model import League, LeagueMatch
+
+    touched: set = set()
+    for text in nights:
+        night = _date.fromisoformat(text)
+        print(f"== {night}")
+        matches = await LeagueMatch.find(LeagueMatch.nba_date == night).to_list()
+        days = {(m.league_id, m.match_day) for m in matches}
+        for league_id, md in sorted(days, key=lambda t: (str(t[0]), t[1])):
+            league = await League.get(league_id)
+            if not league:
+                continue
+            for m in [m for m in matches if m.league_id == league_id and m.match_day == md]:
+                new_h, new_a = await _duel_scores(league, m, night)
+                flag = "" if (new_h, new_a) == (m.home_score, m.away_score) else "   <-- changes"
+                print(f"  league {league.auto_id} md {md}: {m.home_score}-{m.away_score} -> {new_h}-{new_a}{flag}")
+            if apply:
+                await score_match_day(league_id, md, night)
+            touched.add(league_id)
+        global_rows = await GlobalLeagueDailyScore.find(GlobalLeagueDailyScore.nba_date == night).to_list()
+        changed = 0
+        for row in global_rows:
+            sel = await FlutterPlayerSelection.find_one(
+                FlutterPlayerSelection.user_id == row.user_id,
+                FlutterPlayerSelection.nba_date == night,
+            )
+            new = await _score_selection(sel.selected_players, night) if sel else row.total_points
+            if round(new, 2) != round(row.total_points, 2):
+                changed += 1
+        print(f"  Global archive: {len(global_rows)} rows, {changed} would change")
+        if apply:
+            await archive_daily_scores(night)
+    if apply:
+        for league_id in touched:
+            await update_standings(league_id)
+        print("standings rebuilt for", len(touched), "leagues")
+    else:
+        print("dry run: nothing written")
+
+
 async def main() -> None:
     args = sys.argv[1:]
     apply = "--apply" in args
@@ -240,6 +325,8 @@ async def main() -> None:
         await merge(apply)
     elif len(args) >= 2 and args[0] == "hide":
         await hide(args[1:], apply)
+    elif len(args) >= 2 and args[0] == "recompute":
+        await recompute(args[1:], apply)
     elif len(args) == 2 and args[0] == "game":
         await game(args[1], apply)
     else:
