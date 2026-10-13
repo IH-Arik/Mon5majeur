@@ -6,6 +6,8 @@ Timezone for all cron triggers: Europe/Paris
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -25,9 +27,9 @@ PARIS_TZ = "Europe/Paris"
 #
 # Exposed as a function so the schedule can be asserted on without starting
 # the scheduler.
-# The nightly close jobs are idempotent and must not be lost when the scheduler
-# restarts a little after their slot (QA #12: a restart at 09:19 skipped the
-# 09:00 close): they still run, once, up to this long after their time.
+# Window after 09:00 Paris in which a late scheduler start still runs the daily
+# close (see _schedule_close_catch_up), and the misfire grace of the close jobs
+# if the process itself was stalled past their slot.
 _CLOSE_GRACE_SECONDS = 3 * 3600
 
 LIVE_POLL_HOURS = "19-23,0-9"
@@ -45,6 +47,29 @@ def get_scheduler() -> AsyncIOScheduler:
     if _scheduler is None:
         _scheduler = AsyncIOScheduler(timezone=PARIS_TZ)
     return _scheduler
+
+
+def _schedule_close_catch_up(scheduler: AsyncIOScheduler, job) -> None:
+    """Run the daily close once if the scheduler (re)started just after its
+    09:00 slot (QA #12: a 09:19 restart skipped the close).
+
+    APScheduler never fires a slot that passed before the process started, so
+    `misfire_grace_time` cannot cover this: the catch-up is scheduled by hand.
+    It is safe when the close already ran today: daily_close_job takes a
+    per-day lock (6 h) and returns at once when it is held, and a close that
+    already ran finds no duel pending."""
+    now = datetime.now(ZoneInfo(PARIS_TZ))
+    start = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    if not (start <= now < start + timedelta(seconds=_CLOSE_GRACE_SECONDS)):
+        return
+    scheduler.add_job(
+        job,
+        "date",
+        run_date=now + timedelta(seconds=30),
+        id="daily_close_catch_up",
+        replace_existing=True,
+    )
+    logger.info("Restart after 09:00 Paris: daily close catch-up scheduled")
 
 
 def start_scheduler() -> None:
@@ -137,6 +162,7 @@ def start_scheduler() -> None:
 
     scheduler.start()
     logger.info("APScheduler started (timezone=%s)", PARIS_TZ)
+    _schedule_close_catch_up(scheduler, daily_close_job)
 
 
 def stop_scheduler() -> None:
