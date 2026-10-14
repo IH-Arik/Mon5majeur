@@ -315,47 +315,55 @@ async def reminder_push_job() -> None:
         logger.error("CRON reminder_push_job failed: %s", exc, exc_info=True)
 
 
-async def _send_reminder_pushes() -> None:
-    from app.modules.leagues.model import League, LeagueMembership
-    from app.modules.lineups.compat_model import FlutterPlayerSelection
-    from app.modules.notifications.duel_context import duel_contexts_for_night
+async def reminder_recipients() -> list[tuple]:
+    """(user_id, league_auto_id) of every player tonight's reminder is for.
 
-    # NOTE: the team builder actually saves to FlutterPlayerSelection (the
-    # Django-compat store keyed by league_auto_id + match_day), not
-    # LineupSubmission — checking LineupSubmission here meant this reminder
-    # fired for every user every night regardless of whether they'd already
-    # set their team. See engine.py::score_match_day for the same root cause.
-    active_leagues = await League.find(
-        {"status": {"$in": ["regular_season", "playoffs"]}}  # "waiting" = no night to remind about yet
+    Only a player who still has to compose: their league's lineup state is
+    "open" (a game that night, first tip-off ahead) and nothing is saved yet
+    (QA #13 item 4). A qualified player with no game, an eliminated one, or
+    one whose team is already set is left alone. Same function as the home
+    card, so the card and the notification never disagree. Global League
+    members count whatever the league's own status says.
+    """
+    from app.modules.leagues.lineup_state import league_state
+    from app.modules.leagues.model import League, LeagueMembership
+
+    leagues = await League.find(
+        {"$or": [
+            {"status": {"$in": ["regular_season", "playoffs"]}},  # "waiting" = no night yet
+            {"type": "global"},
+        ]}
     ).to_list()
+
+    recipients: list[tuple] = []
+    seen: set = set()
+    for league in leagues:
+        if league.auto_id is None:
+            continue
+        memberships = await LeagueMembership.find(
+            LeagueMembership.league_id == league.id
+        ).to_list()
+        for m in memberships:
+            if m.user_id in seen:
+                continue
+            info = await league_state(league, m.user_id)
+            if info.concerned:
+                recipients.append((m.user_id, league.auto_id))
+                seen.add(m.user_id)
+    return recipients
+
+
+async def _send_reminder_pushes() -> None:
+    from app.modules.notifications.duel_context import duel_contexts_for_night
 
     # Opponent names for tonight, private leagues preferred (spec §4.8).
     night = await _nba_night_for_today()
     duels = await duel_contexts_for_night(night) if night else {}
 
-    notified: set = set()
-
-    for league in active_leagues:
-        if league.auto_id is None:
-            continue
-
-        memberships = await LeagueMembership.find(
-            LeagueMembership.league_id == league.id
-        ).to_list()
-
-        for m in memberships:
-            if m.user_id in notified:
-                continue
-
-            already_submitted = await FlutterPlayerSelection.find_one(
-                FlutterPlayerSelection.user_id == m.user_id,
-                FlutterPlayerSelection.league_auto_id == league.auto_id,
-                FlutterPlayerSelection.match_day == league.current_match_day,
-            )
-
-            if not already_submitted:
-                await _send_fcm_reminder(m.user_id, duels.get(m.user_id))
-                notified.add(m.user_id)
+    recipients = await reminder_recipients()
+    for user_id, _league_auto_id in recipients:
+        await _send_fcm_reminder(user_id, duels.get(user_id))
+    logger.info("CRON reminder_push_job: %d reminder(s) sent", len(recipients))
 
 
 async def _nba_night_for_today():
