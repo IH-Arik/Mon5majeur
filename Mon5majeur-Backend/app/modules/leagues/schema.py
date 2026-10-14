@@ -208,6 +208,10 @@ class PublicLeagueCompatResponse(BaseSchema):
     # since "today's lineup" isn't meaningful outside the My Leagues list.
     lineup_submitted: bool = False
     lock_in_seconds: int | None = None
+    # One state for the home card, the lineup tab and the reminder (QA #13
+    # items 4 and 7): open | locked | waiting_results | not_playing. Optional:
+    # null when the league has no night to play yet.
+    lineup_state: str | None = None
 
 
 class LeagueDetailResponse(BaseSchema):
@@ -433,6 +437,10 @@ class PlayersSelectionGetResponse(BaseSchema):
     # now < lock_time). None = no game scheduled for this match day,
     # 0 = already locked, >0 = seconds until lock.
     lock_in_seconds: int | None = None
+    # One state for the home card, the lineup tab and the reminder (QA #13
+    # items 4 and 7): open | locked | waiting_results | not_playing. Optional:
+    # null when the league has no night to play yet.
+    lineup_state: str | None = None
     # Budget cap before the Luxury Tax bonus (league budget + playoff seed
     # bonus) and the size of that bonus, so the app's cap/progress bar match
     # what the POST enforces (QA 15/09/2026 item 6).
@@ -637,6 +645,10 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     # instead of the Flutter-side "5 players picked" proxy.
     lineup_submitted: bool = False
     lock_in_seconds: int | None = None
+    # One state for the home card, the lineup tab and the reminder (QA #13
+    # items 4 and 7): open | locked | waiting_results | not_playing. Optional:
+    # null when the league has no night to play yet.
+    lineup_state: str | None = None
 
     # Weekly/monthly rank among all Global League members, from the daily
     # score archive. None until the user has at least joined the league.

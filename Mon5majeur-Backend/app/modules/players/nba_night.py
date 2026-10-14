@@ -44,6 +44,23 @@ def publication_cutoff(night: date) -> datetime:
     ).astimezone(timezone.utc)
 
 
+async def composing_night(now: datetime | None = None) -> date | None:
+    """The night a Global lineup is being composed for: the first night with
+    games whose results are not published yet (09:00 Paris after it).
+
+    It does not flip at 00:00 UTC like `current_nba_night`: from the first
+    tip-off until the 09:00 publication the lineup of that night stays the
+    one on screen, and the next night opens at 09:00 (QA #13 item 7)."""
+    now = now or datetime.now(timezone.utc)
+    games = await NBAGame.find(
+        NBAGame.nba_date >= now.date() - timedelta(days=2)
+    ).sort(+NBAGame.nba_date).to_list()
+    for night in dict.fromkeys(g.nba_date for g in games):
+        if now < publication_cutoff(night):
+            return night
+    return None
+
+
 async def live_night(now: datetime | None = None) -> date | None:
     """The night whose scores Live must still show, or None.
 

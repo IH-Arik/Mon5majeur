@@ -669,9 +669,12 @@ class LeagueService:
                 compat.rank = await leaderboard_service.viewer_rank(
                     league.id, user.id, user
                 )
-            compat.lineup_submitted, compat.lock_in_seconds = await _lineup_lock_info(
-                user.id, league.id, today
-            )
+            from app.modules.leagues.lineup_state import league_state
+
+            info = await league_state(league, user.id)
+            compat.lineup_submitted = info.submitted
+            compat.lock_in_seconds = info.lock_in_seconds
+            compat.lineup_state = info.state
             result.append(compat)
         return result
 

@@ -106,19 +106,10 @@ async def _lock_in_seconds(league_auto_id: int, match_day: int) -> int | None:
     if not match:
         return None
 
-    earliest_game = await NBAGame.find(
-        NBAGame.nba_date == match.nba_date,
-        NBAGame.tip_off_time != None,  # noqa: E711
-    ).sort(+NBAGame.tip_off_time).first_or_none()
-    if not earliest_game or not earliest_game.tip_off_time:
-        return None
+    from app.modules.leagues.lineup_state import state_for_night
 
-    now_utc = datetime.now(timezone.utc)
-    tip_off = earliest_game.tip_off_time
-    if tip_off.tzinfo is None:
-        tip_off = tip_off.replace(tzinfo=timezone.utc)
-    remaining = (tip_off - now_utc).total_seconds()
-    return max(0, int(remaining))
+    _state, lock = await state_for_night(match.nba_date)
+    return lock
 
 
 LUXURY_TAX_BONUS = 5.0
@@ -158,9 +149,14 @@ async def get_player_selection(
     )
     lock_in_seconds = await _lock_in_seconds(league_auto_id, match_day)
     base_budget = await _base_budget(league_auto_id, match_day, current_user)
+    from app.modules.leagues.lineup_state import league_state
+
+    league = await League.find_one(League.auto_id == league_auto_id)
+    info = await league_state(league, current_user.id) if league else None
     return {
         "selected_players": doc.selected_players if doc else [],
         "lock_in_seconds": lock_in_seconds,
+        "lineup_state": info.state if info else None,
         "base_budget": base_budget,
         "luxury_tax_bonus": LUXURY_TAX_BONUS,
         "luxury_tax": doc.luxury_tax if doc else False,

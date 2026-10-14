@@ -75,13 +75,13 @@ async def _get_global_league() -> League:
     return league
 
 
-async def _today_total_points(selected_players: list[dict]) -> int:
+async def _today_total_points(selected_players: list[dict], night: date | None = None) -> int:
     """Sum today's fantasy score for each selected player from PlayerGameStats.
     Best-effort: players with no stat yet (game not started/no data) score 0."""
     if not selected_players:
         return 0
 
-    today = await _nba_today()
+    today = night or await _nba_today()
     total = 0.0
     for p in selected_players:
         raw_id = p.get("id")
@@ -100,48 +100,24 @@ async def _today_total_points(selected_players: list[dict]) -> int:
     return round(total)
 
 
-async def _lock_info(user_id: PydanticObjectId, league: League) -> tuple[bool, int | None]:
-    """(lineup_submitted, lock_in_seconds) for the Global League, same lock
-    rule as private leagues: earliest tip-off on the current NBA date.
-    lock_in_seconds contract: None = no game scheduled today, 0 = already
-    locked, >0 = seconds until lock."""
-    today = await _nba_today()
+async def _lock_info(user_id: PydanticObjectId, league: League) -> tuple[bool, int | None, str | None]:
+    """(lineup_submitted, lock_in_seconds, lineup_state) for the Global League,
+    from the same state function as every other league and screen (QA #13
+    item 7). lock_in_seconds contract: None = no game, 0 = locked, >0 = seconds
+    until the lock (earliest tip-off of the night being composed)."""
+    from app.modules.leagues.lineup_state import league_state
 
-    submitted = await _tonight_selection(league, user_id) is not None
-
-    earliest_game = await NBAGame.find(
-        NBAGame.nba_date == today,
-        NBAGame.tip_off_time != None,  # noqa: E711
-    ).sort(+NBAGame.tip_off_time).first_or_none()
-
-    lock_in_seconds: int | None = None
-    if earliest_game and earliest_game.tip_off_time:
-        now_utc = datetime.now(timezone.utc)
-        tip_off = earliest_game.tip_off_time
-        if tip_off.tzinfo is None:
-            tip_off = tip_off.replace(tzinfo=timezone.utc)
-        remaining = (tip_off - now_utc).total_seconds()
-        lock_in_seconds = max(0, int(remaining))
-
-    return submitted, lock_in_seconds
+    info = await league_state(league, user_id)
+    return info.submitted, info.lock_in_seconds, info.state
 
 
 async def _is_locked_today() -> bool:
-    """True once the first game of the current NBA date has tipped off."""
-    today = await _nba_today()
-    earliest_game = await NBAGame.find(
-        NBAGame.nba_date == today,
-        NBAGame.tip_off_time != None,  # noqa: E711
-    ).sort(+NBAGame.tip_off_time).first_or_none()
+    """True once the lineup of the night being composed can no longer change:
+    from its first tip-off until the 09:00 publication."""
+    from app.modules.leagues.lineup_state import OPEN, state_for_night
 
-    if not earliest_game or not earliest_game.tip_off_time:
-        return False
-
-    now_utc = datetime.now(timezone.utc)
-    tip_off = earliest_game.tip_off_time
-    if tip_off.tzinfo is None:
-        tip_off = tip_off.replace(tzinfo=timezone.utc)
-    return now_utc >= tip_off
+    state, _lock = await state_for_night(await _composing_night())
+    return state not in (OPEN, "not_playing")
 
 
 async def _enrich_with_scores(selected_players: list[dict], for_date: date | None = None) -> list[dict]:
@@ -201,11 +177,12 @@ async def _build_response(
 
     used = sum(_parse_price(p.get("price", 0)) for p in selected_players)
     remaining = max(0.0, _MAX_BALANCE - used)
-    total_points = await _today_total_points(selected_players)
-    submitted, lock_in_seconds = await _lock_info(user_id, league)
+    night = await _composing_night()
+    total_points = await _today_total_points(selected_players, night)
+    submitted, lock_in_seconds, lineup_state = await _lock_info(user_id, league)
     today = await _nba_today()
     weekly_rank, monthly_rank = await get_weekly_monthly_rank(league, user_id, today)
-    enriched_players = await _enrich_with_scores(selected_players)
+    enriched_players = await _enrich_with_scores(selected_players, for_date=night)
 
     return GlobalLeagueSelectionResponse(
         match_day=league.current_match_day,
@@ -215,6 +192,7 @@ async def _build_response(
         current_balance=f"{remaining:.0f}M",
         lineup_submitted=submitted,
         lock_in_seconds=lock_in_seconds,
+        lineup_state=lineup_state,
         weekly_rank=weekly_rank,
         monthly_rank=monthly_rank,
     )
@@ -329,6 +307,14 @@ async def _global_selection_items(
     return items
 
 
+async def _composing_night() -> date:
+    """The night a lineup is being composed for (see nba_night.composing_night),
+    falling back to the NBA date of the day when no schedule is loaded."""
+    from app.modules.players.nba_night import composing_night
+
+    return await composing_night() or await _nba_today()
+
+
 async def _tonight_selection(
     league: League, user_id: PydanticObjectId
 ) -> FlutterPlayerSelection | None:
@@ -338,7 +324,7 @@ async def _tonight_selection(
     past night's lineup is never shown as tonight's (QA #12 item 4: after 9:00
     the court is empty and the home card says "Compose ton 5"). Rows written
     before the stamp existed (nba_date None) keep matching on the match day."""
-    night = await _nba_today()
+    night = await _composing_night()
     doc = await FlutterPlayerSelection.find_one(
         FlutterPlayerSelection.user_id == user_id,
         FlutterPlayerSelection.league_auto_id == (league.auto_id or 0),
@@ -400,9 +386,9 @@ async def post_global_selection(
         raise ForbiddenException("Bonuses are not available in the Global League")
 
     # The Global League has no LeagueMatch rows to read a night from, so the
-    # night is the NBA date currently in play — the same one the lock
-    # countdown above is computed against, keeping the two consistent.
-    night = await _nba_today()
+    # night is the one being composed for: the same one the lock countdown and
+    # the home card use (QA #13 item 7).
+    night = await _composing_night()
 
     doc = await _tonight_selection(league, current_user.id)
     if doc is None:
