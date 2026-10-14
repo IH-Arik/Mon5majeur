@@ -11,6 +11,8 @@ Schedule (all times are Europe/Paris):
 """
 from __future__ import annotations
 
+import contextlib
+
 import logging
 from datetime import date, datetime, timedelta, timezone
 
@@ -139,6 +141,22 @@ async def _prepare_night_data(night: date) -> None:
         )
 
 
+@contextlib.contextmanager
+def _timed_step(name: str, detail: str = ""):
+    """Log when a step of the 09:00 close starts and ends and how long it took
+    (QA #13 item 6, step 2): measuring only, behaviour is unchanged."""
+    started = datetime.now(timezone.utc)
+    logger.info("CRON close step '%s' START %s %s", name, started.strftime("%H:%M:%S"), detail)
+    try:
+        yield
+    finally:
+        ended = datetime.now(timezone.utc)
+        logger.info(
+            "CRON close step '%s' END %s (%.1fs) %s",
+            name, ended.strftime("%H:%M:%S"), (ended - started).total_seconds(), detail,
+        )
+
+
 async def daily_close_job() -> None:
     from app.cron.lock import release, try_acquire
     from app.modules.leagues.engine import run_daily_close
@@ -165,7 +183,8 @@ async def daily_close_job() -> None:
         closed: list[date] = []
         for night in nights:
             try:
-                await _prepare_night_data(night)
+                with _timed_step("prepare night data", str(night)):
+                    await _prepare_night_data(night)
             except GoalserveEmptyResponseError as exc:
                 if (today - night).days > STALE_NIGHT_DAYS:
                     # Too old to ever be recovered: do not let it hold back
@@ -193,7 +212,8 @@ async def daily_close_job() -> None:
                 )
 
                 # 2. Score duels + standings + advance match days (guarded)
-                result = await run_daily_close(night)
+                with _timed_step("duels + standings + playoffs", str(night)):
+                    result = await run_daily_close(night)
                 logger.info("CRON: night %s league engine done: %s", night, result)
             closed.append(night)
 
@@ -209,19 +229,22 @@ async def daily_close_job() -> None:
 
         # 3. Recompute player prices
         player_svc = PlayerService(PlayerRepository())
-        price_count = await player_svc.recompute_all_prices()
+        with _timed_step("player prices"):
+            price_count = await player_svc.recompute_all_prices()
         logger.info("CRON: recomputed %d player prices", price_count)
 
         # 4. Archive last night's Global League scores (feeds Weekly/Monthly rank)
         from app.modules.leagues.global_score_service import archive_daily_scores
-        archived = await archive_daily_scores(latest)
+        with _timed_step("Global League archive", str(latest)):
+            archived = await archive_daily_scores(latest)
         logger.info("CRON: archived %d Global League daily scores", archived)
 
         # 5. Tell everyone the results are out (spec 4.8 notification 2).
         #    Last, and in its own try: results are already published by now,
         #    so a push failure must not fail the close.
         try:
-            pushed = await _send_results_pushes(latest)
+            with _timed_step("results pushes", str(latest)):
+                pushed = await _send_results_pushes(latest)
             logger.info("CRON: sent %d results pushes", pushed)
         except Exception as exc:  # noqa: BLE001
             logger.error("CRON: results push failed: %s", exc, exc_info=True)
