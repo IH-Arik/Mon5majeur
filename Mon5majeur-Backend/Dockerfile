@@ -16,6 +16,13 @@ FROM deps AS final
 COPY . .
 
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
+# The Firebase key is bind-mounted into /app/secrets (docker-compose.prod.yml).
+# If the folder is not in the image, Docker creates it at every container
+# recreate as root:root 0700, appuser cannot reach the key and every push
+# silently fails (QA #13 item 8). Create it readable by the app user.
+RUN mkdir -p /app/secrets && chown appuser:appgroup /app/secrets && chmod 755 /app/secrets
+
 USER appuser
 
 EXPOSE 8000
