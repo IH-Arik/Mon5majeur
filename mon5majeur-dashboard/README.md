@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💻 Mon5majeur — Admin Command Center
 
-## Getting Started
+[![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/UI-React%2019-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript%205-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 
-First, run the development server:
+The official administrative portal for the **Mon5majeur** fantasy basketball ecosystem. Provides comprehensive management over users, leagues, real-time match scores, booster cards, and platform analytics.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🚀 Key Modules
+
+- **User Management (`/adminDashboard/userManagement`)**: View registered users, account status, avatar review, verification management, and account bans.
+- **League Moderation (`/adminDashboard/leagueManagement`)**: Monitor public pools and private leagues, view participant counts, inspect standings, and manage playoff brackets.
+- **Match & Score Management (`/adminDashboard/match&scoreManagement`)**: Real-time match monitoring, live score feeds, manual stat overrides, and Goalserve sync inspection.
+- **Bonus & Store Management (`/adminDashboard/bonus&storeManagement`)**: Configure booster cards catalog, adjust token pricing, and audit in-app purchases.
+- **Analytics & Reporting (`/adminDashboard/analytics&reporting`)**: Visual dashboards showing user growth, active matchday engagement, token transactions, and platform health (using **Chart.js** & **Recharts**).
+- **Security & Compliance (`/adminDashboard/security&compliance`)**: Granular role-based access management and audit trails.
+
+---
+
+## 📂 Project Structure
+
+```
+mon5majeur-dashboard/
+├── src/
+│   ├── app/
+│   │   ├── adminDashboard/         # Administrative module sub-routes
+│   │   │   ├── analytics&reporting/
+│   │   │   ├── bonus&storeManagement/
+│   │   │   ├── leagueManagement/
+│   │   │   ├── match&scoreManagement/
+│   │   │   ├── security&compliance/
+│   │   │   ├── settings/
+│   │   │   └── userManagement/
+│   │   ├── forgetPassword/         # Password recovery screens
+│   │   ├── singin/                 # Admin authentication screen
+│   │   ├── globals.css             # Tailwind CSS tokens & base styles
+│   │   └── layout.tsx              # Root HTML layout & toast providers
+│   └── components/                 # Reusable cards, charts, modals, sidebars
+├── package.json
+└── tsconfig.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠 Getting Started
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
+- Node.js 18.x or 20.x
+- npm or pnpm
 
-## Learn More
+### Setup
+```bash
+# 1. Install dependencies
+npm install
 
-To learn more about Next.js, take a look at the following resources:
+# 2. Configure environment
+cp .env.example .env.local
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# 3. Set the Backend API URL in .env.local
+# NEXT_PUBLIC_API_URL=http://localhost:8000/api
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 4. Start development server
+npm run dev
+```
 
-## Deploy on Vercel
+Visit **[http://localhost:3000](http://localhost:3000)** to access the dashboard.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🧪 Linting & Production Build
+
+```bash
+# Run ESLint
+npm run lint
+
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+```
