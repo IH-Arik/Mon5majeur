@@ -36,6 +36,11 @@ async def _ensure_premium(user: User) -> None:
         raise ForbiddenException("Live scores require a premium subscription")
 
 
+def _logo_of(user) -> str:
+    """The team's saved avatar; "" when there is none or no user (never null)."""
+    return (user.team_logo or "") if user else ""
+
+
 class LiveScoreService:
 
     async def get_premium_status(self, user: User) -> PremiumStatusResponse:
@@ -96,6 +101,8 @@ class LiveScoreService:
             away_team_name=away_user.team_name if away_user else None,
             home_jersey_index=home_user.jersey_index if home_user else 0,
             away_jersey_index=away_user.jersey_index if away_user else 0,
+            home_team_logo=_logo_of(home_user),
+            away_team_logo=_logo_of(away_user),
             home_score=round(home_score, 2),
             away_score=round(away_score, 2),
             match_status=match.status,

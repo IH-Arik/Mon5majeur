@@ -42,6 +42,10 @@ class LiveMatchScore(BaseSchema):
     # each team's saved jersey, so the court wears the right one
     home_jersey_index: int = 0
     away_jersey_index: int = 0
+    # Saved avatar of each team; "" when the account has none, never null
+    # (QA #13 item 5: the Live drew the default devil for both teams).
+    home_team_logo: str = ""
+    away_team_logo: str = ""
 
     home_score: float
     away_score: float
