@@ -308,6 +308,10 @@ class MatchPairCompatResponse(BaseSchema):
     # Mongo LeagueMatch._id (as str) — lets Flutter call GET /api/v1/live/match/{id}
     # for this specific duel; the int fields above are only Django-compat auto_ids.
     match_object_id: str | None = None
+    # Play-off match only (QA #13 item 2): "semi_final" | "final" and the game
+    # number in the series; null for a regular-season match.
+    round: str | None = None
+    game_number: int | None = None
 
 
 class MyMatchTodayCompatResponse(BaseSchema):
@@ -339,6 +343,10 @@ class MyMatchTodayCompatResponse(BaseSchema):
     # on the match day it is currently on.
     is_private: bool = True
     league_current_match_day: int | None = None
+    # Play-off match only (QA #13 item 2): "semi_final" | "final" and the game
+    # number in the series; null for a regular-season match.
+    round: str | None = None
+    game_number: int | None = None
 
 
 # ── Match Result (Flutter Result tab) ────────────────────────────────────────
@@ -379,6 +387,10 @@ class MatchPairItem(BaseSchema):
     # Mongo LeagueMatch._id (as str) — lets Flutter call GET /api/v1/live/match/{id}
     # for this specific duel; the int fields above are only Django-compat auto_ids.
     match_object_id: str | None = None
+    # Play-off match only (QA #13 item 2): "semi_final" | "final" and the game
+    # number in the series; null for a regular-season match.
+    round: str | None = None
+    game_number: int | None = None
 
 
 class MatchResultCompatResponse(BaseSchema):
@@ -396,6 +408,10 @@ class MatchResultCompatResponse(BaseSchema):
     # Score paywall — see MyMatchTodayCompatResponse.
     scores_hidden: bool = False
     scores_release_at: str | None = None
+    # Play-off match only (QA #13 item 2): "semi_final" | "final" and the game
+    # number in the series; null for a regular-season match.
+    round: str | None = None
+    game_number: int | None = None
 
 
 # ── Player Selection (Flutter Build-Your-Team screen) ────────────────────────

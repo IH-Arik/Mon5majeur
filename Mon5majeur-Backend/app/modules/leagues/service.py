@@ -710,8 +710,12 @@ class LeagueService:
         users = await UserModel.find({"_id": {"$in": list(user_ids)}}).to_list()
         user_map = {u.id: u for u in users}
 
+        from app.modules.leagues.playoff_labels import label_of, rounds_by_series
+
+        rounds = await rounds_by_series(displayable)
         result: list[MyMatchTodayCompatResponse] = []
         for match in displayable:
+            playoff_round, game_number = label_of(match, rounds)
             league = league_map.get(match.league_id)
             home_u = user_map.get(match.home_user_id)
             away_u = user_map.get(match.away_user_id)
@@ -726,6 +730,8 @@ class LeagueService:
                 score_a=0 if hidden else (match.home_score or 0),
                 score_b=0 if hidden else (match.away_score or 0),
                 match_object_id=str(match.id),
+                round=playoff_round,
+                game_number=game_number,
             )
             is_live_for_user = match.status == "live" and has_live_access
             result.append(MyMatchTodayCompatResponse(
@@ -746,6 +752,8 @@ class LeagueService:
                 scores_release_at=release_iso(match.nba_date) if hidden else None,
                 is_private=(league.type == LEAGUE_TYPE_PRIVATE) if league else True,
                 league_current_match_day=league.current_match_day if league else None,
+                round=playoff_round,
+                game_number=game_number,
             ))
         return result
 

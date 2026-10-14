@@ -544,8 +544,12 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
         })
 
     # Build pairs from each LeagueMatch
+    from app.modules.leagues.playoff_labels import label_of, rounds_by_series
+
+    rounds = await rounds_by_series(matches)
     pairs: list[dict] = []
     for m in matches:
+        playoff_round, game_number = label_of(m, rounds)
         hu = user_map.get(m.home_user_id)
         au = user_map.get(m.away_user_id)
         h_name = (hu.team_name if hu else None) or (hu.email.split("@")[0] if hu and hu.email else "Team A")
@@ -562,6 +566,8 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             "score_a": score_a,
             "score_b": score_b,
             "match_object_id": str(m.id),
+            "round": playoff_round,
+            "game_number": game_number,
         })
 
     # Score paywall (QA 15/09/2026 item 4): strip every number before the
@@ -593,6 +599,8 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
         "created_at": first.created_at.isoformat(),
         "scores_hidden": hidden,
         "scores_release_at": release_iso(nba_date) if hidden else None,
+        "round": pairs[0]["round"] if pairs else None,
+        "game_number": pairs[0]["game_number"] if pairs else None,
     }
 
     # Published (completed) and not behind the paywall: never changes again.
