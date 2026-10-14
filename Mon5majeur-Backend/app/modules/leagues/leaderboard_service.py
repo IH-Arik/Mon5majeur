@@ -45,6 +45,15 @@ async def _user_map(user_ids: list) -> dict:
     return {u.id: u for u in users}
 
 
+def _home_team_id(match, umap: dict) -> int | None:
+    """user.auto_id of the match's home team; None if there is no match or the
+    user is not in the map (QA #13 item 3)."""
+    if match is None:
+        return None
+    home = umap.get(match.home_user_id)
+    return home.auto_id if home else None
+
+
 def _display_name(user: User | None) -> str:
     if user is None:
         return "Unknown"
@@ -328,6 +337,7 @@ async def get_playoff_bracket(league_auto_id: int, viewer=None) -> PlayoffBracke
                         else ""
                     ),
                     match_day=m.match_day if m else None,
+                    home_team_id=_home_team_id(m, umap),
                     match_status=status,
                     scores_hidden=hidden,
                     scores_release_at=(

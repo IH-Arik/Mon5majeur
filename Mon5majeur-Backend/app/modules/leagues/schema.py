@@ -549,6 +549,9 @@ class PlayoffGameResponse(BaseSchema):
     winner_team: str = ""
     # Lets the app open the match detail for this game (QA 15/09/2026 item 8).
     match_day: int | None = None
+    # user.auto_id of the team at home for this game (QA #13 item 3); null when
+    # the match or the user is not found.
+    home_team_id: int | None = None
     match_status: str = "scheduled"
     scores_hidden: bool = False
     scores_release_at: str | None = None
