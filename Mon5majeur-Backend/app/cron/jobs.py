@@ -227,19 +227,22 @@ async def daily_close_job() -> None:
             await release(lock_key)
             return
 
-        # 3. Recompute player prices
-        player_svc = PlayerService(PlayerRepository())
-        with _timed_step("player prices"):
-            price_count = await player_svc.recompute_all_prices()
-        logger.info("CRON: recomputed %d player prices", price_count)
-
-        # 4. Archive last night's Global League scores (feeds Weekly/Monthly rank)
+        # 3. Publish the Global League night FIRST (QA #13 item 6): it only needs
+        #    the duels' scores, and it used to wait behind the slow price
+        #    recompute, so the Global League showed the night minutes after
+        #    the duels did. Feeds Weekly/Monthly rank too.
         from app.modules.leagues.global_score_service import archive_daily_scores
         with _timed_step("Global League archive", str(latest)):
             archived = await archive_daily_scores(latest)
         logger.info("CRON: archived %d Global League daily scores", archived)
 
-        # 5. Tell everyone the results are out (spec 4.8 notification 2).
+        # 4. Recompute player prices (nothing published depends on them)
+        player_svc = PlayerService(PlayerRepository())
+        with _timed_step("player prices"):
+            price_count = await player_svc.recompute_all_prices()
+        logger.info("CRON: recomputed %d player prices", price_count)
+
+        # 5. Tell everyone the results are out (after the publication above) (spec 4.8 notification 2).
         #    Last, and in its own try: results are already published by now,
         #    so a push failure must not fail the close.
         try:
