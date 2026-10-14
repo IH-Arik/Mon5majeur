@@ -195,6 +195,9 @@ class PublicLeagueCompatResponse(BaseSchema):
     is_ready: bool = False
     is_started: bool = False
     is_active: bool = True
+    # waiting | regular_season | playoffs | completed | cancelled. Optional:
+    # the app reads a missing value as "unknown" (QA #13 item 1).
+    status: str | None = None
     created_at: datetime
     start_date: datetime | None = None
     teams: list[TeamInfoResponse] = []

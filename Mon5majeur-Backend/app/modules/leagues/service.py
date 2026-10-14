@@ -794,6 +794,7 @@ class LeagueService:
             is_ready=status != "waiting",
             is_started=status in ("regular_season", "playoffs"),
             is_active=status not in ("completed", "cancelled"),
+            status=status,
             created_at=league.created_at,
             start_date=league.started_at,
             teams=teams,
