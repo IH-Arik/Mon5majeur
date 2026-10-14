@@ -68,7 +68,12 @@ class NotificationService:
         if user and user.fcm_token and user.push_notifications_enabled:
             notification_types = user.notification_types or []
             if data and data.get("type") in notification_types or not notification_types:
-                await send_push(user.fcm_token, title, body, data)
+                result = await send_push(user.fcm_token, title, body, data)
+                if not result.ok and result.dead_token:
+                    # A token FCM will never accept again: drop it cleanly so
+                    # the next successful app launch registers a fresh one.
+                    user.fcm_token = None
+                    await user.save()
 
     async def notify_player_out(
         self,

@@ -36,14 +36,33 @@ def _init_fcm() -> bool:
         return False
 
 
+# FCM errors that mean this token will never work again: it is removed from the
+# account so it is not tried (and logged) every night.
+_DEAD_TOKEN_CODES = {"UnregisteredError", "SenderIdMismatchError"}
+
+
+class PushResult:
+    """Outcome of one send: `code` is the FCM message id on success, otherwise
+    the error class (UNREGISTERED, SenderIdMismatch, ThirdPartyAuth...)."""
+
+    def __init__(self, ok: bool, code: str, dead_token: bool = False) -> None:
+        self.ok = ok
+        self.code = code
+        self.dead_token = dead_token
+
+    def __bool__(self) -> bool:
+        return self.ok
+
+
 async def send_push(
     token: str,
     title: str,
     body: str,
     data: dict | None = None,
-) -> bool:
+) -> PushResult:
     if not _init_fcm():
-        return False
+        logger.warning("FCM send skipped: credentials not available (see FCM init log)")
+        return PushResult(False, "FCM_NOT_INITIALIZED")
 
     try:
         from firebase_admin import messaging
@@ -67,13 +86,16 @@ async def send_push(
         # firebase-admin is synchronous: keep it off the event loop.
         import asyncio
 
-        await asyncio.to_thread(messaging.send, msg)
-        return True
+        message_id = await asyncio.to_thread(messaging.send, msg)
+        logger.info("FCM send ok (token=%s...): %s", token[:6], message_id)
+        return PushResult(True, str(message_id))
     except Exception as exc:
         # A refused token (unregistered, wrong APNs key...) is the usual reason
-        # a phone never receives anything: keep it visible in the logs.
-        logger.warning("FCM send failed (token=%s...): %s: %s", token[:8], type(exc).__name__, exc)
-        return False
+        # a phone never receives anything: keep the exact error code visible,
+        # never the full token.
+        code = type(exc).__name__
+        logger.warning("FCM send failed (token=%s...): %s: %s", token[:6], code, exc)
+        return PushResult(False, code, dead_token=code in _DEAD_TOKEN_CODES)
 
 
 async def send_push_multicast(
