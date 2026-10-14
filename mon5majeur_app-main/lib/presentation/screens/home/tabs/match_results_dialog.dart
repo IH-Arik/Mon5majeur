@@ -17,12 +17,17 @@ class SeriesDialog extends StatelessWidget {
   final PlayoffSeries series;
   final int leagueId;
   final bool isPrivate;
+  // Logos already resolved by the caller (bracket, else standings, else '').
+  final String teamALogo;
+  final String teamBLogo;
 
   const SeriesDialog({
     super.key,
     required this.series,
     required this.leagueId,
     required this.isPrivate,
+    this.teamALogo = '',
+    this.teamBLogo = '',
   });
 
   bool get _isFinal => series.round == 'final';
@@ -203,7 +208,7 @@ class SeriesDialog extends StatelessWidget {
                 Expanded(
                   child: Row(
                     children: [
-                      logoAsset(series.teamALogo).image(width: 16.w, height: 16.w),
+                      logoAsset(teamALogo).image(width: 16.w, height: 16.w),
                       SizedBox(width: 6.w),
                       Expanded(
                         child: Text(
@@ -253,7 +258,7 @@ class SeriesDialog extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: 6.w),
-                      logoAsset(series.teamBLogo).image(width: 16.w, height: 16.w),
+                      logoAsset(teamBLogo).image(width: 16.w, height: 16.w),
                     ],
                   ),
                 ),
@@ -273,11 +278,19 @@ void showSeriesDialog(
   required PlayoffSeries series,
   required int leagueId,
   required bool isPrivate,
+  String teamALogo = '',
+  String teamBLogo = '',
 }) {
   showDialog(
     context: context,
     barrierDismissible: true,
     builder: (context) =>
-        SeriesDialog(series: series, leagueId: leagueId, isPrivate: isPrivate),
+        SeriesDialog(
+          series: series,
+          leagueId: leagueId,
+          isPrivate: isPrivate,
+          teamALogo: teamALogo,
+          teamBLogo: teamBLogo,
+        ),
   );
 }

@@ -52,6 +52,22 @@ class LeaderboardController extends GetxController {
     }
   }
 
+  /// The saved avatar of [teamId] from the standings already loaded, or '' (the
+  /// default logo) when the standings or the team are missing. Reading
+  /// [standings] makes an enclosing Obx rebuild when the standings arrive.
+  String logoForTeam(int teamId) {
+    final teams = standings.value?.teams;
+    if (teams == null) return '';
+    for (final t in teams) {
+      if (t.teamId == teamId) return t.teamLogo;
+    }
+    return '';
+  }
+
+  /// Logo of a bracket team: the one the bracket sends, else the standings'.
+  String bracketLogo(String fromBracket, int teamId) =>
+      fromBracket.isNotEmpty ? fromBracket : logoForTeam(teamId);
+
   Future<void> fetchPlayoffBracket() async {
     if (leagueId == null) return;
     isLoadingPlayoffs.value = true;

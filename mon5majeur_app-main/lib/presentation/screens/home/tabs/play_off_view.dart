@@ -74,6 +74,8 @@ class PlayOffView extends StatelessWidget {
       series: series,
       leagueId: controller.leagueId ?? 0,
       isPrivate: controller.isPrivate,
+      teamALogo: controller.bracketLogo(series.teamALogo, series.teamAId),
+      teamBLogo: controller.bracketLogo(series.teamBLogo, series.teamBId),
     );
 
     return Column(
@@ -86,7 +88,7 @@ class PlayOffView extends StatelessWidget {
               Expanded(
                 child: _buildMatchCard(
                   series.teamAName,
-                  series.teamALogo,
+                  controller.bracketLogo(series.teamALogo, series.teamAId),
                   series.winsA,
                   aWon,
                   aWon ? wonLabel : null,
@@ -101,7 +103,7 @@ class PlayOffView extends StatelessWidget {
               Expanded(
                 child: _buildMatchCard(
                   series.teamBName,
-                  series.teamBLogo,
+                  controller.bracketLogo(series.teamBLogo, series.teamBId),
                   series.winsB,
                   bWon,
                   bWon ? wonLabel : null,
