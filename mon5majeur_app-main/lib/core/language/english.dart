@@ -612,6 +612,8 @@ class EnglishTranslation {
     AppString.liveTabLabel: "Live",
     AppString.semifinalRound: "Semifinal",
     AppString.finalRound: "Final",
+    AppString.semifinalNavTemplate: "Semifinal · Game @n",
+    AppString.finalNavTemplate: "Final · Game @n",
     AppString.navHome: "Home",
     AppString.navResults: "Results",
     AppString.navData: "Data",

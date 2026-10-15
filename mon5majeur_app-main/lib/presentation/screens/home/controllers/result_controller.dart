@@ -5,10 +5,14 @@ import 'package:logger/logger.dart';
 import '../../../../controllers/global_league_controller.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/local_db/local_db.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/playoff_phase.dart';
 import '../../../../data/models/match_result_model.dart';
+import '../../../../data/models/playoff_bracket_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/match_result_cache.dart';
+import 'home_controller.dart';
 
 final logger = Logger();
 
@@ -32,6 +36,12 @@ class ResultController extends GetxController {
   int? leagueId;
   int? currentUserId;
   LeagueType leagueType = LeagueType.private; // Default to private
+
+  // Play-off bracket, used ONLY for the match-day label of a league in
+  // play-offs. Kept here (no global cache, not shared with the Standings tab)
+  // and tagged with the league it was loaded for: this controller is shared.
+  final playoffBracket = Rxn<PlayoffBracketModel>();
+  String? _bracketKey;
 
   String? _userId; // the account the result cache is bound to
   int _token = 0; // bumped on every new request: older answers are not shown
@@ -81,6 +91,63 @@ class ResultController extends GetxController {
     }
     if (matchResult.value == null) isLoading.value = true;
     _bindAndFetch();
+    _loadPlayoffBracket();
+  }
+
+  /// True when the leagues list from Home says league [id] ([isPrivate]) is in
+  /// play-offs. Unknown (list not loaded, league absent) counts as false.
+  bool _isInPlayoffs() {
+    final id = leagueId;
+    if (id == null || !Get.isRegistered<HomeController>()) return false;
+    final isPrivate = leagueType == LeagueType.private;
+    for (final l in Get.find<HomeController>().myLeagues) {
+      if (l.leagueId == id && l.isPrivate == isPrivate) {
+        return l.season == AppString.playOff;
+      }
+    }
+    return false;
+  }
+
+  /// One call per opening of the tab, only for a league in play-offs.
+  Future<void> _loadPlayoffBracket() async {
+    final key = _leagueKey;
+    final id = leagueId;
+    if (key == null || id == null) return;
+    if (_bracketKey != key) {
+      playoffBracket.value = null;
+      _bracketKey = null;
+    }
+    if (!_isInPlayoffs()) return;
+    try {
+      final endpoint = leagueType == LeagueType.private
+          ? ApiUrl.privatePlayoffs(id)
+          : ApiUrl.publicPlayoffs(id);
+      final response = await ApiClient().get(url: '${ApiUrl.baseUrl}$endpoint');
+      // Another league may have been opened meanwhile.
+      if (response.statusCode == 200 && _leagueKey == key) {
+        playoffBracket.value = PlayoffBracketModel.fromJson(response.body);
+        _bracketKey = key;
+      }
+    } catch (e) {
+      logger.w('Playoff bracket for the match-day label failed: $e');
+    }
+  }
+
+  /// "Finale · Match 1" style label of [day], or null to keep "Journée N".
+  String? phaseLabelFor(int day) {
+    final bracket = playoffBracket.value; // read: an enclosing Obx rebuilds
+    if (bracket == null || _bracketKey != _leagueKey) return null;
+    final phase = playoffPhaseFor(
+      bracket: bracket,
+      day: day,
+      lastMatchDay: lastMatchDay.value,
+      inPlayoffs: _isInPlayoffs(),
+    );
+    if (phase == null) return null;
+    final template = phase.round == 'final'
+        ? AppString.finalNavTemplate
+        : AppString.semifinalNavTemplate;
+    return template.trParams({'n': '${phase.game}'});
   }
 
   Future<void> _bindAndFetch() async {

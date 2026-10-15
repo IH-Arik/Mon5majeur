@@ -284,7 +284,8 @@ class _ResultTabState extends State<ResultTab> {
             ),
             Obx(
               () => Text(
-                '${AppString.matchday.tr} ${controller.currentMatchDay.value}',
+                controller.phaseLabelFor(controller.currentMatchDay.value) ??
+                    '${AppString.matchday.tr} ${controller.currentMatchDay.value}',
                 style: TextStyle(
                   color: const Color(0xFFB1B1B1),
                   fontSize: 16.sp,
