@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_strings.dart';
 import 'tutorial_controller.dart';
+import 'tutorial_skip_button.dart';
 
 /// Tutorial step 4 — full-screen overlay, no spotlight, single "Next"
 /// button — plus a top-right Skip, since the spec allows Skip on steps 0
@@ -32,27 +33,11 @@ Future<void> showTutorialStep4Overlay(BuildContext context) {
         Positioned(
           top: MediaQuery.of(ctx).padding.top + 12.h,
           right: 16.w,
-          child: GestureDetector(
+          child: TutorialSkipButton(
             onTap: () {
               Navigator.of(ctx).pop();
               Get.find<TutorialController>().skip();
             },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Text(
-                AppString.tutorialSkip.tr,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
           ),
         ),
       ],
