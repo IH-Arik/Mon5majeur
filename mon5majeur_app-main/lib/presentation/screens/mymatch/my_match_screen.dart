@@ -9,6 +9,7 @@ import '../../../core/utils/score_style.dart';
 import '../../../data/models/game_model.dart';
 import '../../../data/models/player_today_score_model.dart';
 import '../../widgets/navigation.dart';
+import '../data/player_info.dart';
 import 'my_match_controller.dart';
 
 class MyMatchScreen extends StatelessWidget {
@@ -533,7 +534,23 @@ class _PlayerScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // push (not go): coming back leaves this page, its team filter and its
+    // scroll position as they were. Read-only sheet, nothing to select.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PlayerInfoScreen(
+            playerId: player.id,
+            name: player.name,
+            position: player.position,
+            team: player.team,
+            showStatus: true,
+          ),
+        ),
+      ),
+      child: Container(
       margin: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 12.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
@@ -599,9 +616,15 @@ class _PlayerScoreCard extends StatelessWidget {
                         ),
                       ),
                     SizedBox(width: 8.w),
-                    Text(
-                      player.team,
-                      style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+                    // Takes what is left of the line (badge + arrow + score
+                    // keep their size) and ends with "…" rather than overflow.
+                    Flexible(
+                      child: Text(
+                        player.team,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+                      ),
                     ),
                   ],
                 ),
@@ -627,8 +650,17 @@ class _PlayerScoreCard extends StatelessWidget {
               ),
             ),
           ),
+          Padding(
+            padding: EdgeInsets.only(left: 4.w),
+            child: Icon(
+              Icons.chevron_right,
+              color: Colors.white38,
+              size: 20.r,
+            ),
+          ),
         ],
       ),
+    ),
     );
   }
 }
