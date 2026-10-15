@@ -396,6 +396,7 @@ class EnglishTranslation {
     AppString.noPlayerScoresYet: 'No player scores yet',
     AppString.teamFilterAll: 'All',
     AppString.noPlayersForTeam: 'No counted players for this team',
+    AppString.playerSheetUnavailable: 'Player sheet unavailable',
     AppString.last7DaysNbaResults: 'Last 7 Days - NBA Results',
     AppString.noRecentGames: 'No recent games',
     AppString.matchStatusFinal: 'Final',
