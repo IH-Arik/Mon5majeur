@@ -396,6 +396,8 @@ class FrenchTranslation {
     AppString.todaysNbaResults: 'Résultats NBA du jour',
     AppString.todaysFantasyPlayersScore: 'Scores fantasy du jour',
     AppString.noPlayerScoresYet: "Aucun score de joueur pour l'instant",
+    AppString.teamFilterAll: 'Toutes',
+    AppString.noPlayersForTeam: 'Aucun joueur compté pour cette équipe',
     AppString.last7DaysNbaResults: '7 derniers jours - Résultats NBA',
     AppString.noRecentGames: 'Aucun match récent',
     AppString.matchStatusFinal: 'Terminé',

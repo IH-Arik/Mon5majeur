@@ -476,6 +476,8 @@ class AppString {
       'Todays Fantasy players Score';
   static const String noGamesToday = 'No games today';
   static const String noPlayerScoresYet = 'No player scores yet';
+  static const String teamFilterAll = 'teamFilterAll';
+  static const String noPlayersForTeam = 'noPlayersForTeam';
   static const String last7DaysNbaResults = 'Last 7 Days - NBA Results';
   static const String noRecentGames = 'No recent games';
   static const String matchStatusFinal = 'Final';
