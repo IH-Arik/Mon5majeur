@@ -196,6 +196,10 @@ class LineupCourt extends StatelessWidget {
   // Taller court when the 6th man needs his own row under the starters.
   final double? height;
 
+  // How far the four side players (wings and guards) sit further out toward
+  // the edges of the court than their original offsets (40 / 60).
+  static const double _flankShift = 14;
+
   const LineupCourt({
     super.key,
     required this.slotBuilder,
@@ -226,7 +230,7 @@ class LineupCourt extends StatelessWidget {
                 Positioned(top: 50.h, left: 20.w, child: changeJerseyButton),
                 Positioned(
                   top: 150.h,
-                  left: 40.w,
+                  left: (40 - _flankShift).w,
                   child: slotBuilder(0, AppString.sfPf),
                 ),
                 Positioned(
@@ -237,17 +241,17 @@ class LineupCourt extends StatelessWidget {
                 ),
                 Positioned(
                   top: 150.h,
-                  right: 40.w,
+                  right: (40 - _flankShift).w,
                   child: slotBuilder(2, AppString.sfPf),
                 ),
                 Positioned(
                   top: 320.h,
-                  left: 60.w,
+                  left: (60 - _flankShift).w,
                   child: slotBuilder(3, AppString.pgSg),
                 ),
                 Positioned(
                   top: 320.h,
-                  right: 60.w,
+                  right: (60 - _flankShift).w,
                   child: slotBuilder(4, AppString.pgSg),
                 ),
                 ...inside,
