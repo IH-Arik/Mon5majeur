@@ -624,6 +624,8 @@ class FrenchTranslation {
     AppString.liveTabLabel: "Live",
     AppString.semifinalRound: "Demi-finale",
     AppString.finalRound: "Finale",
+    AppString.semifinalNavTemplate: "Demi-finale · Match @n",
+    AppString.finalNavTemplate: "Finale · Match @n",
     AppString.navHome: "Accueil",
     AppString.navResults: "Résultats",
     AppString.navData: "Data",

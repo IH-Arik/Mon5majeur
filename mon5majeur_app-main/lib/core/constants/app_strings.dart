@@ -734,6 +734,8 @@ class AppString {
   static const String liveTabLabel = 'liveTabLabel';
   static const String semifinalRound = 'semifinalRound';
   static const String finalRound = 'finalRound';
+  static const String semifinalNavTemplate = 'semifinalNavTemplate';
+  static const String finalNavTemplate = 'finalNavTemplate';
 
   // Bottom navigation bar labels.
   static const String navHome = 'navHome';
