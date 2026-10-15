@@ -11,6 +11,7 @@ import '../../../../data/models/game_model.dart';
 import '../../../../data/models/player.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
+import '../controllers/result_controller.dart';
 import '../screens/select_player_screen.dart';
 import '../widgets/game_card.dart';
 import '../widgets/lineup_widgets.dart';
@@ -213,6 +214,31 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     _fetchSavedTeam();
     _fetchBonusInventory();
     _loadJersey();
+    // ResultTab registers the ResultController after this tab is built: read
+    // it again once it exists (match-day selector label).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  // Never changes: guarantees the selector Obx always reads one Rx.
+  final _selectorTick = 0.obs;
+
+  /// "Finale · Match 1" when the bracket already loaded by the Results tab
+  /// gives the phase of this league's current match day, else "Journée N".
+  String _matchdayText() {
+    final day = widget.matchDay ?? 1;
+    final id = widget.leagueId;
+    if (id != null && Get.isRegistered<ResultController>()) {
+      final phase = Get.find<ResultController>().phaseFor(
+        id: id,
+        isPrivate: widget.isPrivate,
+        day: day,
+        currentDay: widget.matchDay,
+      );
+      if (phase != null) return ResultController.phaseText(phase);
+    }
+    return formatMatchdayLabel(day);
   }
 
   @override
@@ -984,14 +1010,17 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                 size: 24.r,
               ),
             ),
-            Text(
-              formatMatchdayLabel(widget.matchDay ?? 1),
-              style: TextStyle(
-                color: Color(0xFFB1B1B1),
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            Obx(() {
+              _selectorTick.value;
+              return Text(
+                _matchdayText(),
+                style: TextStyle(
+                  color: Color(0xFFB1B1B1),
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              );
+            }),
             IconButton(
               onPressed: () {},
               icon: Icon(

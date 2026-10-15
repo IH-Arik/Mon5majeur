@@ -16,6 +16,8 @@ import '../widgets/league_tab_bar.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/standings_model.dart';
+import '../controllers/home_controller.dart';
+import '../controllers/result_controller.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 
@@ -74,10 +76,56 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
 
   String _leagueName = '';
 
+  // Never changes: guarantees the subtitle Obx always reads one Rx.
+  final _headerTick = 0.obs;
+
   @override
   void initState() {
     super.initState();
     _loadLeagueName();
+    // ResultTab registers the ResultController (and loads the bracket) while
+    // this screen is built, after the header: read it again once it exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  /// The phase segment of the header subtitle. Play-offs: the round when the
+  /// bracket already loaded by the Results tab says it, else "Play-Off";
+  /// completed / cancelled: that word; regular season or nothing known: the
+  /// match day, as before.
+  String _phaseSegment() {
+    final id = widget.leagueId;
+    final matchDay = widget.matchDay ?? 0;
+    final matchDayText = matchDay > 0 ? '${AppString.matchday.tr} $matchDay' : '';
+    if (id == null || !Get.isRegistered<HomeController>()) return matchDayText;
+    String? season;
+    for (final l in Get.find<HomeController>().myLeagues) {
+      if (l.leagueId == id && l.isPrivate == widget.isPrivate) {
+        season = l.season;
+        break;
+      }
+    }
+    if (season == AppString.leaguePhaseCompleted ||
+        season == AppString.leaguePhaseCancelled) {
+      return season!.tr;
+    }
+    if (season != AppString.playOff) return matchDayText;
+    if (matchDay > 0 && Get.isRegistered<ResultController>()) {
+      final phase = Get.find<ResultController>().phaseFor(
+        id: id,
+        isPrivate: widget.isPrivate,
+        day: matchDay,
+        currentDay: matchDay,
+      );
+      if (phase != null) {
+        return (phase.round == 'final'
+                ? AppString.finalRound
+                : AppString.semifinalRound)
+            .tr;
+      }
+    }
+    return AppString.playOff.tr;
   }
 
   // Every entry route passes only the league id, so the name comes from the
@@ -151,12 +199,7 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
   Widget _buildHeader() {
     // Same header as the Global League: uniform dark background (QA 24/09 #5),
     // title centered on the full width, name 14sp, 10sp line under it.
-    final matchDay = widget.matchDay ?? 0;
     final title = _leagueName.isEmpty ? widget.leagueTypeLabel : _leagueName;
-    final subtitle = [
-      if (_leagueName.isNotEmpty) widget.leagueTypeLabel,
-      if (matchDay > 0) '${AppString.matchday.tr} $matchDay',
-    ].join(' · ');
     return Container(
       width: double.infinity,
       color: const Color(0xFF1A1C2A),
@@ -186,19 +229,27 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (subtitle.isNotEmpty) ...[
-                        SizedBox(height: 2.h),
-                        Text(
-                          subtitle,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10.sp,
-                            fontFamily: 'Lato',
-                            fontWeight: FontWeight.w400,
+                      Obx(() {
+                        _headerTick.value;
+                        final subtitle = [
+                          if (_leagueName.isNotEmpty) widget.leagueTypeLabel,
+                          _phaseSegment(),
+                        ].where((p) => p.isNotEmpty).join(' · ');
+                        if (subtitle.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: EdgeInsets.only(top: 2.h),
+                          child: Text(
+                            subtitle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10.sp,
+                              fontFamily: 'Lato',
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
-                        ),
-                      ],
+                        );
+                      }),
                     ],
                   ),
                 ),

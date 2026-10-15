@@ -133,21 +133,48 @@ class ResultController extends GetxController {
     }
   }
 
-  /// "Finale · Match 1" style label of [day], or null to keep "Journée N".
-  String? phaseLabelFor(int day) {
+  /// The play-off phase of [day] for league ([isPrivate], [id]), or null. Null
+  /// too when this shared controller currently holds another league (or its
+  /// bracket). [currentDay] is the league's current match day when the caller
+  /// knows it (the league screen does); else this tab's own bound is used.
+  PlayoffPhase? phaseFor({
+    required int id,
+    required bool isPrivate,
+    required int day,
+    int? currentDay,
+  }) {
     final bracket = playoffBracket.value; // read: an enclosing Obx rebuilds
-    if (bracket == null || _bracketKey != _leagueKey) return null;
-    final phase = playoffPhaseFor(
+    final type = isPrivate ? LeagueType.private : LeagueType.public;
+    if (bracket == null ||
+        leagueId != id ||
+        leagueType != type ||
+        _bracketKey != _leagueKey) {
+      return null;
+    }
+    return playoffPhaseFor(
       bracket: bracket,
       day: day,
-      lastMatchDay: lastMatchDay.value,
+      lastMatchDay: currentDay ?? lastMatchDay.value,
       inPlayoffs: _isInPlayoffs(),
     );
-    if (phase == null) return null;
-    final template = phase.round == 'final'
-        ? AppString.finalNavTemplate
-        : AppString.semifinalNavTemplate;
-    return template.trParams({'n': '${phase.game}'});
+  }
+
+  /// "Finale · Match 1" style text of a phase.
+  static String phaseText(PlayoffPhase phase) => (phase.round == 'final'
+          ? AppString.finalNavTemplate
+          : AppString.semifinalNavTemplate)
+      .trParams({'n': '${phase.game}'});
+
+  /// "Finale · Match 1" style label of [day], or null to keep "Journée N".
+  String? phaseLabelFor(int day) {
+    final id = leagueId;
+    if (id == null) return null;
+    final phase = phaseFor(
+      id: id,
+      isPrivate: leagueType == LeagueType.private,
+      day: day,
+    );
+    return phase == null ? null : phaseText(phase);
   }
 
   Future<void> _bindAndFetch() async {
