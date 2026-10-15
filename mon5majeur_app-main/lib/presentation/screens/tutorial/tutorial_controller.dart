@@ -171,6 +171,9 @@ class TutorialController extends GetxController {
     done.value = true;
     active.value = false;
     step.value = -1;
+    // Else the Home ShowCaseWidget builder starts the step-0 spotlight again
+    // on its next rebuild.
+    showHomeSpotlight.value = false;
     await SharedPrefsHelper.setBool(AppConstants.tutorialDone, true);
     await SharedPrefsHelper.remove(AppConstants.tutorialStep);
   }
