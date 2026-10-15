@@ -12,6 +12,30 @@ class MyMatchController extends GetxController {
   final playerScores = <PlayerTodayScore>[].obs;
   final error = ''.obs;
 
+  /// Team filter of the fantasy scores: the normalized team key, null = all.
+  final selectedTeam = Rxn<String>();
+
+  /// Lower case, letters and digits only: "LA Clippers" and "la-clippers"
+  /// are one team. Empty for a player without a team.
+  static String teamKey(String team) =>
+      team.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  /// One entry per team found in the scores (the first spelling met is shown),
+  /// ordered by name.
+  List<({String key, String name})> get teamOptions {
+    final seen = <String, String>{};
+    for (final p in playerScores) {
+      final key = teamKey(p.team);
+      if (key.isNotEmpty) seen.putIfAbsent(key, () => p.team.trim());
+    }
+    final options = [
+      for (final e in seen.entries) (key: e.key, name: e.value),
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return options;
+  }
+
+  void selectTeam(String? key) => selectedTeam.value = key;
+
   @override
   void onInit() {
     super.onInit();
@@ -25,6 +49,11 @@ class MyMatchController extends GetxController {
       _fetchTodaysGames(),
       _fetchPlayerScores(),
     ]);
+    // A team that no longer appears in the scores (new night) is dropped.
+    final selected = selectedTeam.value;
+    if (selected != null && !teamOptions.any((t) => t.key == selected)) {
+      selectedTeam.value = null;
+    }
     isLoading.value = false;
   }
 

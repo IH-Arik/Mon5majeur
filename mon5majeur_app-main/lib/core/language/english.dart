@@ -394,6 +394,8 @@ class EnglishTranslation {
     AppString.todaysFantasyPlayersScore: "Today's Fantasy Scores",
     AppString.noGamesToday: 'No games today',
     AppString.noPlayerScoresYet: 'No player scores yet',
+    AppString.teamFilterAll: 'All',
+    AppString.noPlayersForTeam: 'No counted players for this team',
     AppString.last7DaysNbaResults: 'Last 7 Days - NBA Results',
     AppString.noRecentGames: 'No recent games',
     AppString.matchStatusFinal: 'Final',

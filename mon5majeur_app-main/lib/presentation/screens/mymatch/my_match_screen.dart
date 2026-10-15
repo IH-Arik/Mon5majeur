@@ -63,7 +63,10 @@ class MyMatchScreen extends StatelessWidget {
                   initiallyExpanded: true,
                   children: ctrl.playerScores.isEmpty
                       ? [_emptyState(AppString.noPlayerScoresYet.tr)]
-                      : _rankedScoreCards(ctrl.playerScores),
+                      : [
+                          _TeamFilterChips(ctrl: ctrl),
+                          ..._filteredScoreCards(ctrl),
+                        ],
                 ),
                 SizedBox(height: 20.h),
               ],
@@ -86,10 +89,104 @@ class MyMatchScreen extends StatelessWidget {
   }
 }
 
+/// The ranked rows of the night, narrowed to the selected team. Ranks are
+/// computed first on the whole night, so a player keeps his overall number.
+List<Widget> _filteredScoreCards(MyMatchController ctrl) {
+  final selected = ctrl.selectedTeam.value;
+  final cards = _rankedScoreCards(ctrl.playerScores, teamKey: selected);
+  if (cards.isEmpty) {
+    return [MyMatchScreen._emptyState(AppString.noPlayersForTeam.tr)];
+  }
+  return cards;
+}
+
+/// Single-selection team chips, "Toutes" first; scrolls sideways.
+class _TeamFilterChips extends StatelessWidget {
+  final MyMatchController ctrl;
+
+  const _TeamFilterChips({required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = ctrl.selectedTeam.value;
+    final teams = ctrl.teamOptions;
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          itemCount: teams.length + 1,
+          separatorBuilder: (_, _) => SizedBox(width: 8.w),
+          itemBuilder: (_, i) {
+            final key = i == 0 ? null : teams[i - 1].key;
+            final label =
+                i == 0 ? AppString.teamFilterAll.tr : teams[i - 1].name;
+            return _TeamChip(
+              label: label,
+              selected: key == selected,
+              onTap: () => ctrl.selectTeam(key),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TeamChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 44 high tap area around a slimmer pill.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFFE8632C) : const Color(0xFF0A0A0A),
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(
+                color: selected ? const Color(0xFFE8632C) : const Color(0xFF2A2A2A),
+              ),
+            ),
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13.sp,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The fantasy scores of the night as ranked rows: highest score first, ties
 /// ordered by name so rows never jump between refreshes. Tied players share a
 /// rank and the next rank skips the places (22, 22, 22, 21 -> 1, 1, 1, 4).
-List<Widget> _rankedScoreCards(List<PlayerTodayScore> players) {
+List<Widget> _rankedScoreCards(
+  List<PlayerTodayScore> players, {
+  String? teamKey,
+}) {
   final sorted = [...players]
     ..sort((a, b) {
       final byScore = b.score.compareTo(a.score);
@@ -103,6 +200,10 @@ List<Widget> _rankedScoreCards(List<PlayerTodayScore> players) {
     if (sorted[i].score != previousScore) {
       rank = i + 1;
       previousScore = sorted[i].score;
+    }
+    if (teamKey != null &&
+        MyMatchController.teamKey(sorted[i].team) != teamKey) {
+      continue;
     }
     cards.add(_PlayerScoreCard(player: sorted[i], rank: rank));
   }
