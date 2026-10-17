@@ -431,6 +431,10 @@ class AppString {
   static const String noGamesScheduled = 'No games scheduled';
   static const String editYourFive = 'Edit your 5';
   static const String lineupLockedCta = 'Lineup locked';
+  // The server's own text for a refused lineup change while locked (403
+  // lineup_locked): translated like any other server message.
+  static const String serverLineupLocked =
+      'Lineup is locked until the 9:00 AM publication';
   static const String noGameTonight = 'No game tonight';
   static const String locksAtPrefix = 'Locks at ';
   static const String noResultPlaceholder = '—';

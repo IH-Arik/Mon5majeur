@@ -716,7 +716,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         final detail = (errorBody is Map && errorBody['detail'] != null)
             ? errorBody['detail'].toString()
             : 'Night is locked — the first game has already tipped off';
-        final reallyLocked = detail.toLowerCase().contains('locked');
+        // The server's explicit code wins; the text check stays for older answers.
+        final reallyLocked = (errorBody is Map &&
+                errorBody['code'] == 'lineup_locked') ||
+            detail.toLowerCase().contains('locked');
         if (mounted) {
           if (reallyLocked) setState(() => lockInSeconds = 0);
           ScaffoldMessenger.of(context).showSnackBar(
