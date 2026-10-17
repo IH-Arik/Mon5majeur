@@ -81,6 +81,13 @@ async def recompute_player_price(player: Player, today: date) -> Player:
             PlayerGameStats.player_id == player.id,
             PlayerGameStats.did_not_play == False,  # noqa: E712
         ).count()
+    else:
+        # No scored game left (stats moved, removed or never scored): the price
+        # is already the floor, so the displayed average and game count must not
+        # keep the value they had before (Final QA item 3: an average of 29
+        # next to a price of 3.0M).
+        player.avg_fantasy_score = 0.0
+        player.games_played = 0
 
     # Last 2 played-game scores (spec Part 1 §5.0) — same played-games
     # source as the form badge (form_indicator.py), so the two features can
