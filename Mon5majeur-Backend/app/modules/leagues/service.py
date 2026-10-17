@@ -675,6 +675,12 @@ class LeagueService:
             compat.lineup_submitted = info.submitted
             compat.lock_in_seconds = info.lock_in_seconds
             compat.lineup_state = info.state
+            if league.status == "playoffs":
+                from app.modules.leagues.playoff_labels import next_playoff_label
+
+                compat.next_round, compat.next_game_number = await next_playoff_label(
+                    league.id, user.id
+                )
             result.append(compat)
         return result
 

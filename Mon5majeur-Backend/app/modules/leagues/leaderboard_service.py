@@ -54,6 +54,20 @@ def _home_team_id(match, umap: dict) -> int | None:
     return home.auto_id if home else None
 
 
+def _upcoming_matches(series, match_by_game: dict) -> list[tuple[int, object]]:
+    """(game_number, match) of the series' matches not played yet, in order: the
+    games list only holds finished games, the scheduled one is a LeagueMatch."""
+    played = {g.game_number for g in series.games}
+    upcoming = [
+        (number, m)
+        for (series_id, number), m in match_by_game.items()
+        if series_id == series.id
+        and number not in played
+        and m.status in ("upcoming", "live")
+    ]
+    return sorted(upcoming, key=lambda item: item[0])
+
+
 def _display_name(user: User | None) -> str:
     if user is None:
         return "Unknown"
@@ -343,6 +357,18 @@ async def get_playoff_bracket(league_auto_id: int, viewer=None) -> PlayoffBracke
                     scores_release_at=(
                         release_iso(m.nba_date if m else g.nba_date) if hidden else None
                     ),
+                )
+            )
+
+        # The match still to be played (scheduled or live) belongs to the series
+        # too, with its match_day, so the app shows the next game and can open it.
+        for g_no, m in _upcoming_matches(s, match_by_game):
+            games.append(
+                PlayoffGameResponse(
+                    game_number=g_no,
+                    match_day=m.match_day,
+                    home_team_id=_home_team_id(m, umap),
+                    match_status=m.status,
                 )
             )
 

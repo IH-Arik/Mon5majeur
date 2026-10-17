@@ -28,3 +28,22 @@ async def rounds_by_series(matches) -> dict[PydanticObjectId, str]:
         return {}
     series = await PlayoffSeries.find({"_id": {"$in": list(ids)}}).to_list()
     return {s.id: s.round for s in series}
+
+
+async def next_playoff_label(league_id, user_id) -> PlayoffLabel:
+    """(round, game_number) of the player's next play-off match in the league:
+    the first one not played yet (upcoming or live). (None, None) when the
+    player has no match to come (qualified and waiting, eliminated, champion)."""
+    from app.modules.leagues.model import LeagueMatch
+
+    match = await LeagueMatch.find(
+        {
+            "league_id": league_id,
+            "is_playoff": True,
+            "status": {"$in": ["upcoming", "live"]},
+            "$or": [{"home_user_id": user_id}, {"away_user_id": user_id}],
+        }
+    ).sort("match_day").first_or_none()
+    if match is None:
+        return None, None
+    return label_of(match, await rounds_by_series([match]))

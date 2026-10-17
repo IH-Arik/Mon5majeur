@@ -208,6 +208,11 @@ class PublicLeagueCompatResponse(BaseSchema):
     # since "today's lineup" isn't meaningful outside the My Leagues list.
     lineup_submitted: bool = False
     lock_in_seconds: int | None = None
+    # Play-off league only (Final QA item 1): the player's next match, so the
+    # home card can say "Finale - Match 2" instead of "Journee N"; null
+    # outside the play-offs or when the player has no match to come.
+    next_round: str | None = None
+    next_game_number: int | None = None
     # One state for the home card, the lineup tab and the reminder (QA #13
     # items 4 and 7): open | locked | waiting_results | not_playing. Optional:
     # null when the league has no night to play yet.
