@@ -12,10 +12,12 @@ from app.exceptions.errors import AppException
 logger = get_logger(__name__)
 
 
-def _error_response(status_code: int, detail: str, headers: dict | None = None) -> JSONResponse:
+def _error_response(
+    status_code: int, detail: str, headers: dict | None = None, extra: dict | None = None
+) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
-        content={"detail": detail, "status_code": status_code},
+        content={"detail": detail, "status_code": status_code, **(extra or {})},
         headers=headers,
     )
 
@@ -25,7 +27,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppException)
     async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
         logger.warning("AppException [%s]: %s | path=%s", exc.status_code, exc.detail, request.url.path)
-        return _error_response(exc.status_code, exc.detail, exc.headers)
+        return _error_response(exc.status_code, exc.detail, exc.headers, getattr(exc, "extra", None))
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

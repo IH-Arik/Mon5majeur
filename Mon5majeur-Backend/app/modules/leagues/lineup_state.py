@@ -118,5 +118,43 @@ async def league_state(league, user_id, now: datetime | None = None) -> LineupSt
         FlutterPlayerSelection.league_auto_id == (league.auto_id or 0),
         FlutterPlayerSelection.match_day == league.current_match_day,
     )
+    from app.modules.players.nba_night import composing_night
+
+    # The league's match day moves on in the close, a little before everything
+    # (prices) is up to date: the next day only opens once the night being
+    # composed has been published, at the same instant for every league.
+    comp = await composing_night(now)
+    if comp is not None and match.nba_date > comp:
+        return LineupState(WAITING_RESULTS, 0, sel is not None, match.nba_date)
+
     state, lock = await state_for_night(match.nba_date, now)
     return LineupState(state, lock, sel is not None, match.nba_date)
+
+
+async def reopens_at(league, now: datetime | None = None) -> str | None:
+    """ISO UTC moment the composition reopens: the publication of the night
+    being composed (09:00 Paris after it)."""
+    from app.modules.players.nba_night import composing_night, publication_cutoff
+
+    night = await composing_night(now)
+    return publication_cutoff(night).isoformat() if night else None
+
+
+async def ensure_open(league, user_id, match_day: int | None = None, now: datetime | None = None) -> LineupState:
+    """Raise 403 lineup_locked (with reopens_at) unless this player can edit a
+    lineup or a bonus right now. Used by every entry point that changes one, so
+    the app is never the only protection (QA #13 addendum).
+
+    `match_day` is the day the request is for: a duel league only accepts its
+    current one (a wrong day is refused)."""
+    from app.exceptions.errors import LineupLockedException
+
+    info = await league_state(league, user_id, now)
+    wrong_day = (
+        match_day is not None
+        and league.type != "global"
+        and match_day != league.current_match_day
+    )
+    if wrong_day or info.state in (LOCKED, WAITING_RESULTS):
+        raise LineupLockedException(await reopens_at(league, now))
+    return info

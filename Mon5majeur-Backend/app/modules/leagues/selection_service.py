@@ -155,7 +155,11 @@ async def get_player_selection(
     info = await league_state(league, current_user.id) if league else None
     return {
         "selected_players": doc.selected_players if doc else [],
-        "lock_in_seconds": lock_in_seconds,
+        # The same figure as the home card (one state function); the plain
+        # per-day lock only when the league has no state yet.
+        "lock_in_seconds": (
+            info.lock_in_seconds if info is not None and info.state is not None else lock_in_seconds
+        ),
         "lineup_state": info.state if info else None,
         "base_budget": base_budget,
         "luxury_tax_bonus": LUXURY_TAX_BONUS,
@@ -268,11 +272,11 @@ async def save_player_selection(
     if not league:
         raise NotFoundException(f"League {league_auto_id} not found")
 
-    lock_in_seconds = await _lock_in_seconds(league_auto_id, match_day)
-    if lock_in_seconds == 0:
-        raise ForbiddenException(
-            "Night is locked — the first game has already tipped off"
-        )
+    from app.modules.leagues.lineup_state import ensure_open
+
+    # One guard for every lineup/bonus change: locked from the first tip-off
+    # until the 09:00 publication, and only the league's current day.
+    await ensure_open(league, current_user.id, match_day)
 
     match = await LeagueMatch.find_one(
         LeagueMatch.league_id == league.id,

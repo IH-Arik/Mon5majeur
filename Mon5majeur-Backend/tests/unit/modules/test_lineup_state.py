@@ -64,6 +64,8 @@ def test_player_with_a_game_and_no_lineup_is_concerned():
     now = TIP - timedelta(hours=5)
     with patch("app.modules.leagues.model.LeagueMatch", fake_match), \
             patch("app.modules.lineups.compat_model.FlutterPlayerSelection", fake_sel), \
+            patch("app.modules.players.nba_night.composing_night",
+                  AsyncMock(return_value=date(2026, 10, 13))), \
             patch.object(ls, "night_facts", AsyncMock(return_value=(TIP, False))):
         info = asyncio.run(ls.league_state(_league(), "U", now))
     assert info.state == ls.OPEN and info.concerned
@@ -78,6 +80,8 @@ def test_player_with_a_saved_lineup_is_not_concerned():
     now = TIP - timedelta(hours=5)
     with patch("app.modules.leagues.model.LeagueMatch", fake_match), \
             patch("app.modules.lineups.compat_model.FlutterPlayerSelection", fake_sel), \
+            patch("app.modules.players.nba_night.composing_night",
+                  AsyncMock(return_value=date(2026, 10, 13))), \
             patch.object(ls, "night_facts", AsyncMock(return_value=(TIP, False))):
         info = asyncio.run(ls.league_state(_league(), "U", now))
     assert info.state == ls.OPEN and info.submitted and not info.concerned

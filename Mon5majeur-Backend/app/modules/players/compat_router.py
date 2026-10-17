@@ -48,6 +48,14 @@ async def _nba_today() -> date:
     return utc_today
 
 
+async def _composing_night() -> date:
+    """The night "today's games" and the player list are about: it only changes
+    at the 09:00 publication, not at UTC midnight (QA #13 addendum)."""
+    from app.modules.players.nba_night import composing_night
+
+    return await composing_night() or await _nba_today()
+
+
 # ── Status mapping ────────────────────────────────────────────────────────────
 
 _STATUS_MAP = {
@@ -146,7 +154,7 @@ async def games_today(
         except ValueError:
             today = await _nba_today()
     else:
-        today = await _nba_today()
+        today = await _composing_night()
 
     games = await NBAGame.find(NBAGame.nba_date == today).sort(+NBAGame.tip_off_time).to_list()
     return [_game_to_compat(g) for g in games]
@@ -190,7 +198,7 @@ async def players_today(
         if hit and time.monotonic() - hit[0] < _ALL_PLAYERS_TTL:
             return hit[1]
 
-    today = await _nba_today()
+    today = await _composing_night()
 
     games = await NBAGame.find(NBAGame.nba_date == today).to_list()
     teams = TeamsPlaying(games)

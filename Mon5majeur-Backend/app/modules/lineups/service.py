@@ -62,14 +62,13 @@ class LineupService:
 
         # 2. Check lock — block ALL submissions once the night's first tip-off has passed
         #    Lock = earliest game tip-off for this NBA date (variable every day, spec §4.1)
-        earliest_game = await NBAGame.find(
-            NBAGame.nba_date == nba_date,
-            NBAGame.tip_off_time != None,  # noqa: E711
-        ).sort(+NBAGame.tip_off_time).first_or_none()
+        from app.exceptions.errors import LineupLockedException
+        from app.modules.leagues.lineup_state import LOCKED, WAITING_RESULTS, state_for_night
+        from app.modules.players.nba_night import publication_cutoff
 
-        now_utc = datetime.now(timezone.utc)
-        if earliest_game and earliest_game.tip_off_time and now_utc >= earliest_game.tip_off_time:
-            raise ForbiddenException("Night is locked — the first game has already tipped off")
+        night_state, _lock = await state_for_night(nba_date)
+        if night_state in (LOCKED, WAITING_RESULTS):
+            raise LineupLockedException(publication_cutoff(nba_date).isoformat())
 
         existing_sub = await LineupSubmission.find_one(
             LineupSubmission.user_id == user.id,

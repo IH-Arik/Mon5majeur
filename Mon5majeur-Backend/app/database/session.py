@@ -38,6 +38,7 @@ async def init_db() -> None:
     from app.modules.users.model import User
     from app.core.rate_limit import RateLimitBucket
     from app.cron.lock import JobLock
+    from app.modules.players.night_publication import NightPublication
 
     client = get_motor_client()
     await init_beanie(
@@ -77,6 +78,7 @@ async def init_db() -> None:
             SupportTicket,
             RateLimitBucket,
             JobLock,
+            NightPublication,
         ],
     )
 

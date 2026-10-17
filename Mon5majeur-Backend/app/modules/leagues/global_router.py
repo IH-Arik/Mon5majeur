@@ -373,10 +373,9 @@ async def post_global_selection(
 ) -> GlobalLeagueSelectionResponse:
     league = await _get_global_league()
 
-    if await _is_locked_today():
-        raise ForbiddenException(
-            "Night is locked — the first game has already tipped off"
-        )
+    from app.modules.leagues.lineup_state import ensure_open
+
+    await ensure_open(league, current_user.id)
 
     # Global League runs on the no-bonus duel engine (spec/QA 08/08/2026,
     # item 4) — reject server-side even if a stale/modified client still

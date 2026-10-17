@@ -44,6 +44,21 @@ def publication_cutoff(night: date) -> datetime:
     ).astimezone(timezone.utc)
 
 
+# If the daily close never reports (crash, missed run), lineups do not stay locked
+# forever: the night counts as published this long after its cutoff anyway.
+LATE_PUBLICATION_GRACE = timedelta(hours=3)
+
+
+def is_published(night: date, now: datetime, marked: bool) -> bool:
+    """A night is published once its cutoff (09:00 Paris) has passed AND the
+    daily close marked it done. A late close keeps everything locked, up to the
+    grace above."""
+    cutoff = publication_cutoff(night)
+    if now < cutoff:
+        return False
+    return marked or now >= cutoff + LATE_PUBLICATION_GRACE
+
+
 async def composing_night(now: datetime | None = None) -> date | None:
     """The night a Global lineup is being composed for: the first night with
     games whose results are not published yet (09:00 Paris after it).
@@ -55,8 +70,13 @@ async def composing_night(now: datetime | None = None) -> date | None:
     games = await NBAGame.find(
         NBAGame.nba_date >= now.date() - timedelta(days=2)
     ).sort(+NBAGame.nba_date).to_list()
-    for night in dict.fromkeys(g.nba_date for g in games):
-        if now < publication_cutoff(night):
+    nights = list(dict.fromkeys(g.nba_date for g in games))
+
+    from app.modules.players.night_publication import published_marks
+
+    marks = await published_marks(nights)
+    for night in nights:
+        if not is_published(night, now, night in marks):
             return night
     return None
 

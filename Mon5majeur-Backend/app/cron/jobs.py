@@ -242,6 +242,12 @@ async def daily_close_job() -> None:
             price_count = await player_svc.recompute_all_prices()
         logger.info("CRON: recomputed %d player prices", price_count)
 
+        # The night is now really published: the next day opens everywhere at
+        # once (lineups, matches of the day, prices), see nba_night.is_published.
+        from app.modules.players.night_publication import mark_published
+
+        await mark_published(latest)
+
         # 5. Tell everyone the results are out (after the publication above) (spec 4.8 notification 2).
         #    Last, and in its own try: results are already published by now,
         #    so a push failure must not fail the close.
