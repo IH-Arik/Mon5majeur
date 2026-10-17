@@ -197,6 +197,15 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     );
   }
 
+  /// The real league logo: HomeController.myLeagues first (observable, read
+  /// inside the header's Obx), the loaded leagues list as a fallback.
+  String _headerLogo() {
+    final fromHome =
+        HomeController.leagueLogoOf(widget.leagueId, isPrivate: widget.isPrivate);
+    if (fromHome.isNotEmpty) return fromHome;
+    return MyLeaguesController.logoFor(widget.leagueId, isPrivate: widget.isPrivate);
+  }
+
   Widget _leagueLogo() {
     return Container(
       width: 35.w,
@@ -209,7 +218,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       ),
       child: Center(
         child: (_isDuel
-                ? logoAsset(MyLeaguesController.logoFor(widget.leagueId, isPrivate: widget.isPrivate))
+                ? logoAsset(_headerLogo())
                 : Assets.icons.earth)
             .image(
           width: 16.w,

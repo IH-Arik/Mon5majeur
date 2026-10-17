@@ -38,6 +38,20 @@ class HomeController extends GetxController {
   var myLeagues = <MyLeagueModel>[].obs;
   var profileExists = false.obs;
 
+  /// The logo chosen at creation for league [leagueId] ('' when unknown, the
+  /// default image is then used). It reads the observable [myLeagues], so a
+  /// widget calling it inside an Obx redraws when the leagues load (Live
+  /// header: the list used to be read through a non-observable copy).
+  static String leagueLogoOf(int? leagueId, {required bool isPrivate}) {
+    if (leagueId == null || !Get.isRegistered<HomeController>()) return '';
+    for (final l in Get.find<HomeController>().myLeagues) {
+      if (l.leagueId == leagueId && l.isPrivate == isPrivate) {
+        return l.leagueLogo;
+      }
+    }
+    return '';
+  }
+
   Timer? _matchTimer;
   bool _matchRefreshInFlight = false;
 
