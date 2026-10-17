@@ -14,8 +14,13 @@ class PlayerInfoScreen extends StatefulWidget {
   final String name;
   final String position;
   final int? avg;
+  // Empty = unknown: the sheet then shows the value from /info/ ("—" until
+  // it answers).
   final String price;
   final String team;
+  // Opened from the Results tab: a thin loading bar while /info/ answers and
+  // a clear message when there is no sheet. Data keeps its plain behaviour.
+  final bool showStatus;
 
   const PlayerInfoScreen({
     super.key,
@@ -23,8 +28,9 @@ class PlayerInfoScreen extends StatefulWidget {
     required this.name,
     required this.position,
     this.avg,
-    required this.price,
+    this.price = '',
     required this.team,
+    this.showStatus = false,
   });
 
   @override
@@ -34,10 +40,22 @@ class PlayerInfoScreen extends StatefulWidget {
 class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
   String get name => widget.name;
   String get position => widget.position;
-  String get price => widget.price;
   String get team => widget.team;
 
+  // The price given by the caller, else /info/'s current_value written like
+  // Data does ("29.0M"), else "—" (never a bare "M").
+  String get price {
+    if (widget.price.isNotEmpty) return widget.price;
+    final raw = _info?['current_value'];
+    final value = raw is String
+        ? double.tryParse(raw.replaceAll('M', '').trim())
+        : null;
+    return value == null ? '—' : '${value.toStringAsFixed(1)}M';
+  }
+
   Map<String, dynamic>? _info;
+  bool _loading = false;
+  bool _unavailable = false;
 
   @override
   void initState() {
@@ -47,16 +65,36 @@ class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
 
   Future<void> _load() async {
     final id = widget.playerId;
-    if (id == null || id.isEmpty) return;
+    if (id == null || id.isEmpty) {
+      if (widget.showStatus) _unavailable = true; // nothing to look up
+      return;
+    }
+    if (widget.showStatus) _loading = true;
     try {
       final response = await ApiClient().get(
         url: '${ApiUrl.baseUrl}/api/players/$id/info/',
       );
-      if (response.statusCode == 200 && response.body is Map && mounted) {
-        setState(() => _info = Map<String, dynamic>.from(response.body as Map));
+      if (!mounted) return;
+      if (response.statusCode == 200 && response.body is Map) {
+        setState(() {
+          _info = Map<String, dynamic>.from(response.body as Map);
+          _loading = false;
+        });
+      } else {
+        // 404 / 422 / any other answer: no sheet for this player
+        setState(() {
+          _loading = false;
+          _unavailable = true;
+        });
       }
     } catch (_) {
       // the sheet keeps its dashes
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _unavailable = true;
+        });
+      }
     }
   }
 
@@ -128,6 +166,20 @@ class _PlayerInfoScreenState extends State<PlayerInfoScreen> {
               ),
             ),
 
+            if (widget.showStatus && _loading)
+              const LinearProgressIndicator(
+                minHeight: 2,
+                color: Color(0xFFE8632C),
+                backgroundColor: Colors.transparent,
+              ),
+            if (widget.showStatus && _unavailable)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
+                child: Text(
+                  AppString.playerSheetUnavailable.tr,
+                  style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+                ),
+              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
