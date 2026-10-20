@@ -8,6 +8,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
+import '../../../../core/utils/share_league.dart';
 import '../../../../data/models/private_league_model.dart';
 import '../controllers/create_league_controller.dart';
 
@@ -90,16 +91,6 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(AppString.codeCopied.tr),
-        backgroundColor: const Color(0xFF4CAF50),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _shareCode(String code) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${AppString.shareFunctionality.tr}: $code'),
         backgroundColor: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 2),
       ),
@@ -242,9 +233,13 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
                           ),
                           SizedBox(width: 8.w),
                           Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () =>
-                                  _shareCode(league.joinCode ?? ''),
+                            child: Builder(
+ builder: (btnContext) => ElevatedButton.icon(
+                              onPressed: () => shareLeagueInvite(
+                                btnContext,
+                                name: league.leagueName,
+                                code: league.joinCode,
+                              ),
                               icon: Icon(
                                 Icons.share,
                                 size: 16.r,
@@ -272,6 +267,7 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
                                 ),
                               ),
                             ),
+),
                           ),
                         ],
                       ),

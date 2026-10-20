@@ -163,6 +163,10 @@ class FrenchTranslation {
     AppString.createLeague: 'Créer la ligue',
     AppString.codeCopied: 'Code copié !',
     AppString.shareFunctionality: 'Partager',
+    AppString.shareLeagueMessage:
+        'Rejoins ma ligue "@name" sur Mon5Majeur ! Code : @code',
+    AppString.shareLeagueIosLine: 'iPhone : @url',
+    AppString.shareLeagueAndroidLine: 'Android : @url',
     AppString.leagueCreated: 'Ligue créée',
     AppString.joinCodeGenerated: 'Code d\'invitation (Généré après création)',
     AppString.shareThisCodeWithFriends:

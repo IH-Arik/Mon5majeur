@@ -170,6 +170,9 @@ class AppString {
   static const String createLeague = 'Create League';
   static const String codeCopied = 'Code copied to clipboard!';
   static const String shareFunctionality = 'Share functionality';
+  static const String shareLeagueMessage = 'Share league message';
+  static const String shareLeagueIosLine = 'Share league iOS line';
+  static const String shareLeagueAndroidLine = 'Share league Android line';
   static const String leagueCreated = 'League Created';
   static const String joinCodeGenerated =
       'Join code (Generated after creation)';

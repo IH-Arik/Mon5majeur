@@ -1,5 +1,11 @@
 // Update api_constants.dart
 class AppConstants {
+  // Store links used in the league invitation message
+  static const String appStoreUrl =
+      "https://apps.apple.com/fr/app/mon5majeur/id6753639666";
+  static const String playStoreUrl =
+      "https://play.google.com/store/apps/details?id=com.mon5majeur.app";
+
   // Auth tokens
   static const String token = "token";
   static const String refreshToken = "refreshToken";
