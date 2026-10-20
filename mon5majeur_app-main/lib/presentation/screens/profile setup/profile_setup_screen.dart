@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
+import '../../../core/utils/datetime_format.dart';
 import '../../../data/models/profile_model.dart';
 import 'controller/profile_setup_controller.dart';
 
@@ -240,6 +240,7 @@ class ProfileSetupScreen extends StatelessWidget {
                 onTap: () async {
                   final pickedDate = await showDatePicker(
                     context: context,
+                    locale: Get.locale,
                     initialDate:
                         controller.selectedDate.value ?? DateTime(2000, 1, 1),
                     firstDate: DateTime(1950),
@@ -267,9 +268,9 @@ class ProfileSetupScreen extends StatelessWidget {
                         child: Obx(
                           () => Text(
                             controller.selectedDate.value != null
-                                ? DateFormat(
-                                    'yyyy-MM-dd',
-                                  ).format(controller.selectedDate.value!)
+                                ? formatBirthDate(
+                                    controller.selectedDate.value!,
+                                  )
                                 : AppString.dateOfBirth.tr,
                             style: TextStyle(
                               color: controller.selectedDate.value != null

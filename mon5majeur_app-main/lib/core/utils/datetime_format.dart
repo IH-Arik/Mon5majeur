@@ -76,6 +76,16 @@ String formatMatchDate(String isoDate) {
   return '${months[d.month - 1]} ${d.day}, ${d.year}';
 }
 
+/// Birth date shown in the profile field, purely numeric: French
+/// "08/09/2000", English "2000-09-08". Display only; the value sent to the
+/// server is formatted separately and never depends on the language.
+String formatBirthDate(DateTime d) {
+  final dd = d.day.toString().padLeft(2, '0');
+  final mm = d.month.toString().padLeft(2, '0');
+  if (Get.locale?.languageCode == 'fr') return '$dd/$mm/${d.year}';
+  return '${d.year}-$mm-$dd';
+}
+
 /// "Matchday 16" / "Journée 16".
 String formatMatchdayLabel(int matchDay) =>
     AppString.matchdayNumberTemplate.trParams({'n': '$matchDay'});
