@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -90,6 +91,12 @@ class MyApp extends StatelessWidget {
           translations: Language(),
           locale: const Locale('en', 'US'), // Default locale
           fallbackLocale: const Locale('en', 'US'),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('en', 'US'), Locale('fr', 'FR')],
 
           /// ================= THEME =================
           theme: ThemeData(
