@@ -18,6 +18,7 @@ import '../../widgets/match_widgets.dart';
 import '../../widgets/navigation.dart';
 import '../tutorial/tutorial_controller.dart';
 import '../tutorial/tutorial_skip_button.dart';
+import '../tutorial/tutorial_style.dart';
 import 'controllers/home_controller.dart';
 import 'widgets/home_drawer.dart';
 
@@ -598,6 +599,7 @@ class _GlobalLeagueCard extends StatelessWidget {
                       SizedBox(width: 12.w),
                       Showcase(
                         key: tutorial.homeJoinKey,
+                        overlayOpacity: tutorialOverlayOpacity,
                         description: AppString.tutorialStep0.tr,
                         disposeOnTap: true,
                         disableBarrierInteraction: true,
