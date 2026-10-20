@@ -16,6 +16,7 @@ import '../../../../controllers/global_league_controller.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
 import '../../tutorial/tutorial_skip_button.dart';
+import '../../tutorial/tutorial_style.dart';
 import '../screens/select_player_screen.dart';
 import '../widgets/game_card.dart';
 import '../widgets/lineup_widgets.dart';
@@ -561,6 +562,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
     return Showcase(
       key: _tutorial.confirmKey,
+      overlayOpacity: tutorialOverlayOpacity,
       description: AppString.tutorialStep3.tr,
       disposeOnTap: true,
       disableBarrierInteraction: true,
@@ -692,6 +694,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
     return Showcase(
       key: _tutorial.jerseySlotKey,
+      overlayOpacity: tutorialOverlayOpacity,
       description: AppString.tutorialStep1.tr,
       disposeOnTap: true,
       disableBarrierInteraction: true,

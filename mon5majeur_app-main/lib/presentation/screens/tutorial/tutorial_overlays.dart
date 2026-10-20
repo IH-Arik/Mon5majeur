@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_strings.dart';
 import 'tutorial_controller.dart';
 import 'tutorial_skip_button.dart';
+import 'tutorial_style.dart';
 
 /// Tutorial step 4 — full-screen overlay, no spotlight, single "Next"
 /// button — plus a top-right Skip, since the spec allows Skip on steps 0
@@ -14,7 +15,7 @@ import 'tutorial_skip_button.dart';
 Future<void> showTutorialStep4Overlay(BuildContext context) {
   return showDialog<void>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.85),
+    barrierColor: Colors.black.withValues(alpha: tutorialDialogBarrierOpacity),
     barrierDismissible: false,
     builder: (ctx) => Stack(
       children: [
@@ -52,7 +53,7 @@ Future<void> showTutorialStep4Overlay(BuildContext context) {
 Future<String> showTutorialStep5Overlay(BuildContext context) async {
   final choice = await showDialog<String>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.85),
+    barrierColor: Colors.black.withValues(alpha: tutorialDialogBarrierOpacity),
     barrierDismissible: false,
     builder: (ctx) => _TutorialCard(
       message: AppString.tutorialStep5.tr,

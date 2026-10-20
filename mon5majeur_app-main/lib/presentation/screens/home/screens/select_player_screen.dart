@@ -8,6 +8,7 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../data/models/player.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_skip_button.dart';
+import '../../tutorial/tutorial_style.dart';
 import '../widgets/player_form_badge.dart';
 
 class SelectPlayerScreen extends StatefulWidget {
@@ -452,6 +453,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
           ? card
           : Showcase(
               key: _tutorial.playerRowKey,
+              overlayOpacity: tutorialOverlayOpacity,
               description: AppString.tutorialStep2.tr,
               disposeOnTap: true,
               disableBarrierInteraction: true,
