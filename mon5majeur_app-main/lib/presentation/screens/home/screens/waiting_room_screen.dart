@@ -851,47 +851,83 @@ class _CreatePrivateLeagueWaitingRoomScreenState
 
                             SizedBox(height: 16.h),
 
-                            // Start League Button
-                            SizedBox(
-                              width: double.infinity,
-                              height: 42.h,
-                              child: ElevatedButton(
-                                onPressed: teamsJoined >= 2
-                                    ? () async {
-                                        if (widget.leagueId != null) {
-                                          await _controller.startLeague(
-                                            context,
-                                            widget.leagueId!,
-                                          );
-                                        }
-                                      }
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: teamsJoined >= 2
-                                      ? const Color(0xFFCC5123)
-                                      : const Color(0xFF2C2C2C),
-                                  disabledBackgroundColor: const Color(
-                                    0xFF2C2C2C,
+                            // Start League Button — needs 4+ teams, even count
+                            // (the server refuses anything else).
+                            Obx(() {
+                              final starting = _controller.isStarting.value;
+                              final canStart =
+                                  teamsJoined >= 4 && teamsJoined.isEven;
+                              final enabled = canStart && !starting;
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 42.h,
+                                    child: ElevatedButton(
+                                      onPressed: enabled
+                                          ? () async {
+                                              if (widget.leagueId != null) {
+                                                await _controller.startLeague(
+                                                  context,
+                                                  widget.leagueId!,
+                                                );
+                                              }
+                                            }
+                                          : null,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFCC5123),
+                                        disabledBackgroundColor: starting
+                                            ? const Color(0xFFCC5123)
+                                            : const Color(0xFF2C2C2C),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8.r,
+                                          ),
+                                        ),
+                                      ),
+                                      child: starting
+                                          ? SizedBox(
+                                              width: 20.r,
+                                              height: 20.r,
+                                              child:
+                                                  const CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                            )
+                                          : Text(
+                                              canStart
+                                                  ? AppString.startLeague.tr
+                                                  : AppString
+                                                        .waitingForMoreTeams
+                                                        .tr,
+                                              style: TextStyle(
+                                                color: canStart
+                                                    ? Colors.white
+                                                    : const Color(0xFF777777),
+                                                fontSize: 14.sp,
+                                                fontFamily: 'Roboto',
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                ),
-                                child: Text(
-                                  teamsJoined >= 2
-                                      ? AppString.startLeague.tr
-                                      : AppString.waitingForMoreTeams.tr,
-                                  style: TextStyle(
-                                    color: teamsJoined >= 2
-                                        ? Colors.white
-                                        : const Color(0xFF777777),
-                                    fontSize: 14.sp,
-                                    fontFamily: 'Roboto',
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
+                                  if (!canStart) ...[
+                                    SizedBox(height: 8.h),
+                                    Text(
+                                      'You need at least 4 teams, and an even number (4, 6, 8 or 10), to start.'
+                                          .tr,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFF777777),
+                                        fontSize: 12.sp,
+                                        fontFamily: 'Roboto',
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            }),
                           ],
                         ),
 

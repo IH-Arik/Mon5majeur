@@ -25,6 +25,8 @@ class CreateLeagueController extends GetxController {
 
   // Observable variables
   var isLoading = false.obs;
+  // Own flag for "Start league" so a stuck shared isLoading cannot swallow the tap.
+  var isStarting = false.obs;
   var isCreatingLeague = false.obs;
   var isUpdatingLeague = false.obs;
   var isDeletingLeague = false.obs;
@@ -711,9 +713,9 @@ class CreateLeagueController extends GetxController {
 
   // Start League
   Future<void> startLeague(BuildContext context, int leagueId) async {
-    if (isLoading.value) return;
+    if (isStarting.value) return;
 
-    isLoading.value = true;
+    isStarting.value = true;
 
     try {
       final apiClient = ApiClient();
@@ -732,55 +734,77 @@ class CreateLeagueController extends GetxController {
       logger.i("Start League Response: ${response.statusCode}");
       logger.i("Start League Body: ${response.body}");
 
-      if (response.statusCode == 200) {
-        final message =
-            response.body['detail'] ?? "League started successfully".tr;
+      final detail = response.body is Map
+          ? (response.body['detail'] ?? response.body['message'] ?? '')
+                .toString()
+          : '';
 
+      if (response.statusCode == 200) {
         logger.i("$_leagueTypeLabel League Started Successfully");
 
-        showSnackbar(context, "Success", message);
-        try {
-          final myLeaguesController = Get.find<MyLeaguesController>();
-          await myLeaguesController.refreshLeagues();
-          if (Get.isRegistered<HomeController>()) {
-            Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
-          }
-        } catch (e) {
-          logger.w("MyLeaguesController not found: $e");
-        }
+        // Use current_match_day from the start_league response (backend sets it to 1).
+        // Do NOT use currentLeague.value?.currentMatchDay — it is 0 before the
+        // league starts and `0 ?? 1` stays 0, causing "League has not started" errors.
+        final matchDay =
+            (response.body['current_match_day'] as num?)?.toInt() ?? 1;
 
-        if (context.mounted) {
-          // Use current_match_day from the start_league response (backend sets it to 1).
-          // Do NOT use currentLeague.value?.currentMatchDay — it is 0 before the
-          // league starts and `0 ?? 1` stays 0, causing "League has not started" errors.
-          final matchDay =
-              (response.body['current_match_day'] as num?)?.toInt() ?? 1;
-
-          context.go(
-            '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/$leagueId?matchDay=$matchDay',
-          );
-        }
-
+        // Lists refresh in the background: the screen changes right away.
+        refreshLeagueLists();
+        _openStartedLeague(context, leagueId, matchDay);
         return;
-      } else {
-        final errorMessage =
-            response.body['detail'] ??
-            response.body['message'] ??
-            "Failed to start league".tr;
+      }
 
-        showSnackbar(context, "Error".tr, errorMessage, isError: true);
+      // Second tap / another device already started it: not an error, open it.
+      if (detail.toLowerCase().contains('not in waiting state')) {
+        refreshLeagueLists();
+        _openStartedLeague(context, leagueId, 1);
+        return;
+      }
+
+      if (context.mounted) {
+        showSnackbar(
+          context,
+          "Error".tr,
+          _startErrorMessage(response.statusCode, detail),
+          isError: true,
+        );
       }
     } catch (e) {
       logger.e("Start League Error: $e");
-      showSnackbar(
-        context,
-        "Error".tr,
-        "An error occurred while starting the league".tr,
-        isError: true,
-      );
+      if (context.mounted) {
+        showSnackbar(
+          context,
+          "Error".tr,
+          "Couldn't start the league right now. Please try again.".tr,
+          isError: true,
+        );
+      }
     } finally {
-      isLoading.value = false;
+      isStarting.value = false;
     }
+  }
+
+  void _openStartedLeague(BuildContext context, int leagueId, int matchDay) {
+    if (!context.mounted) return;
+    context.go(
+      '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/$leagueId'
+      '?matchDay=$matchDay&isPrivate=${!isPublic}',
+    );
+  }
+
+  /// Never the raw server text: a clear FR/EN message per known refusal.
+  String _startErrorMessage(int? code, String detail) {
+    final d = detail.toLowerCase();
+    if (d.contains('at least 4')) {
+      return 'You need at least 4 teams to start the league.'.tr;
+    }
+    if (d.contains('even number')) {
+      return 'The number of teams must be even (4, 6, 8 or 10).'.tr;
+    }
+    if (code == 403 || d.contains('only the league creator')) {
+      return 'Only the league creator can start it.'.tr;
+    }
+    return "Couldn't start the league right now. Please try again.".tr;
   }
 
   // Get All Active Public Leagues (public only)
