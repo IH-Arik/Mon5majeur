@@ -393,25 +393,28 @@ class LeagueCard extends StatelessWidget {
                   /// Rank, Season, Week info
                   Row(
                     children: [
-                      Icon(
-                        Icons.emoji_events,
-                        color: const Color(0xFFFF6B35),
-                        size: 16.r,
-                      ),
-                      SizedBox(width: 2.w),
-                      Text(
-                        '${AppString.rank.tr} ${league.userRank}/${league.maxTeams}',
-                        style: TextStyle(
+                      // No rank until the league has started.
+                      if (!league.isWaiting) ...[
+                        Icon(
+                          Icons.emoji_events,
                           color: const Color(0xFFFF6B35),
-                          fontSize: 10.sp,
+                          size: 16.r,
                         ),
-                      ),
-                      SizedBox(width: 4.w),
-                      Text(
-                        AppString.separator.tr,
-                        style: TextStyle(color: Colors.grey, fontSize: 10.sp),
-                      ),
-                      SizedBox(width: 4.w),
+                        SizedBox(width: 2.w),
+                        Text(
+                          '${AppString.rank.tr} ${league.userRank}/${league.maxTeams}',
+                          style: TextStyle(
+                            color: const Color(0xFFFF6B35),
+                            fontSize: 10.sp,
+                          ),
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          AppString.separator.tr,
+                          style: TextStyle(color: Colors.grey, fontSize: 10.sp),
+                        ),
+                        SizedBox(width: 4.w),
+                      ],
                       Icon(
                         Icons.sports_basketball,
                         color: const Color(0xFFFF6B35),
@@ -419,7 +422,9 @@ class LeagueCard extends StatelessWidget {
                       ),
                       SizedBox(width: 2.w),
                       Text(
-                        league.season.tr,
+                        league.isWaiting
+                            ? AppString.waiting.tr
+                            : league.season.tr,
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 10.sp,
