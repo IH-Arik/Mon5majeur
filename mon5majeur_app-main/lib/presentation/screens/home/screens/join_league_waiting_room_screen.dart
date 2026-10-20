@@ -68,6 +68,10 @@ class _JoinLeagueWaitingRoomScreenState
   void dispose() {
     _pulseController.dispose();
     _controller.disconnectWebSocket();
+    // Back from the waiting room: the lists may be stale. Deferred so the
+    // reactive lists are not touched while the tree is being torn down.
+    final controller = _controller;
+    Future.microtask(controller.refreshLeagueLists);
     super.dispose();
   }
 

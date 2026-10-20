@@ -122,6 +122,10 @@ class _CreatePrivateLeagueWaitingRoomScreenState
   @override
   void dispose() {
     _controller.disconnectWebSocket();
+    // Back from the waiting room: the lists may be stale. Deferred so the
+    // reactive lists are not touched while the tree is being torn down.
+    final controller = _controller;
+    Future.microtask(controller.refreshLeagueLists);
     super.dispose();
   }
 
@@ -413,7 +417,9 @@ class _CreatePrivateLeagueWaitingRoomScreenState
 
                       // League Type
                       Text(
-                        AppString.privateLeague.tr,
+                        widget.isPublicLeague
+                            ? AppString.publicLeague.tr
+                            : AppString.privateLeague.tr,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: const Color(0xFFAAAAAA),
@@ -933,7 +939,7 @@ class _CreatePrivateLeagueWaitingRoomScreenState
       child: Row(
         children: [
           SizedBox(
-            width: 14.w,
+            width: 22.w,
             child: Text(
               '$index.',
               textAlign: TextAlign.center,

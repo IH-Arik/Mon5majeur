@@ -632,6 +632,20 @@ class CreateLeagueController extends GetxController {
     }
   }
 
+  /// Reloads "My Leagues" and the Home card so their team counts follow a
+  /// kick (or whatever changed while in the waiting room).
+  Future<void> refreshLeagueLists() async {
+    try {
+      final myLeaguesController = Get.find<MyLeaguesController>();
+      await myLeaguesController.refreshLeagues();
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().fetchMyLeagues(); // home card (QA #9 2.1/2.2)
+      }
+    } catch (e) {
+      logger.w("MyLeaguesController not found: $e");
+    }
+  }
+
   // Kick Team from League
   Future<void> kickTeamFromLeague(
     BuildContext context,
@@ -664,6 +678,8 @@ class CreateLeagueController extends GetxController {
         leagueTeams.removeWhere((team) => team.teamId == teamId);
 
         logger.i("Team Kicked from $_leagueTypeLabel League Successfully");
+
+        await refreshLeagueLists();
 
         showSnackbar(context, "Success", message);
 
