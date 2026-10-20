@@ -41,6 +41,16 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
     controller = Get.find<CreateLeagueController>(
       tag: widget.isPublic ? 'public' : 'private',
     );
+    controller.resetForCreate();
+  }
+
+  @override
+  void dispose() {
+    // Empty the fields once the form is gone (the created league stays loaded
+    // for the success dialog / waiting room). Deferred: not during teardown.
+    final c = controller;
+    Future.microtask(c.clearFormFields);
+    super.dispose();
   }
 
   String _getLogoValue(int index) {
@@ -66,7 +76,9 @@ class _CreateLeagueFormScreenState extends State<CreateLeagueFormScreen> {
   void _createLeague() async {
     await controller.createLeague(context);
 
-    // For private leagues, show success dialog with join code
+    // For private leagues, show success dialog with join code — only when the
+    // creation succeeded (currentLeague is cleared when it starts).
+    if (!mounted) return;
     if (!widget.isPublic && controller.currentLeague.value != null) {
       _showSuccessDialog();
     }
