@@ -161,6 +161,10 @@ class EnglishTranslation {
     AppString.createLeague: 'Create League',
     AppString.codeCopied: 'Code copied to clipboard!',
     AppString.shareFunctionality: 'Share functionality',
+    AppString.shareLeagueMessage:
+        'Join my league "@name" on Mon5Majeur! Code: @code',
+    AppString.shareLeagueIosLine: 'iPhone: @url',
+    AppString.shareLeagueAndroidLine: 'Android: @url',
     AppString.leagueCreated: 'League Created',
     AppString.joinCodeGenerated: 'Join code (Generated after creation)',
     AppString.shareThisCodeWithFriends:

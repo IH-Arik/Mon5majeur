@@ -11,6 +11,7 @@ import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
+import '../../../../core/utils/share_league.dart';
 import '../controllers/home_controller.dart';
 import '../controllers/create_league_controller.dart';
 
@@ -744,6 +745,25 @@ class _CreatePrivateLeagueWaitingRoomScreenState
                                             ),
                                           ),
                                         ),
+                                        if ((league.joinCode ?? '').isNotEmpty)
+                                          Builder(
+                                            builder: (btnContext) =>
+                                                GestureDetector(
+                                              onTap: () => shareLeagueInvite(
+                                                btnContext,
+                                                name: league.leagueName,
+                                                code: league.joinCode,
+                                              ),
+                                              child: Container(
+                                                padding: EdgeInsets.all(10.r),
+                                                child: Icon(
+                                                  Icons.share,
+                                                  size: 20.r,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         GestureDetector(
                                           onTap: _copyCode,
                                           child: Container(
