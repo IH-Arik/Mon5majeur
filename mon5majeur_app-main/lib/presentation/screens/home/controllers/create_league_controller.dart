@@ -165,6 +165,10 @@ class CreateLeagueController extends GetxController {
 
     isCreatingLeague.value = true;
 
+    // A failed creation must never leave the previous league loaded.
+    currentLeague.value = null;
+    leagueTeams.clear();
+
     try {
       final apiClient = ApiClient();
 
@@ -937,6 +941,32 @@ class CreateLeagueController extends GetxController {
     if (logo != null) selectedLogo.value = logo;
     if (budget != null) selectedBudget.value = budget;
     if (maxTeams != null) selectedMaxTeams.value = maxTeams;
+  }
+
+  /// Empties the form fields only. The loaded league (success dialog,
+  /// waiting room) is kept.
+  void clearFormFields() {
+    leagueNameController.clear();
+    leagueDescriptionController.clear();
+    selectedLogo.value = '';
+    selectedBudget.value = '100M';
+    selectedMaxTeams.value = '6';
+  }
+
+  /// Fresh state when the creation form opens. Unlike [clearForm] it leaves
+  /// [activePublicLeagues] alone (shared with explore / choose a league).
+  void resetForCreate() {
+    clearFormFields();
+    currentLeague.value = null;
+    leagueTeams.clear();
+  }
+
+  /// Drops the loaded league unless it is [leagueId], so a waiting room never
+  /// shows the previous league while the new one loads.
+  void discardLeagueUnless(int? leagueId) {
+    if (leagueId == null || currentLeague.value?.id == leagueId) return;
+    currentLeague.value = null;
+    leagueTeams.clear();
   }
 
   void clearForm() {

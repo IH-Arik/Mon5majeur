@@ -60,6 +60,7 @@ class _CreatePrivateLeagueWaitingRoomScreenState
 
     // Fetch league details if leagueId is provided
     if (widget.leagueId != null) {
+      _controller.discardLeagueUnless(widget.leagueId);
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await _controller.getLeagueDetails(context, widget.leagueId!);
         if (mounted) {
@@ -314,7 +315,16 @@ class _CreatePrivateLeagueWaitingRoomScreenState
             );
           }
 
-          final league = _controller.currentLeague.value;
+          final current = _controller.currentLeague.value;
+          // Only ever show the league this room was opened for.
+          final isOtherLeague =
+              widget.leagueId != null && current?.id != widget.leagueId;
+          if (isOtherLeague && !_fetchAttempted) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFCC5123)),
+            );
+          }
+          final league = isOtherLeague ? null : current;
           if (league == null) {
             // Only redirect once the fetch has actually had a chance to run —
             // otherwise this fires on the very first frame, before

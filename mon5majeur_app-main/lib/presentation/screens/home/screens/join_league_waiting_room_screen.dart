@@ -32,6 +32,8 @@ class _JoinLeagueWaitingRoomScreenState
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late final CreateLeagueController _controller;
+  // True once the leagueId fetch has finished (success or failure).
+  bool _fetchAttempted = false;
 
   String get _tag => widget.isPublic ? 'public' : 'private';
 
@@ -49,8 +51,10 @@ class _JoinLeagueWaitingRoomScreenState
 
     // Fetch league details if leagueId is provided
     if (widget.leagueId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _controller.getLeagueDetails(context, widget.leagueId!);
+      _controller.discardLeagueUnless(widget.leagueId);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _controller.getLeagueDetails(context, widget.leagueId!);
+        if (mounted) setState(() => _fetchAttempted = true);
       });
     }
 
@@ -94,14 +98,22 @@ class _JoinLeagueWaitingRoomScreenState
           );
         }
 
-        final league = _controller.currentLeague.value;
+        final current = _controller.currentLeague.value;
+        // Only ever show the league this room was opened for.
+        final isOtherLeague =
+            widget.leagueId != null && current?.id != widget.leagueId;
+        final league = isOtherLeague ? null : current;
+        final waitingForFetch =
+            widget.leagueId != null && !_fetchAttempted && league == null;
         if (league == null) {
-          // Automatically redirect if league not found
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              context.go(RoutePath.myLeague.addBasePath);
-            }
-          });
+          // Redirect if the league is not found, once the fetch has run.
+          if (!waitingForFetch) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                context.go(RoutePath.myLeague.addBasePath);
+              }
+            });
+          }
 
           return Center(
             child: CircularProgressIndicator(
