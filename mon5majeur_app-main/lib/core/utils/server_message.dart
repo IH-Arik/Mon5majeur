@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
 
+import '../constants/app_strings.dart';
+
 /// The backend answers in English and has no i18n layer; some messages also
 /// carry a name or a number. Fixed texts are translated through the normal
 /// `.tr` dictionary; the ones with variable parts are recognised here and
@@ -7,6 +9,18 @@ import 'package:get/get.dart';
 /// English errors). Unknown messages are shown as received.
 String localizeServerMessage(String message) {
   final text = message.trim();
+  final noUses = _noBonusUses.firstMatch(text);
+  if (noUses != null) {
+    // The server names the bonus in lowercase code form ("sixth man").
+    final name = switch (noUses.group(1)) {
+      'sixth man' => AppString.sixthMan.tr,
+      'chef curry' => AppString.chefsCurry.tr,
+      'luxury tax' => AppString.luxuryTax.tr,
+      final other => other ?? '',
+    };
+    return 'You have no @name bonus left. You can buy more in the shop.'
+        .trParams({'name': name});
+  }
   for (final rule in _rules) {
     final m = rule.pattern.firstMatch(text);
     if (m == null) continue;
@@ -18,6 +32,10 @@ String localizeServerMessage(String message) {
   }
   return text.tr;
 }
+
+final _noBonusUses = RegExp(
+  r'^No (.+) uses left \(free quota and purchased charges both exhausted\)$',
+);
 
 class _Rule {
   final RegExp pattern;
