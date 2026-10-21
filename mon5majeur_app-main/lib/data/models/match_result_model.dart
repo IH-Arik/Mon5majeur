@@ -12,6 +12,8 @@ class MatchResultModel {
   final String createdAt;
   // Score paywall — the API sends zeros while true (see MyMatchTodayModel).
   final bool scoresHidden;
+  // The first tip-off has happened. Optional: null until the server exposes it.
+  final bool? started;
 
   MatchResultModel({
     required this.id,
@@ -25,6 +27,7 @@ class MatchResultModel {
     required this.pairs,
     required this.createdAt,
     this.scoresHidden = false,
+    this.started,
   });
 
   factory MatchResultModel.fromJson(Map<String, dynamic> json) {
@@ -48,6 +51,7 @@ class MatchResultModel {
           [],
       createdAt: json['created_at'] ?? '',
       scoresHidden: json['scores_hidden'] ?? false,
+      started: json['started'] as bool?,
     );
   }
 }

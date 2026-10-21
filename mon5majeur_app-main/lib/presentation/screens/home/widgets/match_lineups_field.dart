@@ -38,6 +38,9 @@ class MatchLineupsField extends StatelessWidget {
   // one, not that the match is waiting for it. False everywhere else, so the
   // Live and the Global League keep the "not ready" wording.
   final bool matchFinished;
+  // The first tip-off has happened: an empty side then means "never set", not
+  // "not ready yet". False everywhere else, so the Live keeps "not ready".
+  final bool matchStarted;
 
   const MatchLineupsField({
     super.key,
@@ -48,6 +51,7 @@ class MatchLineupsField extends StatelessWidget {
     this.globalResultStyle = false,
     this.duelResultStyle = false,
     this.matchFinished = false,
+    this.matchStarted = false,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -83,6 +87,13 @@ class MatchLineupsField extends StatelessWidget {
     final bPlayers = _starters(b);
     final aHidden = teamA?.selectionHidden ?? false;
     final bHidden = b?.selectionHidden ?? false;
+    // Nobody has a lineup and nothing is waiting for one: one message for the
+    // whole court. Before tip-off each side says its own state instead.
+    final noTeamAtAll = aPlayers.isEmpty &&
+        bPlayers.isEmpty &&
+        !aHidden &&
+        !bHidden &&
+        (globalResultStyle || matchFinished || matchStarted);
 
     return Container(
       margin: EdgeInsets.only(top: 12.h),
@@ -112,12 +123,10 @@ class MatchLineupsField extends StatelessWidget {
             Positioned.fill(
               child: Container(color: Colors.black.withValues(alpha: 0.3)),
             ),
-            if (aPlayers.isEmpty && bPlayers.isEmpty && !aHidden && !bHidden)
+            if (noTeamAtAll)
               Positioned.fill(
                 child: Center(
-                  child: globalResultStyle
-                      ? _noTeamCard()
-                      : (matchFinished ? _noLineupCard() : _notReadyCard()),
+                  child: globalResultStyle ? _noTeamCard() : _noLineupCard(),
                 ),
               ),
 
@@ -134,7 +143,10 @@ class MatchLineupsField extends StatelessWidget {
             else
               for (var i = 0; i < aPlayers.length; i++)
                 _positionPlayer(i, aPlayers[i], teamA, isTopTeam: true),
-            if (!aHidden && aPlayers.isEmpty && bPlayers.isNotEmpty)
+            if (!globalResultStyle &&
+                !noTeamAtAll &&
+                !aHidden &&
+                aPlayers.isEmpty)
               _teamNotReady(teamA?.teamName ?? 'Team A', Colors.red, top: 100.h),
 
             // ── Bottom team
@@ -151,9 +163,9 @@ class MatchLineupsField extends StatelessWidget {
               for (var i = 0; i < bPlayers.length; i++)
                 _positionPlayer(i, bPlayers[i], b, isTopTeam: false),
             if (showOpponent &&
+                !noTeamAtAll &&
                 !bHidden &&
-                bPlayers.isEmpty &&
-                aPlayers.isNotEmpty)
+                bPlayers.isEmpty)
               _teamNotReady(b?.teamName ?? 'Team B', Colors.blue, bottom: 100.h),
           ],
         ),
@@ -386,7 +398,7 @@ class MatchLineupsField extends StatelessWidget {
             SizedBox(width: 8.w),
             Flexible(
               child: Text(
-                AppString.opponentLineupHidden.tr,
+                AppString.teamRevealedAtTipOff.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white, fontSize: 12.sp),
               ),
@@ -396,11 +408,6 @@ class MatchLineupsField extends StatelessWidget {
       ),
     );
   }
-
-  Widget _notReadyCard() => _messageCard(
-        AppString.teamsNotReady.tr,
-        AppString.teamsNotReadyDesc.tr,
-      );
 
   // Finished duel where neither player set a lineup.
   Widget _noLineupCard() => _messageCard(
@@ -498,10 +505,9 @@ class MatchLineupsField extends StatelessWidget {
             borderRadius: BorderRadius.circular(8.r),
           ),
           child: Text(
-            (matchFinished
-                    ? AppString.playerNoLineupTemplate
-                    : AppString.teamNotReadyTemplate)
-                .trParams({'name': name}),
+            matchFinished
+                ? AppString.playerNoLineupTemplate.trParams({'name': name})
+                : AppString.teamNotReady.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 14.sp,
