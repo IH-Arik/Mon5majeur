@@ -11,6 +11,7 @@ import '../../../../data/models/game_model.dart';
 import '../../../../data/models/player.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/player_pages.dart';
 import '../controllers/result_controller.dart';
 import '../screens/select_player_screen.dart';
 import '../widgets/game_card.dart';
@@ -271,7 +272,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         });
       }
 
-      final url = '${ApiUrl.baseUrl}/api/players-today/';
+      // One call for the whole list (about 380 players); `next` only comes
+      // back if the server ever caps the page below that.
+      final url = '${ApiUrl.baseUrl}/api/players-today/?size=1000';
 
       final response = await _apiClient.get(url: url, showResult: true);
 
@@ -316,8 +319,39 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
   }
 
-  // Auto-load ALL remaining pages in background
+  // Remaining pages (only when the first call did not bring everything):
+  // requested together; if one fails the list stays partial, the counter
+  // stays, and the player picker can still load more.
   Future<void> _loadAllRemainingPages() async {
+    final next = _nextPageUrl;
+    if (next == null || !mounted || _isLoadingMore) return;
+    _isLoadingMore = true; // keeps _loadMorePlayers out while pages arrive
+    PlayerPagesTail? tail;
+    try {
+      tail = await fetchRemainingPlayerPages(
+        client: _apiClient,
+        nextUrl: next,
+        total: totalPlayers,
+        firstPageSize: availablePlayers.length,
+      );
+    } finally {
+      _isLoadingMore = false;
+    }
+    if (!mounted) return;
+    if (tail == null) {
+      await _loadRemainingSequentially();
+      return;
+    }
+    setState(() {
+      availablePlayers.addAll(tail!.players);
+      _nextPageUrl = tail.nextUrl;
+      hasMorePages = tail.nextUrl != null;
+    });
+    _playersNotifier.value = List.from(availablePlayers);
+  }
+
+  // Fallback: follow `next` page by page.
+  Future<void> _loadRemainingSequentially() async {
     while (_nextPageUrl != null && mounted) {
       try {
         debugPrint('🔄 Auto-loading next page: $_nextPageUrl');
@@ -362,8 +396,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       }
     }
     if (mounted) {
-      setState(() => hasMorePages = false);
-      debugPrint('🏁 All pages loaded. Total: ${availablePlayers.length}');
+      setState(() => hasMorePages = _nextPageUrl != null);
+      debugPrint('🏁 Pages loaded. Total: ${availablePlayers.length}');
     }
   }
 
@@ -1037,7 +1071,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           // Remove the "Load More".tr button section and simplify the player count display
           else ...[
             // Show player count
-            if (!isLoadingPlayers && availablePlayers.isNotEmpty)
+            if (!isLoadingPlayers &&
+                availablePlayers.isNotEmpty &&
+                availablePlayers.length < totalPlayers)
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: Text(
