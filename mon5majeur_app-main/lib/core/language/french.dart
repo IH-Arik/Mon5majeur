@@ -612,7 +612,7 @@ class FrenchTranslation {
     AppString.globalNoTeamTitle: "Pas d'équipe pour cette nuit",
     AppString.globalNoTeamMine: "Tu n'as pas composé d'équipe à cette date.",
     AppString.globalNoTeamOther: "Ce joueur n'a pas composé d'équipe à cette date.",
-    AppString.reuseGlobalTeam: "Reprendre mon équipe mondiale",
+    AppString.reuseGlobalTeam: "Reprendre mon équipe Ligue Mondiale",
     AppString.replaceCurrentTeam: "Remplacer ton équipe actuelle ?",
     AppString.globalTeamNotValid: "Vérifie ton équipe : budget dépassé ou joueur absent ce soir.",
     AppString.teamNotReady: "Équipe pas prête",
