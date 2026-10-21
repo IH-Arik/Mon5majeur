@@ -52,6 +52,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       _baseBudget + (luxuryTaxActivated ? _luxuryTaxBonus : 0.0);
   List<Player?> selectedPlayers = List.filled(5, null);
   Player? sixthManPlayer;
+  // Tonight's Global League team, when the user already built one: offered as
+  // a starting point by the "Reuse my Global League team" button. Its bonuses
+  // do not exist (the Global League has none), so none is ever copied.
+  List<Player>? _globalTeam;
 
   // Client-side confirmed flag (no backend field). True after a successful
   // submit or when a complete saved team is loaded; reset to false on any edit.
@@ -213,6 +217,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     _fetchTodaysGames();
     _fetchSavedTeam();
     _fetchBonusInventory();
+    _fetchGlobalTeam();
     _loadJersey();
     // ResultTab registers the ResultController after this tab is built: read
     // it again once it exists (match-day selector label).
@@ -780,6 +785,127 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
   }
 
+  Future<void> _fetchGlobalTeam() async {
+    try {
+      final response = await _apiClient.get(
+        url: '${ApiUrl.baseUrl}${ApiUrl.globalLeaguePlayersSelection}',
+      );
+      if (response.statusCode != 200 || response.body is! Map) return;
+      final list = (response.body as Map)['selected_players'] as List?;
+      if (list == null || list.length != 5) return;
+      final team = list
+          .map((e) => Player.fromJson(e as Map<String, dynamic>))
+          .toList();
+      if (mounted) setState(() => _globalTeam = team);
+    } catch (_) {
+      // non-fatal: no button
+    }
+  }
+
+  // Copies the Global League team into the five slots, slot for slot (both
+  // courts share the same layout). Nobody is removed for the budget: the
+  // usual "over budget" state applies and the user picks who to replace. Only
+  // a player known to be OUT, or absent tonight, is left empty. The user then
+  // confirms with the usual button.
+  Future<void> _reuseGlobalTeam() async {
+    final team = _globalTeam;
+    if (team == null) return;
+
+    if (selectedPlayers.any((p) => p != null)) {
+      final replace = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text(
+            AppString.replaceCurrentTeam.tr,
+            style: TextStyle(color: Colors.white, fontSize: 16.sp),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(AppString.cancel.tr),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(
+                AppString.confirm.tr,
+                style: const TextStyle(color: Color(0xFFFF6B35)),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (replace != true || !mounted) return;
+    }
+
+    // "Absent tonight" is only known once every page of players is loaded;
+    // before that all five are copied and the server decides on confirm.
+    final poolComplete =
+        !isLoadingPlayers && !hasMorePages && availablePlayers.isNotEmpty;
+    Player? usable(Player p) {
+      // The 6th man cannot also be a starter: that player stays empty.
+      if (sixthManPlayer?.id != null && sixthManPlayer!.id == p.id) return null;
+      Player? fresh;
+      for (final a in availablePlayers) {
+        if (a.id == p.id) {
+          fresh = a;
+          break;
+        }
+      }
+      if (fresh == null) return poolComplete ? null : p;
+      return fresh.status == 'OUT' ? null : fresh;
+    }
+
+    setState(() {
+      selectedPlayers = [for (final p in team) usable(p)];
+      isConfirmed = false;
+    });
+
+    if (selectedPlayers.any((p) => p == null) || isOverBudget) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppString.globalTeamNotValid.tr),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  Widget _buildReuseGlobalTeamButton() {
+    if (_globalTeam == null || isSubmitting || isLineupLocked(lockInSeconds)) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 12.h),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _reuseGlobalTeam,
+          icon: Icon(Icons.sync, color: const Color(0xFFFF6B35), size: 18.r),
+          label: Text(
+            AppString.reuseGlobalTeam.tr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: const Color(0xFF1A1A1A),
+            padding: EdgeInsets.symmetric(vertical: 12.h),
+            side: const BorderSide(color: Color(0xFFFF6B35)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Add this method to fetch saved players for the current match day
   Future<void> _fetchSavedTeam() async {
     if (widget.leagueId == null ||
@@ -924,6 +1050,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
           _buildCourtField(),
           SizedBox(height: 12.h),
+          _buildReuseGlobalTeamButton(),
           TeamStatusBanner(
             state: lineupStateFor(
               selectedCount: 5 - remainingPlayers,
