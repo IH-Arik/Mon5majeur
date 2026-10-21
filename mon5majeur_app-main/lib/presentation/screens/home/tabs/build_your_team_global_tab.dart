@@ -12,6 +12,7 @@ import '../../../../data/models/player.dart';
 import '../../../../data/models/game_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
+import '../../../../data/services/player_pages.dart';
 import '../../../../controllers/global_league_controller.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
@@ -175,7 +176,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
         });
       }
 
-      final url = '${ApiUrl.baseUrl}/api/players-today/';
+      final url = '${ApiUrl.baseUrl}/api/players-today/?size=1000';
 
       final response = await _apiClient.get(url: url, showResult: true);
 
@@ -221,7 +222,39 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     }
   }
 
+  // Remaining pages (only when the first call did not bring everything):
+  // requested together; if one fails the list stays partial and the player
+  // picker can still load more.
   Future<void> _loadAllRemainingPages() async {
+    final next = _nextPageUrl;
+    if (next == null || !mounted || _isLoadingMore) return;
+    _isLoadingMore = true; // keeps _loadMorePlayers out while pages arrive
+    PlayerPagesTail? tail;
+    try {
+      tail = await fetchRemainingPlayerPages(
+        client: _apiClient,
+        nextUrl: next,
+        total: totalPlayers,
+        firstPageSize: availablePlayers.length,
+      );
+    } finally {
+      _isLoadingMore = false;
+    }
+    if (!mounted) return;
+    if (tail == null) {
+      await _loadRemainingSequentially();
+      return;
+    }
+    setState(() {
+      availablePlayers.addAll(tail!.players);
+      _nextPageUrl = tail.nextUrl;
+      hasMorePages = tail.nextUrl != null;
+    });
+    _playersNotifier.value = List.from(availablePlayers);
+  }
+
+  // Fallback: follow `next` page by page.
+  Future<void> _loadRemainingSequentially() async {
     while (_nextPageUrl != null && mounted) {
       try {
         debugPrint('🔄 Auto-loading next page: $_nextPageUrl');
@@ -259,8 +292,8 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       }
     }
     if (mounted) {
-      setState(() => hasMorePages = false);
-      debugPrint('🏁 All pages loaded. Total: ${availablePlayers.length}');
+      setState(() => hasMorePages = _nextPageUrl != null);
+      debugPrint('🏁 Pages loaded. Total: ${availablePlayers.length}');
     }
   }
 
