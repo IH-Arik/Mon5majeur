@@ -721,6 +721,9 @@ class AppString {
   static const String globalNoTeamTitle = 'globalNoTeamTitle';
   static const String globalNoTeamMine = 'globalNoTeamMine';
   static const String globalNoTeamOther = 'globalNoTeamOther';
+  static const String reuseGlobalTeam = 'reuseGlobalTeam';
+  static const String replaceCurrentTeam = 'replaceCurrentTeam';
+  static const String globalTeamNotValid = 'globalTeamNotValid';
   static const String teamNotReady = 'teamNotReady';
   static const String teamRevealedAtTipOff = 'teamRevealedAtTipOff';
   static const String viewSeries = 'viewSeries';
