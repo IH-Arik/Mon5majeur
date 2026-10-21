@@ -445,6 +445,11 @@ class _ResultTabState extends State<ResultTab> {
                         duelResultStyle: true,
                         matchFinished:
                             controller.matchResult.value?.status == 'completed',
+                        // Replaced by `started` from the server once exposed.
+                        matchStarted:
+                            controller.matchResult.value?.started ??
+                            (controller.matchResult.value?.status !=
+                                'scheduled'),
                       )
                 : SizedBox.shrink(),
           ),

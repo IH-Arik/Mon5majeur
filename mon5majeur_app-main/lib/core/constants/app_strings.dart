@@ -691,7 +691,6 @@ class AppString {
   static const String bonusLabel = 'Bonus';
   static const String noBonus = 'No bonus';
   static const String bonusHidden = 'Bonus revealed with the results';
-  static const String opponentLineupHidden = "Opponent's lineup is revealed at tip-off";
   static const String noLiveMatchNow = 'No live match right now';
   static const String noLiveMatchHint =
       'Pull down to refresh. Live scores appear here while games are being played.';
@@ -719,12 +718,11 @@ class AppString {
   static const String minutesTemplate = 'minutesTemplate';
   static const String matchdayNumberTemplate = 'matchdayNumberTemplate';
   static const String youNeedOnePlayer = 'youNeedOnePlayer';
-  static const String teamsNotReady = 'teamsNotReady';
-  static const String teamsNotReadyDesc = 'teamsNotReadyDesc';
   static const String globalNoTeamTitle = 'globalNoTeamTitle';
   static const String globalNoTeamMine = 'globalNoTeamMine';
   static const String globalNoTeamOther = 'globalNoTeamOther';
-  static const String teamNotReadyTemplate = 'teamNotReadyTemplate';
+  static const String teamNotReady = 'teamNotReady';
+  static const String teamRevealedAtTipOff = 'teamRevealedAtTipOff';
   static const String viewSeries = 'viewSeries';
   static const String semifinalGameTemplate = 'semifinalGameTemplate';
   static const String finalGameTemplate = 'finalGameTemplate';
