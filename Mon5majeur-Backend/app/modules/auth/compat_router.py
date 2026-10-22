@@ -146,7 +146,9 @@ async def _send_otp(user: User, purpose: str) -> None:
     ).insert()
     # Run synchronous SMTP call in thread pool so it doesn't block the event loop
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, send_otp_email, user.email, code, purpose)
+    await loop.run_in_executor(
+        None, send_otp_email, user.email, code, purpose, getattr(user, "language", None)
+    )
     logger.info("OTP sent | user=%s | purpose=%s", user.email, purpose)
 
 

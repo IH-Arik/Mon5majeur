@@ -111,8 +111,13 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
+    # Every app e-mail leaves from the brand address through the sending
+    # service configured above (Resend, Brevo... over SMTP), never from a
+    # personal mailbox (Arik QA item 13). The service's API key is the
+    # SMTP_PASSWORD in .env.prod, never in the code.
     EMAILS_FROM_EMAIL: str = "noreply@mon5majeur.com"
-    EMAILS_FROM_NAME: str = "Mon5majeur"
+    EMAILS_FROM_NAME: str = "Mon5Majeur"
+    EMAILS_REPLY_TO: str = ""              # e.g. support@mon5majeur.com; empty = none
 
     # ── File Upload ───────────────────────────────────────────────────────────
     UPLOAD_DIR: str = "uploads"

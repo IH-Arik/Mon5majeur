@@ -391,7 +391,7 @@ class AuthService:
             purpose=purpose,
         ).insert()
 
-        send_otp_email(user.email, code, purpose)
+        send_otp_email(user.email, code, purpose, getattr(user, "language", None))
         # Never log the code itself: anyone able to read the logs could take over the account.
         logger.info("OTP created | user=%s | purpose=%s", user.email, purpose)
         return code
