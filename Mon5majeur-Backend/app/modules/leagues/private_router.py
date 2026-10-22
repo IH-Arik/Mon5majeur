@@ -21,6 +21,7 @@ from app.modules.auth.dependencies import get_current_user
 from app.modules.leagues.dependencies import get_league_service
 from app.modules.leagues.model import League, LeagueMembership
 from app.modules.leagues.schema import (
+    JoinPublicLeagueByIdRequest,
     CreatePublicLeagueRequest,
     JoinPrivateLeagueRequest,
     JoinPrivateLeagueResponse,
@@ -268,3 +269,16 @@ async def delete_private_league(
     service: LeagueService = Depends(get_league_service),
 ) -> None:
     await service.delete_league_compat(league_id, current_user)
+
+
+@router.post(
+    "/leave/",
+    response_model=dict,
+    summary="Leave a private league that has not started (Flutter: leave league)",
+)
+async def leave_private_league(
+    payload: JoinPublicLeagueByIdRequest,
+    current_user: User = Depends(get_current_user),
+    service: LeagueService = Depends(get_league_service),
+) -> dict:
+    return await service.leave_league_compat(payload.league_id, current_user, "private")

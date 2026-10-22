@@ -809,6 +809,7 @@ class FrenchTranslation {
     "Verification code has expired. Please request a new one": "Le code a expiré. Demande-en un nouveau",
     "You are not a member of this league": "Tu n'es pas membre de cette ligue",
     "You have no match on this day": "Tu n'as pas de match ce jour-là",
+    "Something went wrong": "Une erreur est survenue",
     "The 6th Man cannot also be a starter": "Le 6e homme ne peut pas être aussi titulaire",
     "@name is OUT and cannot be selected": "@name est absent (OUT) et ne peut pas être sélectionné",
     "@name is listed twice": "@name apparaît deux fois",

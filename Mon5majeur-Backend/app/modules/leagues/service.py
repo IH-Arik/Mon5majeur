@@ -33,6 +33,10 @@ from app.modules.leagues.schema import (
 )
 from app.modules.users.model import User
 
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -442,13 +446,23 @@ class LeagueService:
                 from app.modules.leagues.ws_router import emit_team_left
                 await emit_team_left(
                     league_auto_id=league.auto_id,
-                    team_id=None,
+                    # The other players' waiting rooms remove the team by its
+                    # id: with None nobody saw the departure (Arik QA item 7).
+                    team_id=user.auto_id,
                     team_name=user.team_name or "",
                 )
             except Exception:
-                pass
+                logger.warning("team_left event failed for league %s", league.auto_id, exc_info=True)
 
         return {"detail": "Left the league successfully"}
+
+    async def leave_league_compat(self, league_auto_id: int, user: User, league_type: str) -> dict:
+        """Leave by the league's integer id, the only one the app has (same
+        rules as leave_league: waiting leagues only, not the creator)."""
+        league = await League.find_one(League.auto_id == league_auto_id, League.type == league_type)
+        if not league:
+            raise NotFoundException("League not found")
+        return await self.leave_league(league.id, user)
 
     # ── Kick Member ───────────────────────────────────────────────────────────
 

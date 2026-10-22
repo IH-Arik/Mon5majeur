@@ -524,12 +524,7 @@ class _JoinLeagueWaitingRoomScreenState
                                   SizedBox(width: 16.w),
                                   Expanded(
                                     child: ElevatedButton(
-                                      onPressed: () {
-                                        _hideLeaveDialog();
-                                        context.go(
-                                          RoutePath.myLeague.addBasePath,
-                                        );
-                                      },
+                                      onPressed: _leave,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: const Color(
                                           0xFFDC3545,
@@ -678,6 +673,23 @@ class _JoinLeagueWaitingRoomScreenState
         ],
       ),
     );
+  }
+
+  /// Really leaves the league on the server (the button used to only go
+  /// back, the player stayed a member), then returns to "Mes ligues".
+  Future<void> _leave() async {
+    _hideLeaveDialog();
+    final id = widget.leagueId;
+    if (id == null) return;
+    final error = await _controller.leaveLeague(id, isPublic: widget.isPublic);
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    context.go(RoutePath.myLeague.addBasePath);
   }
 
   void _showLeaveConfirmation() {

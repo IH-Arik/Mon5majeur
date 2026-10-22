@@ -240,3 +240,16 @@ async def delete_public_league(
     service: LeagueService = Depends(get_league_service),
 ) -> None:
     await service.delete_league_compat(league_id, current_user)
+
+
+@router.post(
+    "/leave/",
+    response_model=dict,
+    summary="Leave a public league that has not started (Flutter: leave league)",
+)
+async def leave_public_league(
+    payload: JoinPublicLeagueByIdRequest,
+    current_user: User = Depends(get_current_user),
+    service: LeagueService = Depends(get_league_service),
+) -> dict:
+    return await service.leave_league_compat(payload.league_id, current_user, "public")

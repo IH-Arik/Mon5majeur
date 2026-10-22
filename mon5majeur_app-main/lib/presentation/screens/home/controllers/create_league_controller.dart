@@ -1003,4 +1003,24 @@ class CreateLeagueController extends GetxController {
     leagueTeams.clear();
     activePublicLeagues.clear();
   }
+
+  /// Leaves a league that has not started (Arik QA item 7). Returns null on
+  /// success, otherwise the translated reason (creator, league started...).
+  Future<String?> leaveLeague(int leagueId, {required bool isPublic}) async {
+    try {
+      final url = ApiUrl.baseUrl +
+          (isPublic ? ApiUrl.leavePublicLeague : ApiUrl.leavePrivateLeague);
+      final response = await ApiClient().post(
+        url: url,
+        body: {'league_id': leagueId},
+      );
+      if (response.statusCode == 200) return null;
+      final detail = response.body is Map ? response.body['detail'] : null;
+      return detail != null
+          ? localizeServerMessage(detail.toString())
+          : 'Something went wrong'.tr;
+    } catch (_) {
+      return 'Something went wrong'.tr;
+    }
+  }
 }
