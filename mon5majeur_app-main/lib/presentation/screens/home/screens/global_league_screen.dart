@@ -86,7 +86,7 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   Widget _buildHeader() {
     return Obx(() {
       // Make header reactive to controller changes
-      final matchDay = _controller.currentMatchDay.value;
+      final matchDay = _controller.displayNight.value;
 
       return Container(
         width: double.infinity,

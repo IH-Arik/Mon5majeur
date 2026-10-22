@@ -618,7 +618,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
             ),
           ),
           Text(
-            '${AppString.matchday.tr} ${_controller.currentMatchDay.value}',
+            '${AppString.matchday.tr} ${_controller.displayNight.value}',
             style: TextStyle(
               color: const Color(0xFFB1B1B1),
               fontSize: 16.sp,

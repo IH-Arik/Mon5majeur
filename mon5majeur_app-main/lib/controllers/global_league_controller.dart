@@ -32,6 +32,9 @@ class GlobalLeagueSelection {
   }
   final int? weeklyRank;
   final int? monthlyRank;
+  // World League night number since the season opening (Arik QA item 11);
+  // null with an older server.
+  final int? nightNumber;
 
   GlobalLeagueSelection({
     required this.matchDay,
@@ -43,6 +46,7 @@ class GlobalLeagueSelection {
     int? lockInSeconds,
     this.weeklyRank,
     this.monthlyRank,
+    this.nightNumber,
   }) : _lockAtReceipt = lockInSeconds;
 
   factory GlobalLeagueSelection.fromJson(Map<String, dynamic> json) {
@@ -60,6 +64,7 @@ class GlobalLeagueSelection {
       lockInSeconds: json['lock_in_seconds'],
       weeklyRank: json['weekly_rank'],
       monthlyRank: json['monthly_rank'],
+      nightNumber: (json['night_number'] as num?)?.toInt(),
     );
   }
 
@@ -103,6 +108,9 @@ class GlobalLeagueController extends GetxController {
   var currentBalance = '100M'.obs;
   var maxBalance = '100M'.obs;
   var currentMatchDay = 0.obs;
+  // What the headers show: the night number when the server sends it, else
+  // the stored match day (currentMatchDay stays the key for API calls).
+  var displayNight = 0.obs;
 
   // Whether the user has ever joined the Global League (Home card shows a
   // "Join now" CTA until this is true, then switches to the stats card).
@@ -208,6 +216,7 @@ class GlobalLeagueController extends GetxController {
         currentBalance.value = selection.currentBalance;
         maxBalance.value = selection.maxBalance;
         currentMatchDay.value = selection.matchDay;
+        displayNight.value = selection.nightNumber ?? selection.matchDay;
 
         logger.i('Loaded ${selectedPlayers.length} players for Global League');
         logger.i('Current Balance: ${currentBalance.value}');
@@ -360,6 +369,7 @@ class GlobalLeagueController extends GetxController {
     currentBalance.value = '100M';
     maxBalance.value = '100M';
     currentMatchDay.value = 0;
+    displayNight.value = 0;
   }
 
   /// Refresh data

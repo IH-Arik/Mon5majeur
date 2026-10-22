@@ -197,6 +197,15 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
     _show();
   }
 
+  /// "Journée 2 · mer. 21 oct." with the World League number when the server
+  /// sends it (night_number), else only the date as before.
+  String _nightTitle(Map<String, dynamic> d) {
+    final date = formatMatchDate(d['nba_date'] as String);
+    final n = (d['night_number'] as num?)?.toInt();
+    if (n == null) return date;
+    return '${AppString.matchdayNumberTemplate.trParams({'n': '$n'})} · $date';
+  }
+
   PlayerScore _toTeam(Map<String, dynamic> d) {
     final items = [
       for (final e in (d['selection'] as List? ?? const []))
@@ -265,9 +274,7 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                   ),
                 ),
                 Text(
-                  available
-                      ? formatMatchDate(d['nba_date'] as String)
-                      : AppString.result.tr,
+                  available ? _nightTitle(d) : AppString.result.tr,
                   style: TextStyle(
                     color: const Color(0xFFB1B1B1),
                     fontSize: 16.sp,
