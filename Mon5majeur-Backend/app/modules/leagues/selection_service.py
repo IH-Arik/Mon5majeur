@@ -93,8 +93,6 @@ async def _lock_in_seconds(league_auto_id: int, match_day: int) -> int | None:
     date). None = no scheduled match/game for this day, 0 = already locked,
     >0 = seconds until lock. Same lock rule as the Global League/private
     lineup submission."""
-    from app.modules.players.model import NBAGame
-
     league = await League.find_one(League.auto_id == league_auto_id)
     if not league:
         return None
@@ -259,6 +257,28 @@ async def _sync_bonus(
         await svc.refund(current_user.id, league_id, bonus)
 
 
+def _check_sixth_man_not_starter(selected_players: list[dict], sixth_man_player: dict | None) -> None:
+    """The 6th man is a sixth player: one of the five starters would count
+    twice in the "best 5 of 6"."""
+    if sixth_man_player is None:
+        return
+    starters = {str(p.get("id", "")) for p in selected_players}
+    if str(sixth_man_player.get("id", "")) in starters:
+        raise ForbiddenException("The 6th Man cannot also be a starter")
+
+
+async def _check_bonus_quotas(current_user: User, league_id, changes) -> None:
+    """Refuse before any write if a bonus switched on has no use left."""
+    from app.modules.bonuses.service import BonusService
+
+    svc = BonusService()
+    for bonus, was_active, now_active in changes:
+        if now_active and not was_active and not await svc.can_use(current_user.id, league_id, bonus):
+            raise ForbiddenException(
+                f"No {bonus.replace('_', ' ')} uses left (free quota and purchased charges both exhausted)"
+            )
+
+
 async def save_player_selection(
     league_auto_id: int,
     match_day: int,
@@ -272,6 +292,16 @@ async def save_player_selection(
     if not league:
         raise NotFoundException(f"League {league_auto_id} not found")
 
+    # Only a member may save a team, in a public league as in a private one
+    # (the public POST had no membership check).
+    from app.modules.leagues.model import LeagueMembership
+
+    if not await LeagueMembership.find_one(
+        LeagueMembership.league_id == league.id,
+        LeagueMembership.user_id == current_user.id,
+    ):
+        raise ForbiddenException("You are not a member of this league")
+
     from app.modules.leagues.lineup_state import ensure_open
 
     # One guard for every lineup/bonus change: locked from the first tip-off
@@ -279,11 +309,18 @@ async def save_player_selection(
     info = await ensure_open(league, current_user.id, match_day)
     lock_in_seconds = info.lock_in_seconds
 
+    # The player's OWN duel of that day: looking it up by league and day only
+    # returned someone else's match (wrong night, wrong seed, no lock) for a
+    # player without an opponent, whose team then stayed editable.
     match = await LeagueMatch.find_one(
         LeagueMatch.league_id == league.id,
         LeagueMatch.match_day == match_day,
+        {"$or": [{"home_user_id": current_user.id}, {"away_user_id": current_user.id}]},
     )
-    await _validate_selection(selected_players, match.nba_date if match else None)
+    if match is None:
+        raise ForbiddenException("You have no match on this day")
+    await _validate_selection(selected_players, match.nba_date)
+    _check_sixth_man_not_starter(selected_players, sixth_man_player)
 
     if sixth_man_player is not None:
         try:
@@ -323,31 +360,48 @@ async def save_player_selection(
             f"Total price {used}M exceeds budget {effective_budget}M"
         )
 
-    # Only the Global League's own endpoint calls this without bonus support
-    # (private/public leagues only) — this module is duel-leagues-only, so
-    # bonus quota is always checked/consumed here.
-    await _sync_bonus(current_user, league.id, "luxury_tax", existing.luxury_tax if existing else False, luxury_tax)
-    await _sync_bonus(current_user, league.id, "chef_curry", existing.chef_curry if existing else False, chef_curry)
-    await _sync_bonus(
-        current_user, league.id, "sixth_man",
-        existing.sixth_man_player is not None if existing else False,
-        sixth_man_player is not None,
-    )
+    # Bonuses and team are written together: every bonus that gets switched
+    # on is checked BEFORE anything is written, then the team is saved, then
+    # the quota is debited / refunded. If that last step fails the team is put
+    # back as it was, so a bonus is never lost with no team saved.
+    bonus_changes = [
+        ("luxury_tax", existing.luxury_tax if existing else False, luxury_tax),
+        ("chef_curry", existing.chef_curry if existing else False, chef_curry),
+        (
+            "sixth_man",
+            existing.sixth_man_player is not None if existing else False,
+            sixth_man_player is not None,
+        ),
+    ]
+    await _check_bonus_quotas(current_user, league.id, bonus_changes)
 
     # The duel's own scheduled night is authoritative — never "today", since
     # a lineup can legitimately be submitted the evening before an ET night.
-    night = match.nba_date if match else None
+    night = match.nba_date
 
+    previous = (
+        {
+            "selected_players": existing.selected_players,
+            "submitted_at": existing.submitted_at,
+            "nba_date": existing.nba_date,
+            "luxury_tax": existing.luxury_tax,
+            "chef_curry": existing.chef_curry,
+            "sixth_man_player": existing.sixth_man_player,
+        }
+        if existing
+        else None
+    )
     if existing:
-        existing.selected_players = selected_players
-        existing.submitted_at = now
-        existing.nba_date = night
-        existing.luxury_tax = luxury_tax
-        existing.chef_curry = chef_curry
-        existing.sixth_man_player = sixth_man_player
-        await existing.save()
+        doc = existing
+        doc.selected_players = selected_players
+        doc.submitted_at = now
+        doc.nba_date = night
+        doc.luxury_tax = luxury_tax
+        doc.chef_curry = chef_curry
+        doc.sixth_man_player = sixth_man_player
+        await doc.save()
     else:
-        await FlutterPlayerSelection(
+        doc = await FlutterPlayerSelection(
             user_id=current_user.id,
             league_id=league.id,
             league_auto_id=league_auto_id,
@@ -360,7 +414,19 @@ async def save_player_selection(
             sixth_man_player=sixth_man_player,
         ).insert()
 
-    match_id = (match.auto_id or 0) if match else 0
+    try:
+        for bonus, was_active, now_active in bonus_changes:
+            await _sync_bonus(current_user, league.id, bonus, was_active, now_active)
+    except Exception:
+        if previous is None:
+            await doc.delete()
+        else:
+            for k, v in previous.items():
+                setattr(doc, k, v)
+            await doc.save()
+        raise
+
+    match_id = match.auto_id or 0
 
     remaining = max(0.0, effective_budget - used)
 
