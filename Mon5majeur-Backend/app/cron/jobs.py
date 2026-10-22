@@ -95,10 +95,30 @@ async def prepare_night_job() -> None:
         night = await latest_finished_night(today)
         if night is None:
             return
+        # Closing pass: the whole night is fetched again whatever its state,
+        # so the last stat corrections are in before the 09:00 publication;
+        # only changed lines are scored again. After 09:00 the night is frozen.
+        await _closing_resync(night)
         await _prepare_night_data(night)
         logger.info("CRON prepare_night_job: night %s ready", night)
     except Exception as exc:  # noqa: BLE001
         logger.warning("CRON prepare_night_job: night not ready yet (%s)", exc)
+
+
+async def _closing_resync(night: date) -> None:
+    from app.modules.players.model import NBAGame
+    from app.modules.players.repository import PlayerRepository
+    from app.modules.players.service import PlayerService
+
+    games = await NBAGame.find(NBAGame.nba_date == night).to_list()
+    if not games:
+        return
+    svc = PlayerService(PlayerRepository())
+    await svc.sync_scores_for_date(night)
+    for game in await NBAGame.find(NBAGame.nba_date == night).to_list():
+        if game.status == "final":
+            await svc.finalize_game_scores(game.goalserve_id)
+    logger.info("CRON closing resync done for %s", night)
 
 
 async def _prepare_night_data(night: date) -> None:
@@ -533,6 +553,13 @@ async def sync_live_games_job() -> None:
             logger.error("CRON sync_live_games_job failed for %s: %s", night, exc, exc_info=True)
 
 
+RESYNC_AFTER_FINAL = timedelta(hours=1)
+
+
+def _aware(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
 async def _poll_night(today: date) -> None:
     from app.modules.players.model import NBAGame
     from app.modules.players.service import PlayerService
@@ -564,7 +591,15 @@ async def _poll_night(today: date) -> None:
             tip = tip.replace(tzinfo=timezone.utc)
         return now >= tip
 
-    if not any(_worth_polling(g) for g in games):
+    # About 1 h after a game ends, its box score is fetched once more:
+    # Goalserve corrects stats after the final buzzer (Arik QA item 1).
+    resync_due = [
+        g for g in games
+        if g.status == "final" and g.resynced_at is None
+        and g.final_at is not None and now >= _aware(g.final_at) + RESYNC_AFTER_FINAL
+    ]
+
+    if not resync_due and not any(_worth_polling(g) for g in games):
         logger.debug("CRON sync_live_games_job: no game in progress for %s, skipping poll", today)
         return
 
@@ -598,3 +633,8 @@ async def _poll_night(today: date) -> None:
                 "CRON: computed %d fantasy scores for finished game %s",
                 scored, game.goalserve_id,
             )
+
+    for game in resync_due:
+        game.resynced_at = now
+        await game.save()
+        logger.info("CRON: post-game resync done for game %s", game.goalserve_id)

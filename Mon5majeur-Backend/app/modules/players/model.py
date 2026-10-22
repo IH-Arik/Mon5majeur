@@ -113,6 +113,11 @@ class NBAGame(BaseDocument):
     tip_off_time: datetime | None = None    # UTC
     home_score: int | None = None
     away_score: int | None = None
+    # When the game was first seen final, and when its box score was fetched
+    # again about 1 h later to pick up Goalserve's post-game stat corrections
+    # (Arik QA item 1).
+    final_at: datetime | None = None
+    resynced_at: datetime | None = None
 
     class Settings:
         name = "nba_games"

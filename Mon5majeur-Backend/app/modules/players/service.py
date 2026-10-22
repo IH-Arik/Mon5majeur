@@ -24,6 +24,15 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _stat_changes(existing, fields: dict) -> dict:
+    """{field: (old, new)} of the stat fields whose value differs."""
+    return {
+        k: (getattr(existing, k, None), v)
+        for k, v in fields.items()
+        if getattr(existing, k, None) != v
+    }
+
+
 class PlayerService:
     def __init__(self, repo: PlayerRepository) -> None:
         self.repo = repo
@@ -327,7 +336,7 @@ class PlayerService:
     # Goalserve: sync scores + full box score for a date, in one call
     # ------------------------------------------------------------------
 
-    async def sync_scores_for_date(self, nba_date: date) -> int:
+    async def sync_scores_for_date(self, nba_date: date, allow_frozen: bool = False) -> int:
         """Fetch scores + box score for every game on `nba_date` and upsert
         NBAGame + PlayerGameStats. Also resolves each player against the
         Player collection by full name (there's no Goalserve roster/squad
@@ -337,6 +346,16 @@ class PlayerService:
         lookups are a direct id match; unmatched players are logged and
         skipped (QA #12: an import never creates a player)."""
         self._name_index = None  # rebuilt once per sync
+
+        # After the 09:00 publication a night's scores are frozen for good:
+        # standings and archives were built on them. Only a one-off, approved
+        # correction script passes allow_frozen (Arik QA item 1).
+        if not allow_frozen:
+            from app.modules.players.night_publication import published_marks
+
+            if nba_date in await published_marks([nba_date]):
+                logger.info("sync_scores_for_date: night %s is published, scores frozen", nba_date)
+                return 0
         from app.modules.players.goalserve_client import fetch_scores_for_date
 
         try:
@@ -362,12 +381,18 @@ class PlayerService:
                     "home_score": g.get("home_score"),
                     "away_score": g.get("away_score"),
                 }
+                now = datetime.now(timezone.utc)
                 if existing_game:
                     for k, v in game_doc.items():
                         if k != "goalserve_id" and v is not None:
                             setattr(existing_game, k, v)
+                    if existing_game.status == "final" and existing_game.final_at is None:
+                        existing_game.final_at = now
+                    existing_game.updated_at = now
                     await existing_game.save()
                 else:
+                    if game_doc["status"] == "final":
+                        game_doc["final_at"] = now
                     await NBAGame(**game_doc).insert()
             except Exception as exc:
                 logger.warning("Failed to upsert game %s: %s", game_id, exc)
@@ -404,10 +429,23 @@ class PlayerService:
                     }
 
                     if existing_stat:
-                        for k, v in stat_fields.items():
-                            setattr(existing_stat, k, v)
-                        existing_stat.score_computed = False  # will be recomputed
-                        await existing_stat.save()
+                        # A post-game correction from Goalserve (SGA 10/20:
+                        # rebounds/steals/blocks fixed after the game) must
+                        # replace the stored line and be scored again; an
+                        # unchanged line is left alone (no write, no rescore).
+                        changes = _stat_changes(existing_stat, stat_fields)
+                        if changes:
+                            if existing_stat.score_computed:
+                                logger.info(
+                                    "Stat correction %s (%s) game %s: %s",
+                                    player.full_name, p["goalserve_player_id"], game_id,
+                                    ", ".join(f"{k} {old}->{new}" for k, (old, new) in changes.items()),
+                                )
+                            for k, v in stat_fields.items():
+                                setattr(existing_stat, k, v)
+                            existing_stat.score_computed = False  # will be recomputed
+                            existing_stat.updated_at = datetime.now(timezone.utc)
+                            await existing_stat.save()
                     else:
                         await PlayerGameStats(**stat_fields).insert()
 
