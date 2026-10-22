@@ -341,7 +341,7 @@ async def delete_account(
     UserService.delete_user writes the AccountDeletionLog before erasing,
     so the retention dashboard can still count churn afterwards.
     """
-    await service.delete_user(current_user.id)
+    await service.delete_own_account(current_user)
 
 
 JERSEY_COUNT = 6  # the app ships six jerseys

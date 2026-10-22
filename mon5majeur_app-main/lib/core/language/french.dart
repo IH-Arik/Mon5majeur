@@ -810,6 +810,7 @@ class FrenchTranslation {
     "You are not a member of this league": "Tu n'es pas membre de cette ligue",
     "You have no match on this day": "Tu n'as pas de match ce jour-là",
     "Something went wrong": "Une erreur est survenue",
+    "An administrator account cannot be deleted from the app": "Un compte administrateur ne peut pas être supprimé depuis l'application",
     "The 6th Man cannot also be a starter": "Le 6e homme ne peut pas être aussi titulaire",
     "@name is OUT and cannot be selected": "@name est absent (OUT) et ne peut pas être sélectionné",
     "@name is listed twice": "@name apparaît deux fois",

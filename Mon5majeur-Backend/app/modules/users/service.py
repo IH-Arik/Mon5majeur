@@ -127,6 +127,18 @@ class UserService:
         updates = payload.model_dump(exclude_unset=True, exclude_none=True)
         return await self.repo.update(user, **updates)
 
+    async def delete_own_account(self, user: "User") -> None:
+        """Self-service account deletion from the app. An administrator account
+        cannot delete itself there (Arik QA item 8: deleting it lost the
+        dashboard access); it is removed from the dashboard by another admin."""
+        if user.is_superuser:
+            from app.exceptions.errors import ForbiddenException
+
+            raise ForbiddenException(
+                "An administrator account cannot be deleted from the app"
+            )
+        await self.delete_user(user.id)
+
     async def delete_user(self, user_id: PydanticObjectId) -> None:
         """Erase the account and everything solely tied to it (spec §5.3 GDPR:
         "must erase ALL data ... not just deactivate"). Records shared with

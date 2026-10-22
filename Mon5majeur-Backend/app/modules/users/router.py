@@ -110,7 +110,7 @@ async def delete_me(
     current_user: User = Depends(get_current_user),
     service: UserService = Depends(get_user_service),
 ) -> None:
-    await service.delete_user(current_user.id)
+    await service.delete_own_account(current_user)
 
 
 # ── Admin endpoints ───────────────────────────────────────────────────────────
