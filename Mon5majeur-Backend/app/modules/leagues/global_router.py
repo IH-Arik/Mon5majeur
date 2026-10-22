@@ -30,6 +30,7 @@ from app.modules.leagues.schema import (
 )
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
+from app.modules.players.nba_night import global_night_number
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
 from app.modules.players.scoring import compute_fantasy_score
 from app.modules.users.model import User
@@ -185,6 +186,8 @@ async def _build_response(
     enriched_players = await _enrich_with_scores(selected_players, for_date=night)
 
     return GlobalLeagueSelectionResponse(
+        night_number=await global_night_number(night),
+        match_date=str(night) if night else None,
         match_day=league.current_match_day,
         selected_players=enriched_players,
         total_points=total_points,
@@ -489,6 +492,7 @@ async def get_global_match_result(
         match_day=match_day,
         match_type="global_night",
         match_date=str(nba_date),
+        night_number=await global_night_number(nba_date),
         status=status,
         player_scores=player_scores,
         pairs=[],
@@ -732,12 +736,15 @@ async def get_global_published_result(
     nights = await _published_nights(league)
     if offset >= len(nights):
         return {**base, "available": False, "has_older": False, "has_newer": offset > 0,
-                "nba_date": None, "no_lineup": True, "total_points": 0, "selection": []}
+                "nba_date": None, "match_date": None, "night_number": None,
+                "no_lineup": True, "total_points": 0, "selection": []}
 
     payload = await _night_payload(league, target, nights[offset])
     return {
         **base,
         **payload,
+        "match_date": str(nights[offset]),
+        "night_number": await global_night_number(nights[offset]),
         "available": True,
         "has_older": offset + 1 < len(nights),
         "has_newer": offset > 0,

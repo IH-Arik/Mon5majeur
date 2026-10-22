@@ -103,6 +103,35 @@ async def live_night(now: datetime | None = None) -> date | None:
     return game.nba_date if now < publication_cutoff(game.nba_date) else None
 
 
+# Opening night of the regular season: World League night 1 (Arik QA item 11).
+GLOBAL_LEAGUE_START_DATE = date(2026, 10, 20)
+
+
+def night_number_from(game_dates, nba_date: date, start: date = GLOBAL_LEAGUE_START_DATE) -> int | None:
+    """1 + the number of distinct NBA nights with a game from `start` up to the
+    night before `nba_date`. None before the start."""
+    if nba_date < start:
+        return None
+    return 1 + len({d for d in game_dates if start <= d < nba_date})
+
+
+async def global_night_number(nba_date: date | None) -> int | None:
+    """World League night number of `nba_date`: pure calculation from the
+    schedule, nothing stored (the stored match_day keys the lineups and must not
+    change). 10/20 -> 1, 10/21 -> 2."""
+    if nba_date is None or nba_date < GLOBAL_LEAGUE_START_DATE:
+        return None
+    raw = await NBAGame.get_motor_collection().distinct(
+        "nba_date",
+        {"nba_date": {
+            "$gte": datetime.combine(GLOBAL_LEAGUE_START_DATE, datetime.min.time()),
+            "$lt": datetime.combine(nba_date, datetime.min.time()),
+        }},
+    )
+    dates = [d.date() if isinstance(d, datetime) else d for d in raw]
+    return night_number_from(dates, nba_date)
+
+
 def season_start(today: date) -> date:
     """First day of the NBA season `today` belongs to (October 1st). Stats
     from before it are not "this season" (QA #9 4.4: the player sheet showed

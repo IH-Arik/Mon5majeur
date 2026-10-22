@@ -417,6 +417,8 @@ class MatchResultCompatResponse(BaseSchema):
     # Score paywall — see MyMatchTodayCompatResponse.
     scores_hidden: bool = False
     scores_release_at: str | None = None
+    # World League only: the night's number since the season opening.
+    night_number: int | None = None
     # Play-off match only (QA #13 item 2): "semi_final" | "final" and the game
     # number in the series; null for a regular-season match.
     round: str | None = None
@@ -654,6 +656,10 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     # items 4 and 7): open | locked | waiting_results | not_playing. Optional:
     # null when the league has no night to play yet.
     lineup_state: str | None = None
+    # World League numbering (Arik QA item 11): the night's number since the
+    # season opening and its NBA date (YYYY-MM-DD); optional for the app.
+    night_number: int | None = None
+    match_date: str | None = None
 
     # Weekly/monthly rank among all Global League members, from the daily
     # score archive. None until the user has at least joined the league.
