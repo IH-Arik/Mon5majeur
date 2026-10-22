@@ -72,6 +72,9 @@ async def _night_ready(night: date, games: list) -> bool:
     """Every game final, box scores in, fantasy scores computed."""
     from app.modules.players.model import PlayerGameStats
 
+    from app.modules.players.nba_night import drop_duplicate_games
+
+    games = drop_duplicate_games(games)
     if not games or any(g.status != "final" for g in games):
         return False
     rows = await PlayerGameStats.find(PlayerGameStats.nba_date == night).count()
@@ -554,6 +557,7 @@ async def sync_live_games_job() -> None:
 
 
 RESYNC_AFTER_FINAL = timedelta(hours=1)
+_REPORTED_STUCK: set[str] = set()
 
 
 def _aware(dt: datetime) -> datetime:
@@ -598,6 +602,19 @@ async def _poll_night(today: date) -> None:
         if g.status == "final" and g.resynced_at is None
         and g.final_at is not None and now >= _aware(g.final_at) + RESYNC_AFTER_FINAL
     ]
+
+    # A game stuck "live" for hours (a duplicate record, a missed update) keeps
+    # being re-checked with Goalserve by this poll; it is also reported once so
+    # it gets looked at (Arik QA item 3).
+    from app.modules.players.nba_night import stuck_live_games
+
+    for g in stuck_live_games(games, now):
+        if g.goalserve_id not in _REPORTED_STUCK:
+            _REPORTED_STUCK.add(g.goalserve_id)
+            logger.critical(
+                "ALERT game %s (%s @ %s, %s) still live long after tip-off",
+                g.goalserve_id, g.away_team_name, g.home_team_name, g.nba_date,
+            )
 
     if not resync_due and not any(_worth_polling(g) for g in games):
         logger.debug("CRON sync_live_games_job: no game in progress for %s, skipping poll", today)

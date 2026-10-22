@@ -156,8 +156,11 @@ async def games_today(
     else:
         today = await _composing_night()
 
+    from app.modules.players.nba_night import drop_duplicate_games
+
     games = await NBAGame.find(NBAGame.nba_date == today).sort(+NBAGame.tip_off_time).to_list()
-    return [_game_to_compat(g) for g in games]
+    # A matchup recorded twice shows once, its finished copy (Arik QA item 3).
+    return [_game_to_compat(g) for g in drop_duplicate_games(games)]
 
 
 # The complete player list only changes when a night is published or the

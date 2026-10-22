@@ -103,6 +103,41 @@ async def live_night(now: datetime | None = None) -> date | None:
     return game.nba_date if now < publication_cutoff(game.nba_date) else None
 
 
+# A game still "live" this long after its tip-off is stuck (Arik QA item 3).
+STUCK_LIVE_AFTER = timedelta(hours=5)
+
+
+def drop_duplicate_games(games: list) -> list:
+    """One game per matchup and night. The same matchup can exist twice (two
+    Goalserve ids for one game): the copy that finished is kept and a copy
+    stuck "live" is dropped, so it never shows twice in "Resultats du jour"
+    nor keeps the night looking unfinished. Order is preserved."""
+    rank = {"final": 0, "live": 1, "scheduled": 2}
+    best: dict = {}
+    for g in games:
+        home, away = getattr(g, "home_team_id", None), getattr(g, "away_team_id", None)
+        # Without both teams there is nothing to compare: the game is kept.
+        key = (getattr(g, "nba_date", None), home, away) if home and away else id(g)
+        cur = best.get(key)
+        if cur is None or rank.get(g.status, 3) < rank.get(cur.status, 3):
+            best[key] = g
+    keep = {id(g) for g in best.values()}
+    return [g for g in games if id(g) in keep]
+
+
+def stuck_live_games(games: list, now: datetime) -> list:
+    """Games still "live" STUCK_LIVE_AFTER after their tip-off."""
+    out = []
+    for g in games:
+        if g.status != "live" or g.tip_off_time is None:
+            continue
+        tip = g.tip_off_time
+        tip = tip.replace(tzinfo=timezone.utc) if tip.tzinfo is None else tip
+        if now - tip >= STUCK_LIVE_AFTER:
+            out.append(g)
+    return out
+
+
 # Opening night of the regular season: World League night 1 (Arik QA item 11).
 GLOBAL_LEAGUE_START_DATE = date(2026, 10, 20)
 

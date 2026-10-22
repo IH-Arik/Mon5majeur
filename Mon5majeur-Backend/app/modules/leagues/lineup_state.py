@@ -62,7 +62,9 @@ async def night_facts(night) -> tuple[datetime | None, bool]:
     """(earliest tip-off, every game final) of a night."""
     from app.modules.players.model import NBAGame
 
-    games = await NBAGame.find(NBAGame.nba_date == night).to_list()
+    from app.modules.players.nba_night import drop_duplicate_games
+
+    games = drop_duplicate_games(await NBAGame.find(NBAGame.nba_date == night).to_list())
     tips = []
     for g in games:
         if g.tip_off_time is None:
