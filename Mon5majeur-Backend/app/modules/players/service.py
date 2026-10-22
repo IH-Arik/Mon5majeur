@@ -605,15 +605,60 @@ class PlayerService:
         return True
 
     async def sync_injury_report(self) -> int:
-        """
-        NBA CDN has no free injury feed.
-        Injury status can be inferred from DNP in box-scores (did_not_play=True).
-        This method is a no-op until Goalserve basketball subscription is activated.
+        """Apply ESPN's NBA injury report (Arik QA item 2: Maxime Raynaud, out
+        with a knee injury, could be selected with no OUT badge because no
+        injury source was wired at all; is_out was only ever set by hand).
 
-        When that feed is wired, map it per §4.7 (OUT_KEYWORDS against the
-        report's `description`) and apply each result through
-        set_player_availability() — that is what sends the "your player is
-        OUT" push. Do not set `is_out` directly.
-        """
-        logger.info("sync_injury_report: skipped (no free NBA injury feed; use Goalserve when subscribed)")
-        return 0
+        - listed "Out" -> is_out (through set_player_availability, which sends
+          the "your player is OUT" push on the transition);
+        - listed with another status (Day-To-Day, Questionable...) -> uncertain:
+          stays selectable, shown as uncertain;
+        - not listed any more -> back to available.
+        A failed or empty report changes nothing (never clears everyone).
+        Returns the number of players whose status changed."""
+        from app.modules.players.espn_roster import OUT_STATUSES, fetch_injuries, normalize_name
+
+        try:
+            report = await fetch_injuries()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("sync_injury_report: ESPN injury feed unavailable (%s)", exc)
+            return 0
+        if not report:
+            logger.warning("sync_injury_report: empty injury report, nothing changed")
+            return 0
+
+        players = await Player.find(Player.is_active == True).to_list()  # noqa: E712
+        by_name: dict[str, Player] = {}
+        for pl in players:
+            by_name.setdefault(normalize_name(pl.full_name), pl)
+
+        listed: dict = {}
+        unmatched = []
+        for row in report:
+            pl = by_name.get(normalize_name(row["full_name"]))
+            if pl is None:
+                unmatched.append(row["full_name"])
+                continue
+            listed[pl.id] = row
+
+        changed = 0
+        now = datetime.now(timezone.utc)
+        for pl in players:
+            row = listed.get(pl.id)
+            is_out = bool(row) and row["status"].lower() in OUT_STATUSES
+            uncertain = bool(row) and not is_out
+            reason = (row["comment"] or row["status"]) if row else None
+            if await self.set_player_availability(pl, is_out, reason if is_out else None):
+                changed += 1
+            if pl.is_uncertain != uncertain:
+                await pl.save_updated(is_uncertain=uncertain)
+                changed += 1
+            if row:
+                pl.injury_checked_at = now
+                await pl.save()
+
+        if unmatched:
+            logger.info("sync_injury_report: %d listed player(s) not found: %s",
+                        len(unmatched), ", ".join(unmatched[:20]))
+        logger.info("sync_injury_report: %d listed, %d status change(s)", len(listed), changed)
+        return changed

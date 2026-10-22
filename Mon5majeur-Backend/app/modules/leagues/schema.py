@@ -505,6 +505,10 @@ class PlayerCompatItem(BaseSchema):
     is_home: bool | None = None             # True=hosts, False=travels, None=no game data
     form: str | None = None                 # "HOT" | "COLD" | None (neutral — render nothing)
     last_two_scores: list[int | None] = [None, None]  # chronological [older, newer]
+    # Injury report (Arik QA item 2): status stays "OUT" / "OK"; uncertain
+    # = Day-To-Day / Questionable, still selectable. out_reason for the badge.
+    uncertain: bool = False
+    out_reason: str | None = None
 
 
 # ── Today's Fantasy Scores (Flutter: MyMatchScreen > Todays Fantasy Players Score) ──

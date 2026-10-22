@@ -90,3 +90,31 @@ async def fetch_rosters() -> list[dict]:
         for chunk in await asyncio.gather(*[_one(t) for t in teams]):
             players.extend(chunk)
     return players
+
+
+# ESPN injury statuses: "Out" = will not play; anything else listed (mostly
+# "Day-To-Day", also "Questionable" / "Doubtful") = uncertain.
+OUT_STATUSES = {"out"}
+
+
+async def fetch_injuries() -> list[dict]:
+    """Today's NBA injury report from ESPN's public site API (no key):
+    one dict per listed player {full_name, team_name, status, comment}.
+    Raises on an HTTP error so the caller never mistakes a failed call for
+    "nobody is injured"."""
+    async with httpx.AsyncClient(timeout=20, headers=_HEADERS) as client:
+        data = await _get(client, "/injuries")
+    out: list[dict] = []
+    for team in data.get("injuries", []):
+        for item in team.get("injuries", []):
+            athlete = item.get("athlete") or {}
+            name = athlete.get("displayName") or ""
+            if not name:
+                continue
+            out.append({
+                "full_name": name,
+                "team_name": team.get("displayName") or "",
+                "status": (item.get("status") or "").strip(),
+                "comment": (item.get("shortComment") or "").strip(),
+            })
+    return out

@@ -124,6 +124,8 @@ def _player_to_compat(player: Player, teams=None, has_stats: bool = True) -> Pla
         is_home=is_home,
         form=player.form,
         last_two_scores=player.recent_two_scores or [None, None],
+        uncertain=bool(getattr(player, "is_uncertain", False)) and not player.is_out,
+        out_reason=player.out_reason if player.is_out else None,
     )
 
 

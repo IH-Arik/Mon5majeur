@@ -357,6 +357,18 @@ async def weekly_monthly_rewards_job() -> None:
 # 19:00 Paris — reminder push
 # ---------------------------------------------------------------------------
 
+async def sync_injuries_job() -> None:
+    from app.modules.players.repository import PlayerRepository
+    from app.modules.players.service import PlayerService
+
+    try:
+        changed = await PlayerService(PlayerRepository()).sync_injury_report()
+        if changed:
+            logger.info("CRON sync_injuries_job: %d status change(s)", changed)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("CRON sync_injuries_job failed: %s", exc, exc_info=True)
+
+
 async def reminder_push_job() -> None:
     from app.cron.lock import try_acquire
 

@@ -28,6 +28,9 @@ class Player(BaseDocument):
     # Injury / availability
     is_out: bool = False
     out_reason: str | None = None           # "sidelined", "will not play", etc.
+    # Listed as Day-To-Day / Questionable: may play, stays selectable, shown
+    # with an "Uncertain" badge (Arik QA item 2).
+    is_uncertain: bool = False
     injury_checked_at: datetime | None = None
 
     # Pricing (recomputed daily at 09:00 Paris)

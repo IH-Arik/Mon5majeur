@@ -78,6 +78,7 @@ def start_scheduler() -> None:
         daily_close_job,
         prepare_night_job,
         reminder_push_job,
+        sync_injuries_job,
         sync_live_games_job,
         sync_player_roster_job,
         sync_today_schedule_job,
@@ -149,6 +150,17 @@ def start_scheduler() -> None:
         id="cleanup_stale_leagues",
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # Every 30 min — injury report (ESPN): OUT players stop being selectable
+    # and their holders are notified (Arik QA item 2)
+    scheduler.add_job(
+        sync_injuries_job,
+        CronTrigger(minute="5,35", timezone=PARIS_TZ),
+        id="sync_injuries",
+        replace_existing=True,
+        misfire_grace_time=600,
+        max_instances=1,
     )
 
     # 19:00 Paris — reminder push
