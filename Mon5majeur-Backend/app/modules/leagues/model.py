@@ -26,7 +26,7 @@ class League(BaseDocument):
     max_size: int = 10                    # 4, 6, 8, 10
     current_size: int = 0
 
-    invite_code: str | None = None        # private leagues only
+    invite_code: str | None = None        # private and public leagues
     admin_id: PydanticObjectId | None = None
 
     current_match_day: int = 0

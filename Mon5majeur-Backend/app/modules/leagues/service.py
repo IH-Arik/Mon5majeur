@@ -78,6 +78,31 @@ async def _lineup_lock_info(
     return submitted, lock_in_seconds
 
 
+# A user may try this many invitation codes per window: enough for typos,
+# far too few to guess an 8-character code.
+JOIN_CODE_ATTEMPTS = 10
+JOIN_CODE_WINDOW_SECONDS = 600
+
+
+async def _limit_code_attempts(user: User) -> None:
+    from app.core.rate_limit import hit
+
+    await hit(f"join_code:{user.id}", JOIN_CODE_ATTEMPTS, JOIN_CODE_WINDOW_SECONDS)
+
+
+async def _insert_with_invite_code(**fields) -> League:
+    """Insert a league with a fresh invitation code, trying another code on the
+    rare collision with an existing one (unique index)."""
+    from pymongo.errors import DuplicateKeyError
+
+    for _attempt in range(5):
+        try:
+            return await League(invite_code=League.generate_invite_code(), **fields).insert()
+        except DuplicateKeyError:
+            continue
+    raise BadRequestException("Could not create the league, please try again")
+
+
 class LeagueService:
     def __init__(
         self,
@@ -210,20 +235,15 @@ class LeagueService:
         await self._ensure_can_create_league(user)
         from app.database.counters import next_seq
 
-        invite_code = None
-        if payload.type == LEAGUE_TYPE_PRIVATE:
-            invite_code = League.generate_invite_code()
-
-        league = await League(
+        league = await _insert_with_invite_code(
             name=payload.name,
             type=payload.type,
             budget=payload.budget,
             max_size=payload.max_size,
-            invite_code=invite_code,
             admin_id=user.id,
             total_match_days=MATCH_DAYS_BY_SIZE.get(payload.max_size, 18),
             current_size=1,
-        ).insert()
+        )
 
         league.auto_id = await next_seq("leagues")
         await league.save()
@@ -233,6 +253,7 @@ class LeagueService:
         return self._to_response(league)
 
     async def join_by_invite_code(self, user: User, invite_code: str) -> LeagueResponse:
+        await _limit_code_attempts(user)
         invite_code = invite_code.strip().upper()
         league = await self.league_repo.get_by_invite_code(invite_code)
         if not league:
@@ -573,7 +594,9 @@ class LeagueService:
         budget = payload.budget_int if payload.budget_int in (80, 100) else 100
         max_size = payload.max_size_int if payload.max_size_int in (4, 6, 8, 10) else 10
 
-        league = await League(
+        # A public league has a code too, so it can also be shared with friends
+        # (Arik QA item 12); it stays visible in "Explorer" as before.
+        league = await _insert_with_invite_code(
             name=payload.leauge_name,
             type="public",
             budget=budget,
@@ -583,7 +606,7 @@ class LeagueService:
             admin_id=user.id,
             total_match_days=MATCH_DAYS_BY_SIZE.get(max_size, 18),
             current_size=1,
-        ).insert()
+        )
 
         league.auto_id = await next_seq("leagues")
         await league.save()
@@ -844,20 +867,17 @@ class LeagueService:
 
         budget = payload.budget_int if payload.budget_int in (80, 100) else 100
         max_size = payload.max_size_int if payload.max_size_int in (4, 6, 8, 10) else 10
-        invite_code = League.generate_invite_code()
-
-        league = await League(
+        league = await _insert_with_invite_code(
             name=payload.leauge_name,
             type=LEAGUE_TYPE_PRIVATE,
             budget=budget,
             max_size=max_size,
-            invite_code=invite_code,
             description=payload.leauge_description,
             logo=payload.leauge_logo,
             admin_id=user.id,
             total_match_days=MATCH_DAYS_BY_SIZE.get(max_size, 18),
             current_size=1,
-        ).insert()
+        )
 
         league.auto_id = await next_seq("leagues")
         await league.save()
@@ -936,7 +956,10 @@ class LeagueService:
     ) -> JoinPrivateLeagueResponse:
         from app.modules.leagues.ws_router import emit_team_joined
 
+        await _limit_code_attempts(user)
         code = join_code.strip().upper()
+        # Private AND public leagues: a public league's code joins it the
+        # same way (waiting, not full, not already a member).
         league = await self.league_repo.get_by_invite_code(code)
         if not league:
             raise NotFoundException("Invalid invite code")
