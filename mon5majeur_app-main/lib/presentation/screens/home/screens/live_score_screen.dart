@@ -650,8 +650,10 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       playerId: 0,
       teamName: teamName,
       username: '',
-      totalPoints:
-          starters.fold(0, (sum, p) => sum + p.fantasyScoreLive.round()),
+      // Best 5 of the 6 when there is a 6th man (the same rule as the duel),
+      // so the 6th man's points can be followed live; it can go down when he
+      // becomes the worst of the six.
+      totalPoints: _bestFive([...starters, ...sixth]),
       selection: [
         for (final p in starters) toSel(p),
         for (final p in sixth) toSel(p, sixth: true),
@@ -662,6 +664,14 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       bonusHidden: bonusHidden,
     );
   }
+}
+
+/// Sum of the best five live scores among [players] (all of them when there
+/// are five or fewer).
+int _bestFive(List<LivePlayerScore> players) {
+  final scores = [for (final p in players) p.fantasyScoreLive.round()]
+    ..sort((a, b) => b.compareTo(a));
+  return scores.take(5).fold(0, (sum, v) => sum + v);
 }
 
 /// Whose team a Live squad is. [none] = the Global League view (no bonus).

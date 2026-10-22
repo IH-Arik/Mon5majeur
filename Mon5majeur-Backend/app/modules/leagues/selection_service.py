@@ -41,10 +41,13 @@ async def score_selection_for_date(selected_players: list[dict], nba_date: date)
     return round(total, 2)
 
 
-def total_from_scores(sel: FlutterPlayerSelection, scores_by_player: dict) -> float:
+def total_from_scores(
+    sel: FlutterPlayerSelection, scores_by_player: dict, with_chef_curry: bool = True
+) -> float:
     """Same rule as score_full_selection, from scores already loaded (one query
     for the whole match day instead of one per player): 6th man = best 5 of 6,
-    Chef Curry = +3."""
+    Chef Curry = +3. with_chef_curry=False leaves the +3 out, for a total shown
+    to someone who may not know about the bonus yet."""
     def one(p: dict) -> float:
         return scores_by_player.get(str(p.get("id", "")), 0.0)
 
@@ -53,7 +56,7 @@ def total_from_scores(sel: FlutterPlayerSelection, scores_by_player: dict) -> fl
         scores.append(one(sel.sixth_man_player))
         scores = sorted(scores, reverse=True)[:5]
     total = sum(scores)
-    if sel.chef_curry:
+    if sel.chef_curry and with_chef_curry:
         total += 3
     return round(total, 2)
 
@@ -587,7 +590,14 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             # the duel (score_full_selection) — top-5-of-6 + Chef Curry, not
             # a plain sum of the list above (which may include a dropped 6th
             # Man score, shown for transparency but not counted).
-            total = int(round(total_from_scores(sel_doc, scores_by_player)))
+            # Chef Curry is a surprise (Arik QA item 9): its +3 would give it
+            # away ("3 - 0" before tip-off), so the opponent and spectators get
+            # the total without it until the 09:00 publication; the player
+            # always sees his own full score. player_scores and both pair
+            # scores read this same total.
+            total = int(round(total_from_scores(
+                sel_doc, scores_by_player, with_chef_curry=is_me or published,
+            )))
 
         # An opponent's bonus stays secret until the results are published -
         # whether they have one or not, so its absence leaks nothing either.
