@@ -9,7 +9,9 @@ import 'package:logger/logger.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../../controllers/my_leagues_controller.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/private_league_model.dart';
@@ -861,7 +863,7 @@ class CreateLeagueController extends GetxController {
   }
 
   // Connect to WebSocket for real-time updates
-  void connectToWebSocket(int leagueId) {
+  Future<void> connectToWebSocket(int leagueId) async {
     try {
       _webSocketChannel?.sink.close();
       _webSocketSubscription?.cancel();
@@ -869,12 +871,16 @@ class CreateLeagueController extends GetxController {
       final wsBase = ApiUrl.baseUrl
           .replaceFirst('https://', 'wss://')
           .replaceFirst('http://', 'ws://');
-      final wsUrl = Uri.parse("$wsBase/$_wsPath/$leagueId/");
+      // The server only lets a signed-in player listen (and, for a private
+      // league, a member): the access token goes with the connection.
+      final token = await SharedPrefsHelper.getString(AppConstants.token);
+      final wsUrl = Uri.parse("$wsBase/$_wsPath/$leagueId/")
+          .replace(queryParameters: {'token': token});
       _wsLeagueId = leagueId;
       startedLeagueId.value = null;
       _webSocketChannel = WebSocketChannel.connect(wsUrl);
 
-      logger.i("WebSocket connected: $wsUrl");
+      logger.i("WebSocket connected: $_wsPath/$leagueId"); // never the token
 
       _webSocketSubscription = _webSocketChannel!.stream.listen(
         (message) {

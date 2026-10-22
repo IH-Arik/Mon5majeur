@@ -19,8 +19,64 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["WebSockets"])
 
 
-@router.websocket("/ws/public-leagues/{league_id}/")
-async def public_league_ws(league_id: int, websocket: WebSocket) -> None:
+# Close codes (4000-4999 are free for applications).
+WS_UNAUTHORIZED = 4401
+WS_FORBIDDEN = 4403
+
+
+async def ws_user(token: str | None):
+    """The user behind an access token, or None (invalid, expired, inactive)."""
+    from beanie import PydanticObjectId
+    from jose import JWTError
+
+    from app.core.security import decode_token
+    from app.modules.users.repository import UserRepository
+
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        return None
+    if payload.get("type") != "access" or not payload.get("sub"):
+        return None
+    try:
+        user = await UserRepository().get(PydanticObjectId(payload["sub"]))
+    except Exception:  # noqa: BLE001
+        return None
+    return user if user is not None and user.is_active else None
+
+
+async def may_listen(user, league_id: int, league_type: str) -> bool:
+    """A private league's events are for its members only; a public league is
+    open to everyone, so any signed-in player may watch its waiting room.
+
+    The rule follows the league's real type, not the socket path: the app
+    opens a public league joined by code in the private waiting room."""
+    from app.modules.leagues.model import League, LeagueMembership
+
+    league = await League.find_one(League.auto_id == league_id)
+    if league is None:
+        return False
+    if league.type == "public" or user.is_superuser:
+        return True
+    return await LeagueMembership.find_one(
+        LeagueMembership.league_id == league.id,
+        LeagueMembership.user_id == user.id,
+    ) is not None
+
+
+async def _serve(league_id: int, websocket: WebSocket, league_type: str, token: str | None) -> None:
+    # Who connects is checked before joining the room (Arik QA item 14): the
+    # player's access token comes as ?token=, since a browser or mobile socket
+    # cannot always set an Authorization header.
+    user = await ws_user(token)
+    if user is None:
+        await websocket.close(code=WS_UNAUTHORIZED)
+        return
+    if not await may_listen(user, league_id, league_type):
+        await websocket.close(code=WS_FORBIDDEN)
+        return
     await connect(league_id, websocket)
     try:
         while True:
@@ -30,14 +86,14 @@ async def public_league_ws(league_id: int, websocket: WebSocket) -> None:
         disconnect(league_id, websocket)
 
 
+@router.websocket("/ws/public-leagues/{league_id}/")
+async def public_league_ws(league_id: int, websocket: WebSocket, token: str | None = None) -> None:
+    await _serve(league_id, websocket, "public", token)
+
+
 @router.websocket("/ws/private-leagues/{league_id}/")
-async def private_league_ws(league_id: int, websocket: WebSocket) -> None:
-    await connect(league_id, websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        disconnect(league_id, websocket)
+async def private_league_ws(league_id: int, websocket: WebSocket, token: str | None = None) -> None:
+    await _serve(league_id, websocket, "private", token)
 
 
 # Convenience helpers called from service methods ─────────────────────────────
