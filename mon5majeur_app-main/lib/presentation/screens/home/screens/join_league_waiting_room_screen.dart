@@ -29,6 +29,7 @@ class _JoinLeagueWaitingRoomScreenState
     extends State<JoinLeagueWaitingRoomScreen>
     with SingleTickerProviderStateMixin {
   bool _showLeaveDialog = false;
+  Worker? _startedWorker;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late final CreateLeagueController _controller;
@@ -48,6 +49,17 @@ class _JoinLeagueWaitingRoomScreenState
   void initState() {
     super.initState();
     _controller = Get.find<CreateLeagueController>(tag: _tag);
+
+    // The creator started the league: the other members leave the waiting
+    // room for the league itself instead of staying on a frozen screen.
+    _startedWorker = ever<int?>(_controller.startedLeagueId, (id) {
+      if (!mounted || id == null || id != widget.leagueId) return;
+      _controller.refreshLeagueLists();
+      context.go(
+        '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/$id'
+        '?matchDay=1&isPrivate=${!widget.isPublic}',
+      );
+    });
 
     // Fetch league details if leagueId is provided
     if (widget.leagueId != null) {
@@ -70,6 +82,7 @@ class _JoinLeagueWaitingRoomScreenState
 
   @override
   void dispose() {
+    _startedWorker?.dispose();
     _pulseController.dispose();
     _controller.disconnectWebSocket();
     // Back from the waiting room: the lists may be stale. Deferred so the

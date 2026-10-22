@@ -540,8 +540,9 @@ class LeagueService:
             raise ForbiddenException("Only the league creator can start the league")
 
         members = await self.membership_repo.get_league_members(league_id)
-        if len(members) < 2:
-            raise BadRequestException("Need at least 2 members to start")
+        from app.modules.leagues.engine import check_team_count
+
+        check_team_count(len(members))
 
         today = datetime.now(timezone.utc).date()
         updated = await start_league(league_id, today)
@@ -551,7 +552,9 @@ class LeagueService:
                 from app.modules.leagues.ws_router import emit_league_started
                 await emit_league_started(updated.auto_id)
             except Exception:
-                pass
+                # The league IS started; only the live notice to the waiting
+                # rooms failed: keep it visible.
+                logger.error("league_started event failed for league %s", updated.auto_id, exc_info=True)
 
         return {
             "detail": f"League started. Total match days: {updated.total_match_days}",
@@ -1016,8 +1019,9 @@ class LeagueService:
             raise ForbiddenException("Only the league creator can start the league")
 
         members = await self.membership_repo.get_league_members(league.id)
-        if len(members) < 2:
-            raise BadRequestException("Need at least 2 members to start")
+        from app.modules.leagues.engine import check_team_count
+
+        check_team_count(len(members))
 
         today = datetime.now(timezone.utc).date()
         updated = await start_league(league.id, today)
@@ -1027,7 +1031,9 @@ class LeagueService:
                 from app.modules.leagues.ws_router import emit_league_started
                 await emit_league_started(updated.auto_id)
             except Exception:
-                pass
+                # The league IS started; only the live notice to the waiting
+                # rooms failed: keep it visible.
+                logger.error("league_started event failed for league %s", updated.auto_id, exc_info=True)
 
         return {
             "detail": f"League started. Total match days: {updated.total_match_days}",

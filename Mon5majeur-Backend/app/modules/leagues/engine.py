@@ -31,11 +31,42 @@ logger = get_logger(__name__)
 # Start league + round-robin schedule
 # ---------------------------------------------------------------------------
 
+MIN_TEAMS_TO_START = 4
+
+
+def check_team_count(n_members: int) -> None:
+    """The one rule for starting a league: 4 teams or more, an even number
+    (the service used to accept 2, the engine 4)."""
+    if n_members < MIN_TEAMS_TO_START:
+        raise BadRequestException("Need at least 4 members to start a league")
+    if n_members % 2 != 0:
+        raise BadRequestException(
+            f"League must have an even number of players (4/6/8/10) to start — "
+            f"currently {n_members} members"
+        )
+
+
 async def start_league(league_id: PydanticObjectId, first_nba_date: date) -> League:
     """
     Transition a waiting league to regular_season and generate all match-day
     pairings. Each match day maps to one NBA date (passed in or incremented).
+
+    All or nothing (Arik QA item 6): a second start running at the same time
+    is refused, and if writing the matches or the status fails, the matches
+    already written are removed so the league stays a clean "waiting" league.
     """
+    from app.cron.lock import release, try_acquire
+
+    lock_key = f"league_start:{league_id}"
+    if not await try_acquire(lock_key, ttl_seconds=120):
+        raise BadRequestException("This league is already being started")
+    try:
+        return await _start_league(league_id, first_nba_date)
+    finally:
+        await release(lock_key)
+
+
+async def _start_league(league_id: PydanticObjectId, first_nba_date: date) -> League:
     league = await League.get(league_id)
     if not league:
         raise NotFoundException("League not found")
@@ -46,14 +77,7 @@ async def start_league(league_id: PydanticObjectId, first_nba_date: date) -> Lea
         LeagueMembership.league_id == league_id
     ).to_list()
 
-    n_members = len(memberships)
-    if n_members < 4:
-        raise BadRequestException("Need at least 4 members to start a league")
-    if n_members % 2 != 0:
-        raise BadRequestException(
-            f"League must have an even number of players (4/6/8/10) to start — "
-            f"currently {n_members} members"
-        )
+    check_team_count(len(memberships))
 
     user_ids = [m.user_id for m in memberships]
     schedule = _round_robin_schedule(user_ids)
@@ -61,25 +85,32 @@ async def start_league(league_id: PydanticObjectId, first_nba_date: date) -> Lea
 
     # One NBA date per match day (consecutive days — skip no days for simplicity;
     # CRON will skip non-game-days naturally)
-    for md_index, pairings in enumerate(schedule):
-        nba_date = first_nba_date + timedelta(days=md_index)
-        match_day = md_index + 1
-        for home_id, away_id in pairings:
-            await LeagueMatch(
-                league_id=league_id,
-                match_day=match_day,
-                nba_date=nba_date,
-                home_user_id=home_id,
-                away_user_id=away_id,
-            ).insert()
+    matches = [
+        LeagueMatch(
+            league_id=league_id,
+            match_day=md_index + 1,
+            nba_date=first_nba_date + timedelta(days=md_index),
+            home_user_id=home_id,
+            away_user_id=away_id,
+        )
+        for md_index, pairings in enumerate(schedule)
+        for home_id, away_id in pairings
+    ]
 
-    now = datetime.now(timezone.utc)
-    league.status = LEAGUE_STATUS_REGULAR
-    league.current_match_day = 1
-    league.current_week = 1
-    league.total_match_days = total_match_days
-    league.started_at = now
-    await league.save()
+    try:
+        for match in matches:
+            await match.insert()
+        now = datetime.now(timezone.utc)
+        league.status = LEAGUE_STATUS_REGULAR
+        league.current_match_day = 1
+        league.current_week = 1
+        league.total_match_days = total_match_days
+        league.started_at = now
+        await league.save()
+    except Exception:
+        logger.error("Start of league %s failed: removing its matches", league_id, exc_info=True)
+        await LeagueMatch.find(LeagueMatch.league_id == league_id).delete()
+        raise
 
     logger.info(
         "Started league %s: %d match days, %d members",

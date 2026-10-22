@@ -44,6 +44,7 @@ async def private_league_ws(league_id: int, websocket: WebSocket) -> None:
 
 async def emit_team_joined(league_auto_id: int, team_id: int | None, team_name: str, team_logo: str, user_id: str) -> None:
     await broadcast(league_auto_id, "team_joined", {
+        "league_id": league_auto_id,
         "user": user_id,
         "team_id": team_id,
         "team_name": team_name,
@@ -53,6 +54,7 @@ async def emit_team_joined(league_auto_id: int, team_id: int | None, team_name: 
 
 async def emit_team_left(league_auto_id: int, team_id: int | None, team_name: str) -> None:
     await broadcast(league_auto_id, "team_left", {
+        "league_id": league_auto_id,
         "team_id": team_id,
         "team_name": team_name,
     })
@@ -60,6 +62,7 @@ async def emit_team_left(league_auto_id: int, team_id: int | None, team_name: st
 
 async def emit_team_kicked(league_auto_id: int, team_id: int | None, team_name: str) -> None:
     await broadcast(league_auto_id, "team_kicked", {
+        "league_id": league_auto_id,
         "team_id": team_id,
         "team_name": team_name,
     })
@@ -67,5 +70,6 @@ async def emit_team_kicked(league_auto_id: int, team_id: int | None, team_name: 
 
 async def emit_league_started(league_auto_id: int) -> None:
     await broadcast(league_auto_id, "league_started", {
+        "league_id": league_auto_id,
         "message": "The league has started!",
     })

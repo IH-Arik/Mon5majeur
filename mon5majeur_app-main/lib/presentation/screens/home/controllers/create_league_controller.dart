@@ -35,6 +35,10 @@ class CreateLeagueController extends GetxController {
   // League data
   Rx<PrivateLeagueModel?> currentLeague = Rx<PrivateLeagueModel?>(null);
   var leagueTeams = <TeamInfo>[].obs;
+  // Set when the waiting room's league is started by its creator, so the
+  // other members' waiting rooms open the league (Arik QA item 6).
+  final startedLeagueId = RxnInt();
+  int? _wsLeagueId; // the league the waiting-room socket belongs to
   var activePublicLeagues = <PrivateLeagueModel>[].obs;
 
   // Form controllers
@@ -755,7 +759,8 @@ class CreateLeagueController extends GetxController {
       }
 
       // Second tap / another device already started it: not an error, open it.
-      if (detail.toLowerCase().contains('not in waiting state')) {
+      if (detail.toLowerCase().contains('not in waiting state') ||
+          detail.toLowerCase().contains('already being started')) {
         refreshLeagueLists();
         _openStartedLeague(context, leagueId, 1);
         return;
@@ -865,6 +870,8 @@ class CreateLeagueController extends GetxController {
           .replaceFirst('https://', 'wss://')
           .replaceFirst('http://', 'ws://');
       final wsUrl = Uri.parse("$wsBase/$_wsPath/$leagueId/");
+      _wsLeagueId = leagueId;
+      startedLeagueId.value = null;
       _webSocketChannel = WebSocketChannel.connect(wsUrl);
 
       logger.i("WebSocket connected: $wsUrl");
@@ -873,6 +880,12 @@ class CreateLeagueController extends GetxController {
         (message) {
           try {
             final data = jsonDecode(message);
+            // An event of another league (an old socket still draining) must
+            // not change the waiting room on screen.
+            final eventLeague = data is Map && data['payload'] is Map
+                ? (data['payload']['league_id'] as num?)?.toInt()
+                : null;
+            if (eventLeague != null && eventLeague != _wsLeagueId) return;
             final event = WebSocketLeagueEvent.fromJson(data);
 
             switch (event.event) {
@@ -909,6 +922,8 @@ class CreateLeagueController extends GetxController {
 
   void _handleLeagueStarted(WebSocketPayload payload) {
     logger.i("$_leagueTypeLabel League Started: ${payload.message}");
+    // The waiting rooms listening to this switch to the started league.
+    startedLeagueId.value = _wsLeagueId;
   }
 
   void _handleTeamJoined(WebSocketPayload payload) {
