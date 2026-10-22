@@ -276,7 +276,8 @@ async def save_player_selection(
 
     # One guard for every lineup/bonus change: locked from the first tip-off
     # until the 09:00 publication, and only the league's current day.
-    await ensure_open(league, current_user.id, match_day)
+    info = await ensure_open(league, current_user.id, match_day)
+    lock_in_seconds = info.lock_in_seconds
 
     match = await LeagueMatch.find_one(
         LeagueMatch.league_id == league.id,
