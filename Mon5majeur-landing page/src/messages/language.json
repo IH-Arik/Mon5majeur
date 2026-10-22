@@ -34,12 +34,12 @@
       }
     },
     "GetNotified": {
-      "sectionTitle": "Be notified when it",
+      "sectionTitle": "Mon5Majeur is ",
       "registeredTitle": "Already Pre-Registered",
-      "sectionTitleAccent": "launches",
+      "sectionTitleAccent": "out now",
       "inputPlaceholder": "Enter your mail...",
       "buttonText": "Get Notified",
-      "description": "We'll send you the link as soon as the app is available.",
+      "description": "Download the app for free on the App Store and Google Play.",
       "promoText": "Early Access players in the first week unlock 2 exclusive jerseys"
     },
     "CardSlider": {
@@ -78,7 +78,7 @@
       "fun": "Fun",
       "freedom": "Freedom",
       "strategy": "Strategy",
-      "cta": "Get Launching Notifications",
+      "cta": "Download the app",
       "card1": {
         "title": "Build Your 5",
         "subtitle": "Your lineup changes every night",
@@ -106,10 +106,10 @@
       "badgeDescription": "Compete against everyone. Weekly + Monthly prizes"
     },
     "GetApp": {
-      "title": "Get This app on",
-      "colorTitle": "Apple & Google play store after launching",
+      "title": "Get the app on",
+      "colorTitle": "the App Store and Google Play",
       "description": "Everything you need to know about Mon5Majeur and how it works",
-      "cta": "Get Launching Notifications"
+      "cta": "Download the app"
     },
     "FAQ": {
       "badge": "FAQ",
@@ -312,9 +312,9 @@
       "governingText": "These terms are governed by French law. Any disputes will be handled by the courts within the jurisdiction of the headquarters."
     },
     "Footer": {
-      "notifiedTitle": "Be notified when it",
-      "launches": "launches",
-      "notifiedSubtitle": "We'll send you the link as soon as the app is available.",
+      "notifiedTitle": "Mon5Majeur is",
+      "launches": "out now",
+      "notifiedSubtitle": "Download the app for free on the App Store and Google Play.",
       "placeholder": "Enter your mail...",
       "button": "Get Notified",
       "description": "Create your dream team, compete with friends, and track real-time NBA stats. Ready to play?",
@@ -364,12 +364,12 @@
       }
     },
     "GetNotified": {
-      "sectionTitle": "Soyez notifié lors du",
+      "sectionTitle": "Mon5Majeur est ",
       "registeredTitle": "Déjà préinscrit",
-      "sectionTitleAccent": "lancement",
+      "sectionTitleAccent": "disponible",
       "inputPlaceholder": "Entrez votre email...",
       "buttonText": "M'avertir",
-      "description": "Nous vous enverrons le lien dès que l'application sera disponible.",
+      "description": "Téléchargez l'application gratuitement sur l'App Store et Google Play.",
       "promoText": "Les joueurs en accès anticipé de la première semaine débloquent 2 maillots exclusifs"
     },
     "CardSlider": {
@@ -408,7 +408,7 @@
       "fun": "Plaisir",
       "freedom": "Liberté",
       "strategy": "Stratégie",
-      "cta": "Recevoir les Notifications de Lancement",
+      "cta": "Télécharger l'application",
       "card1": {
         "title": "Créez Votre 5",
         "subtitle": "Votre composition change chaque nuit",
@@ -437,9 +437,9 @@
     },
     "GetApp": {
       "title": "Téléchargez l'app sur",
-      "colorTitle": "Apple & Google Play Store dès le lancement",
+      "colorTitle": "l'App Store et Google Play",
       "description": "Tout ce que vous devez savoir sur Mon5Majeur et son fonctionnement",
-      "cta": "Recevoir les Notifications de Lancement"
+      "cta": "Télécharger l'application"
     },
     "FAQ": {
       "badge": "FAQ",
@@ -642,9 +642,9 @@
       "governingText": "Ces conditions sont régies par le droit français. Tout litige sera traité par les tribunaux du ressort du siège social."
     },
     "Footer": {
-      "notifiedTitle": "Soyez notifié lors du",
-      "launches": "lancement",
-      "notifiedSubtitle": "Nous vous enverrons le lien dès que l'application sera disponible.",
+      "notifiedTitle": "Mon5Majeur est",
+      "launches": "disponible",
+      "notifiedSubtitle": "Téléchargez l'application gratuitement sur l'App Store et Google Play.",
       "placeholder": "Entrez votre e-mail...",
       "button": "Être notifié",
       "description": "Créez votre équipe de rêve, affrontez vos amis et suivez les stats NBA en temps réel. Prêt à jouer ?",

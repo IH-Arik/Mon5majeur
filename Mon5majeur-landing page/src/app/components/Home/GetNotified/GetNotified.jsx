@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion, useAnimation } from "motion/react";
+import { motion } from "motion/react";
 import { useLanguage } from "@/Providers/ContextProvider";
-import { toast, Toaster } from "react-hot-toast";
+import StoreButtons from "../../StoreButtons/StoreButtons";
 
 function GetNotified() {
   const [mounted, setMounted] = useState(false);
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const controls = useAnimation(); // For error shake effect
 
   const { t } = useLanguage();
   const content = t.GetNotified;
@@ -17,31 +14,6 @@ function GetNotified() {
     setMounted(true);
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const response = await fetch("/api/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success(data.message || "Successfully subscribed!");
-        setEmail("");
-      } else {
-        toast.error(data.error || "Something went wrong.");
-      }
-    } catch (error) {
-      toast.error("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
   if (!mounted) {
     return (
       <section id="launch" aria-hidden="true">
@@ -52,7 +24,6 @@ function GetNotified() {
 
   return (
     <section id="launch">
-      <Toaster position="top-center" reverseOrder={false} />
       <div className="max-w-380 mx-auto w-11/12 py-12 md:py-16 mt-6">
         <div>
           <div className="flex items-center relative">
@@ -63,45 +34,16 @@ function GetNotified() {
                   {content.sectionTitleAccent}
                 </span>
               </h1>
-              <div>
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary1 mt-4">
-                  5k+
-                </h1>
-                <p className="md:text-lg lg:text-xl text-Base py-2">
-                  {content.registeredTitle}
-                </p>
-              </div>
 
-              <motion.form
-                animate={controls}
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: false }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="flex flex-row gap-2 md:gap-4 items-center justify-between md:text-lg xl:text-xl"
-                onSubmit={handleSubmit}
               >
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={content.inputPlaceholder}
-                  aria-label={content.inputPlaceholder}
-                  className="py-3 px-5 rounded-xl shadow bg-gray-800/20 border-base/5 ring-base/30 border focus:outline-none ring focus:ring-primary1 w-4/6"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="py-3 px-6 rounded-xl truncate bg-linear-to-r from-primary1 to-primary2 hover:bg-primary2 text-white w-2/6 transition-all duration-300 active:scale-95 disabled:opacity-70 flex items-center justify-center"
-                >
-                  {loading ? (
-                    <div className="h-5 w-5 border-2 border-white/30 border-t-white animate-spin rounded-full" />
-                  ) : (
-                    content.buttonText
-                  )}
-                </button>
-              </motion.form>
+                {/* The app is out: download instead of a pre-registration form */}
+                <StoreButtons labels={t.banner.altText} />
+              </motion.div>
 
               <motion.p
                 initial={{ opacity: 0, y: 20 }}

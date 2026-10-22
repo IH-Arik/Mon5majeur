@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { APP_STORE_URL, PLAY_STORE_URL } from "../../StoreButtons/StoreButtons";
 import Image from "next/image";
 import { TypeAnimation } from "react-type-animation";
 import { motion } from "motion/react";
@@ -60,7 +61,9 @@ function Banner() {
                 className="flex flex-row items-center gap-4 sm:gap-6"
               >
                 <a
-                  href="#"
+                  href={PLAY_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="transition-transform active:scale-95"
                   aria-label={t.banner.ariaLabels.googlePlay}
                 >
@@ -73,7 +76,9 @@ function Banner() {
                   />
                 </a>
                 <a
-                  href="#"
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="transition-transform active:scale-95"
                   aria-label={t.banner.ariaLabels.appStore}
                 >

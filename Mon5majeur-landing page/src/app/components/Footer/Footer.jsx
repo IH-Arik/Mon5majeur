@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { useLanguage } from "@/Providers/ContextProvider";
+import StoreButtons from "../StoreButtons/StoreButtons";
 
 function Footer() {
   const [mounted, setMounted] = useState(false);
@@ -47,16 +48,7 @@ function Footer() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <input
-            type="email"
-            placeholder={content.placeholder}
-            className="bg-[#0f0f0f] border border-white/10 rounded-xl px-6 py-4 focus:outline-none focus:border-primary1 transition-colors font-galdeano"
-          />
-          <button className="bg-primary1 hover:bg-orange-600 transition-all text-white font-bold px-8 py-4 rounded-xl whitespace-nowrap active:scale-95">
-            {content.button}
-          </button>
-        </div>
+        <StoreButtons labels={t.banner.altText} />
       </motion.div>
 
       <hr className="border-white/10 mb-16" />

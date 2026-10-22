@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { BsArrowUpRightSquareFill } from "react-icons/bs";
 import SectionTitle from "../SectionTitle/SectionTitle";
+import StoreButtons from "../../StoreButtons/StoreButtons";
 import { useLanguage } from "@/Providers/ContextProvider";
 
 const GetApp = () => {
@@ -77,20 +78,7 @@ const GetApp = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="flex flex-row items-center gap-4 sm:gap-6 my-4"
             >
-              <Image
-                src="/images/google-play.png"
-                height={200}
-                width={500}
-                alt="Google Play Store"
-                className="h-10 sm:h-14 md:h-16 hover:opacity-90 transition-opacity bg-dark/50 rounded-lg w-auto cursor-pointer"
-              />
-              <Image
-                src="/images/app-store.png"
-                height={200}
-                width={500}
-                alt="Apple App Store"
-                className="h-10 sm:h-14 md:h-16 hover:opacity-90 transition-opacity bg-dark/50 rounded-lg w-auto cursor-pointer"
-              />
+              <StoreButtons labels={t.banner.altText} />
             </motion.div>
 
             <motion.div
