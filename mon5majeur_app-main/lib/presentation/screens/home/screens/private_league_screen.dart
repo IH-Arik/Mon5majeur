@@ -122,9 +122,9 @@ class _PrivateLeagueScreenState extends State<PrivateLeagueScreen> {
                             borderRadius: BorderRadius.circular(16.r),
                           ),
                           child: Center(
-                            child: Assets.icons.lock.image(
-                              width: 40.w,
-                              height: 40.h,
+                            child: Assets.icons.leaguePrivate.image(
+                              width: 48.w,
+                              height: 48.w,
                               fit: BoxFit.contain,
                             ),
                           ),

@@ -92,19 +92,11 @@ class CreateLeagueScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           // Lock Icon
-                          Container(
-                            width: 64.w,
-                            height: 64.h,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A1C2A),
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                            child: Center(
-                              child: Assets.icons.lock.image(
-                                width: 40.w,
-                                height: 40.h,
-                                fit: BoxFit.contain,
-                              ),
+                          SizedBox(
+                            width: 72.w,
+                            height: 72.w,
+                            child: Assets.icons.leaguePrivate.image(
+                              fit: BoxFit.contain,
                             ),
                           ),
 
@@ -162,19 +154,11 @@ class CreateLeagueScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           // Trophy Icon
-                          Container(
-                            width: 64.w,
-                            height: 64.h,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A1C2A),
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                            child: Center(
-                              child: Assets.icons.basketballtrophee.image(
-                                width: 40.w,
-                                height: 40.h,
-                                fit: BoxFit.contain,
-                              ),
+                          SizedBox(
+                            width: 72.w,
+                            height: 72.w,
+                            child: Assets.icons.leaguePublic.image(
+                              fit: BoxFit.contain,
                             ),
                           ),
 

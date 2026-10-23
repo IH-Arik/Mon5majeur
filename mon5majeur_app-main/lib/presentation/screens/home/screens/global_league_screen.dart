@@ -164,22 +164,10 @@ class _GlobalLeagueScreenState extends State<GlobalLeagueScreen> {
   }
 
   Widget _buildLeagueLogo() {
-    return Container(
-      width: 35.w,
-      height: 36.h,
-      decoration: ShapeDecoration(
-        color: const Color(0xFF1A1A1A),
-        shape: OvalBorder(
-          side: BorderSide(width: 1.r, color: const Color(0xFFB0B0B0)),
-        ),
-      ),
-      child: Center(
-        child: Assets.icons.earth.image(
-          width: 16.w,
-          height: 18.h,
-          fit: BoxFit.cover,
-        ),
-      ),
+    return SizedBox(
+      width: 52.w,
+      height: 52.w,
+      child: Assets.icons.leagueWorld.image(fit: BoxFit.contain),
     );
   }
 

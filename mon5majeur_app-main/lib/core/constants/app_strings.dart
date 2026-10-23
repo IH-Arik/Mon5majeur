@@ -700,6 +700,10 @@ class AppString {
       'Pull down to refresh. Live scores appear here while games are being played.';
   static const String budgetExceeded = 'Budget exceeded';
 
+  static const String playerFormHot = 'playerFormHot';
+  static const String joinedTeamsTitle = 'joinedTeamsTitle';
+  static const String playerFormCold = 'playerFormCold';
+
   // Onboarding tutorial (spec Part 3)
   static const String tutorialStep0 = 'tutorialStep0';
   static const String tutorialStep1 = 'tutorialStep1';

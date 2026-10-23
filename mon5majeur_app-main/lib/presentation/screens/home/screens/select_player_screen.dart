@@ -467,17 +467,30 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
   Widget _buildPlayerAvatar(Player player) {
     return Column(
       children: [
-        Container(
-          width: 50.w,
-          height: 50.h,
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A2D3E),
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10.r),
-              child: widget.teamJersey.image(fit: BoxFit.cover),
-          ),
+        // Clip.none so the form badge can straddle the thumbnail's corner;
+        // the jersey itself is clipped by its own ClipRRect.
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 50.w,
+              height: 50.h,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A2D3E),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10.r),
+                child: widget.teamJersey.image(fit: BoxFit.cover),
+              ),
+            ),
+            if (player.form == 'HOT' || player.form == 'COLD')
+              Positioned(
+                top: -9.r,
+                right: -9.r,
+                child: buildFormBadge(player.form),
+              ),
+          ],
         ),
         if (player.trigram != null) ...[
           SizedBox(height: 2.h),
@@ -510,10 +523,6 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                 ),
               ),
             ),
-            if (player.form == 'HOT' || player.form == 'COLD') ...[
-              SizedBox(width: 6.w),
-              buildFormBadge(player.form, size: 15),
-            ],
           ],
         ),
         SizedBox(height: 6.h),

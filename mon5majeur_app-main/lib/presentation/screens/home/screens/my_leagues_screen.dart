@@ -140,12 +140,13 @@ class _MyLeaguesScreenState extends State<MyLeaguesScreen>
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Assets.icons.lock.image(
-                                width: 18.w,
-                                height: 18.h,
-                                color: _tabController.index == 0
-                                    ? Colors.white
-                                    : Colors.grey[600],
+                              Opacity(
+                                opacity: _tabController.index == 0 ? 1 : 0.5,
+                                child: Assets.icons.leaguePrivate.image(
+                                  width: 24.w,
+                                  height: 24.w,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                               SizedBox(width: 8.w),
                               Text(
@@ -164,12 +165,13 @@ class _MyLeaguesScreenState extends State<MyLeaguesScreen>
                           return Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Assets.icons.basketballtrophee.image(
-                                width: 18.w,
-                                height: 18.h,
-                                color: _tabController.index == 1
-                                    ? Colors.white
-                                    : Colors.grey[600],
+                              Opacity(
+                                opacity: _tabController.index == 1 ? 1 : 0.5,
+                                child: Assets.icons.leaguePublic.image(
+                                  width: 24.w,
+                                  height: 24.w,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                               SizedBox(width: 8.w),
                               Text(
@@ -225,8 +227,13 @@ class _MyLeaguesScreenState extends State<MyLeaguesScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              (isPrivate ? Assets.icons.lock : Assets.icons.basketballtrophee)
-                  .image(width: 80.w, height: 80.h, color: Colors.grey[700]),
+              Opacity(
+                opacity: 0.5,
+                child: (isPrivate
+                        ? Assets.icons.leaguePrivate
+                        : Assets.icons.leaguePublic)
+                    .image(width: 80.w, height: 80.w, fit: BoxFit.contain),
+              ),
               SizedBox(height: 16.h),
               Text(
                 controller.searchQuery.value.isEmpty

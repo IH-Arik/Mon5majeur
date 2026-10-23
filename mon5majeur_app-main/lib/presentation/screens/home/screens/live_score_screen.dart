@@ -219,11 +219,11 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       child: Center(
         child: (_isDuel
                 ? logoAsset(_headerLogo())
-                : Assets.icons.earth)
+                : Assets.icons.leagueWorld)
             .image(
-          width: 16.w,
-          height: 18.h,
-          fit: BoxFit.cover,
+          width: 24.w,
+          height: 24.w,
+          fit: BoxFit.contain,
         ),
       ),
     );
