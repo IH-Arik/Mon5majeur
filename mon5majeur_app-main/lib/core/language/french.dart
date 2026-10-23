@@ -584,6 +584,10 @@ class FrenchTranslation {
         'Tire pour actualiser. Les scores en direct apparaissent ici pendant les matchs.',
     AppString.budgetExceeded: 'Budget dépassé',
 
+    AppString.playerFormHot: 'En feu',
+    AppString.joinedTeamsTitle: 'Équipes inscrites',
+    AppString.playerFormCold: 'Glacial',
+
     // Onboarding tutorial (spec Part 3) — copy taken from the approved
     // Figma mockup screenshots. Steps 2 and 5 use the mockups' fuller
     // wording rather than the spec doc's shorter placeholder line for

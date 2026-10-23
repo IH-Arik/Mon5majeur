@@ -116,6 +116,13 @@ class $AssetsIconsGen {
   AssetGenImage get hourglass =>
       const AssetGenImage('assets/icons/hourglass.png');
 
+  /// File path: assets/icons/icon_cold.png
+  AssetGenImage get iconCold =>
+      const AssetGenImage('assets/icons/icon_cold.png');
+
+  /// File path: assets/icons/icon_hot.png
+  AssetGenImage get iconHot => const AssetGenImage('assets/icons/icon_hot.png');
+
   /// File path: assets/icons/icons.png
   AssetGenImage get icons => const AssetGenImage('assets/icons/icons.png');
 
@@ -180,6 +187,18 @@ class $AssetsIconsGen {
   /// File path: assets/icons/league_logo_yeti.png
   AssetGenImage get leagueLogoYeti =>
       const AssetGenImage('assets/icons/league_logo_yeti.png');
+
+  /// File path: assets/icons/league_private.png
+  AssetGenImage get leaguePrivate =>
+      const AssetGenImage('assets/icons/league_private.png');
+
+  /// File path: assets/icons/league_public.png
+  AssetGenImage get leaguePublic =>
+      const AssetGenImage('assets/icons/league_public.png');
+
+  /// File path: assets/icons/league_world.png
+  AssetGenImage get leagueWorld =>
+      const AssetGenImage('assets/icons/league_world.png');
 
   /// File path: assets/icons/lion.png
   AssetGenImage get lion => const AssetGenImage('assets/icons/lion.png');
@@ -358,6 +377,8 @@ class $AssetsIconsGen {
     homeActive,
     homeInactive,
     hourglass,
+    iconCold,
+    iconHot,
     icons,
     jersey,
     jerseyReference,
@@ -375,6 +396,9 @@ class $AssetsIconsGen {
     leagueLogoShark,
     leagueLogoSnake,
     leagueLogoYeti,
+    leaguePrivate,
+    leaguePublic,
+    leagueWorld,
     lion,
     livematch,
     livescoring,

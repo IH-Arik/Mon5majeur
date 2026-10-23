@@ -577,6 +577,10 @@ class EnglishTranslation {
         'Pull down to refresh. Live scores appear here while games are being played.',
     AppString.budgetExceeded: 'Budget exceeded',
 
+    AppString.playerFormHot: 'On fire',
+    AppString.joinedTeamsTitle: 'Joined teams',
+    AppString.playerFormCold: 'Ice cold',
+
     // Onboarding tutorial (spec Part 3)
     AppString.tutorialStep0: 'Welcome! Join the Global League. Everyone plays there.',
     AppString.tutorialStep1: 'Pick your 5 players within a 100M budget.',
