@@ -5,7 +5,9 @@ Mounted at /api (no /v1 prefix).
   GET  /api/global-leagues/players-selection/  → fetch user's current selection
   POST /api/global-leagues/players-selection/  → save/update user's selection
 """
-from datetime import date, datetime, timezone
+import time
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
@@ -616,8 +618,24 @@ async def get_global_leaderboard_team_detail(
 # A published night never changes: its response is kept for good (per worker),
 # keyed by whose lineup and which night. Only published nights (archived at
 # the 09:00 close) can ever be asked for here, so nothing secret is cached.
-_RESULT_CACHE: dict[tuple[str, str], dict] = {}
+# Each entry is (stored_at_monotonic, payload). The TTL bounds the damage of a
+# stale entry on API replicas the scheduler (which archives and clears) cannot
+# reach: the cache is per process.
+_RESULT_CACHE: dict[tuple[str, str], tuple[float, dict]] = {}
 _RESULT_CACHE_MAX = 4000
+_RESULT_CACHE_TTL = 300.0
+
+# The daily close (archive of the night's scores) runs at 09:00 Paris the day
+# after the night. Before that instant a night is not closed.
+_CLOSE_TZ = ZoneInfo("Europe/Paris")
+_CLOSE_HOUR = 9
+
+
+def _night_closed(night: date, now: datetime | None = None) -> bool:
+    close = datetime.combine(
+        night + timedelta(days=1), datetime.min.time(), tzinfo=_CLOSE_TZ
+    ).replace(hour=_CLOSE_HOUR)
+    return (now or datetime.now(timezone.utc)) >= close
 
 
 def clear_result_cache() -> None:
@@ -639,8 +657,8 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
     score lookup, one lineup lookup, ONE stats query for the five players."""
     key = (str(target.id), night.isoformat())
     cached = _RESULT_CACHE.get(key)
-    if cached is not None:
-        return cached
+    if cached is not None and time.monotonic() - cached[0] < _RESULT_CACHE_TTL:
+        return cached[1]
 
     score = await GlobalLeagueDailyScore.find_one(
         GlobalLeagueDailyScore.user_id == target.id,
@@ -654,6 +672,7 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
     )
 
     items: list[dict] = []
+    stats_settled = True
     if sel:
         ids = []
         for p in sel.selected_players:
@@ -665,9 +684,13 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
             {
                 "player_id": {"$in": [i for i in ids if i]},
                 "nba_date": datetime.combine(night, datetime.min.time()),
-                "score_computed": True,
             }
         ).to_list()
+        # Same rule as the ranking (global_score_service._score_selection):
+        # fantasy_score as stored, whatever score_computed says. A box-score
+        # sync flips score_computed to False until the score is recomputed,
+        # and that must not blank the player out.
+        stats_settled = all(s.score_computed for s in stats)
         by_player = {s.player_id: s for s in stats}
         for p, pid in zip(sel.selected_players, ids):
             st = by_player.get(pid) if pid else None
@@ -685,9 +708,13 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
         "total_points": int(round(score.total_points)) if score and sel else 0,
         "selection": items,
     }
-    if len(_RESULT_CACHE) >= _RESULT_CACHE_MAX:
-        _RESULT_CACHE.clear()
-    _RESULT_CACHE[key] = payload
+    # Only a closed night with settled stats is kept: a payload computed while
+    # the close is running (or a box score is being re-synced) is served but
+    # never stored.
+    if _night_closed(night) and stats_settled:
+        if len(_RESULT_CACHE) >= _RESULT_CACHE_MAX:
+            _RESULT_CACHE.clear()
+        _RESULT_CACHE[key] = (time.monotonic(), payload)
     return payload
 
 
