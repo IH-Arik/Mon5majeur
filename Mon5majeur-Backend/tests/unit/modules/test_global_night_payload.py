@@ -32,10 +32,13 @@ def _stub(monkeypatch, *, score, sel, stats):
 
     class _Stats:
         @staticmethod
-        def find(_query):
+        def find(query):
             calls["stats"] += 1
 
             async def _list():
+                # like Mongo: honour a score_computed filter if the query has one
+                if "score_computed" in query:
+                    return [s for s in stats if s.score_computed == query["score_computed"]]
                 return stats
 
             return SimpleNamespace(to_list=_list)
@@ -130,3 +133,47 @@ def test_close_is_09h_paris_the_day_after_the_night():
     night = date(2026, 10, 22)  # Paris is UTC+2 that day: 09:00 Paris = 07:00 UTC
     assert not gr._night_closed(night, datetime(2026, 10, 23, 6, 59, tzinfo=timezone.utc))
     assert gr._night_closed(night, datetime(2026, 10, 23, 7, 0, tzinfo=timezone.utc))
+
+
+def test_bumperteam_case_voir_l_equipe_shows_8_and_does_not_cache_an_open_night(monkeypatch):
+    """Published night, SGA's stat has fantasy_score=8 but score_computed=False
+    (a box-score sync just reset it), archived total 96: the "Voir l'équipe"
+    endpoint must show 8 for him, summing to 98, and must not cache the night
+    while it is not closed."""
+    from beanie import PydanticObjectId
+
+    sga = "6a2dcec57b6124094b81ff46"
+    others = [f"{i:024x}" for i in range(1, 5)]
+    sel = SimpleNamespace(
+        selected_players=[
+            {"id": sga, "name": "Shai Gilgeous-Alexander", "position": "PG"},
+            *[{"id": o, "name": f"P{n}", "position": "SF"} for n, o in enumerate(others)],
+        ]
+    )
+    stats = [SimpleNamespace(player_id=PydanticObjectId(sga), fantasy_score=8, score_computed=False)]
+    stats += [
+        SimpleNamespace(player_id=PydanticObjectId(o), fantasy_score=22, score_computed=True)
+        for o in others
+    ]
+    # 8 + 4 * 22 = 96; a night in the future is, by definition, not closed
+    night = date.today() + timedelta(days=2)
+    _stub(monkeypatch, score=SimpleNamespace(total_points=96), sel=sel, stats=stats)
+
+    async def _league():
+        return LEAGUE
+
+    async def _nights(_league):
+        return [night]
+
+    monkeypatch.setattr(gr, "_get_global_league", _league)
+    monkeypatch.setattr(gr, "_published_nights", _nights)
+
+    me = SimpleNamespace(
+        id="U", auto_id=7, team_name="BumperTeam", email="b@x.io", team_logo="", jersey_index=0
+    )
+    out = asyncio.run(gr.get_global_published_result(user_auto_id=None, offset=0, current_user=me))
+
+    by_name = {p["name"]: p["score"] for p in out["selection"]}
+    assert by_name["Shai Gilgeous-Alexander"] == 8          # not 0
+    assert sum(by_name.values()) == out["total_points"] == 96
+    assert not gr._RESULT_CACHE                             # open night: never stored
