@@ -24,6 +24,28 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+async def _find_game(g: dict, adopt_id: bool):
+    """The stored game for a feed entry: by Goalserve id, else by night and
+    both teams, so one matchup is never stored twice under two ids
+    (Robin 10/24: Philadelphia-Cleveland 10/22 existed 3 times).
+
+    adopt_id: the scores feed's id is the reference (stat lines carry it), so
+    a game found by teams is re-keyed to it; the schedule never re-keys."""
+    game = await NBAGame.find_one(NBAGame.goalserve_id == g["goalserve_game_id"])
+    if game is not None:
+        return game
+    game = await NBAGame.find_one(
+        NBAGame.nba_date == g["nba_date"],
+        NBAGame.home_team_id == g["home_team_id"],
+        NBAGame.away_team_id == g["away_team_id"],
+    )
+    if game is not None and adopt_id and game.goalserve_id != g["goalserve_game_id"]:
+        logger.info("Game %s @ %s %s re-keyed %s -> %s", g.get("away_team_name"),
+                    g.get("home_team_name"), g["nba_date"], game.goalserve_id, g["goalserve_game_id"])
+        game.goalserve_id = g["goalserve_game_id"]
+    return game
+
+
 def _stat_changes(existing, fields: dict) -> dict:
     """{field: (old, new)} of the stat fields whose value differs."""
     return {
@@ -304,8 +326,14 @@ class PlayerService:
 
         count = 0
         for g in games_data:
+            if not g.get("goalserve_game_id"):
+                logger.warning("Schedule: game without a Goalserve id skipped (%s @ %s, %s)",
+                               g.get("away_team_name"), g.get("home_team_name"), g.get("nba_date"))
+                continue
             try:
-                existing = await NBAGame.find_one(NBAGame.goalserve_id == g["goalserve_game_id"])
+                # The schedule never re-keys a game: a matchup already known
+                # under another id (the scores feed's) is that same game.
+                existing = await _find_game(g, adopt_id=False)
                 game_doc = {
                     "goalserve_id": g["goalserve_game_id"],
                     "nba_date": g["nba_date"],
@@ -367,8 +395,18 @@ class PlayerService:
         count = 0
         for g in games_data:
             game_id = g["goalserve_game_id"]
+            if not game_id:
+                # A match with no id would be inserted as a new game (with its
+                # stat lines) at every sync: Philadelphia-Cleveland 10/22 got a
+                # third copy that way. Skipped, players included.
+                logger.warning("Scores: game without a Goalserve id skipped (%s @ %s, %s)",
+                               g.get("away_team_name"), g.get("home_team_name"), g.get("nba_date"))
+                continue
             try:
-                existing_game = await NBAGame.find_one(NBAGame.goalserve_id == game_id)
+                # Found by id, else by night and teams (the schedule may have
+                # stored it under another id): the scores feed's id is the one
+                # the stat lines carry, so the record takes it.
+                existing_game = await _find_game(g, adopt_id=True)
                 game_doc = {
                     "goalserve_id": game_id,
                     "nba_date": g["nba_date"],
