@@ -168,6 +168,12 @@ def test_bumperteam_case_voir_l_equipe_shows_8_and_does_not_cache_an_open_night(
     monkeypatch.setattr(gr, "_get_global_league", _league)
     monkeypatch.setattr(gr, "_published_nights", _nights)
 
+    async def _night_number(_night):
+        return 3
+
+    # The World League night number reads the schedule (no database here).
+    monkeypatch.setattr(gr, "global_night_number", _night_number)
+
     me = SimpleNamespace(
         id="U", auto_id=7, team_name="BumperTeam", email="b@x.io", team_logo="", jersey_index=0
     )
