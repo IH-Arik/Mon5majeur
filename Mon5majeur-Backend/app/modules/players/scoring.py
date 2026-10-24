@@ -10,8 +10,15 @@ Fantasy Score formula (spec §4.2):
                + (2pt_made×+1) + (2pt_missed×−1)
                + (ft_made ×+0.5) + (ft_missed×−0.5)
     Score      = round((Base + Efficiency) × 0.7)   ← single integer rounding at the end
+
+The × 0.7 and the rounding are done in exact decimal, .5 rounded up (away from
+zero): in floating point 45 × 0.7 = 31.4999… and Python's round() also
+rounds .5 to the even number, so a raw total ending in 5 (5, 15, 25, 35, 45…)
+lost a point (SGA 10/20: 31 instead of 32). The formula itself is unchanged.
 """
 from __future__ import annotations
+
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.modules.players.model import PlayerGameStats
 
@@ -41,7 +48,14 @@ def compute_fantasy_score(s: PlayerGameStats) -> float:
         + s.freethrow_made * 0.5 - ft_missed * 0.5
     )
 
-    return float(round((base + efficiency) * 0.7))
+    return float(round_score(base + efficiency))
+
+
+def round_score(raw: float) -> int:
+    """round(raw × 0.7), exact: raw is a whole or half number (free throws
+    count 0.5), so str() is exact and Decimal has no floating-point error."""
+    value = Decimal(str(raw)) * Decimal("0.7")
+    return int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
 def compute_and_stamp(s: PlayerGameStats) -> PlayerGameStats:
