@@ -3,7 +3,7 @@
     python scripts/rescore_rounding.py            # dry run: what would change
     python scripts/rescore_rounding.py --apply    # backup, then write
 
-Before the fix, a raw total ending in 5 (5, 15, 25, 35, 45...) lost one point
+Only this season's nights (from Oct 1). Before the fix, a raw total ending in 5 (5, 15, 25, 35, 45...) lost one point
 (float 45 x 0.7 = 31.4999...). The dry run lists, night by night, every stat
 line whose score changes (old -> new), the duels whose score changes and
 whether a winner would change, and the Global League totals that change.
@@ -36,6 +36,7 @@ from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.model import Player, PlayerGameStats
+from app.modules.players.nba_night import is_published, season_start
 from app.modules.players.night_publication import published_marks
 from app.modules.players.scoring import compute_fantasy_score
 
@@ -43,7 +44,12 @@ from app.modules.players.scoring import compute_fantasy_score
 async def _changes() -> dict:
     """{night: [(stat, old, new)]} of the computed lines whose score changes."""
     out = defaultdict(list)
+    start = season_start(datetime.now().date())
     for s in await PlayerGameStats.find(PlayerGameStats.score_computed == True).to_list():  # noqa: E712
+        # This season only: the June / September lines are demo and preseason
+        # data, left as they are.
+        if s.nba_date < start:
+            continue
         new = compute_fantasy_score(s)
         if s.fantasy_score is None or float(s.fantasy_score) != new:
             out[s.nba_date].append((s, s.fantasy_score, new))
@@ -89,7 +95,12 @@ async def main() -> None:
         print("no stored score changes with the exact rounding")
         return
     nights = sorted(changes)
-    published = await published_marks(nights)
+    # A night is published once its 09:00 close is done. Nights before the
+    # publication marker existed (10/17) have no marker but were published
+    # long ago: past the safety grace they count as published too.
+    marks = await published_marks(nights)
+    now = datetime.now().astimezone()
+    published = {n for n in nights if is_published(n, now, n in marks)}
     total_lines = sum(len(v) for v in changes.values())
     print(f"{total_lines} stat line(s) on {len(nights)} night(s) change")
 
