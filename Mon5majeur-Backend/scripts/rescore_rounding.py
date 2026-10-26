@@ -147,11 +147,11 @@ async def main() -> None:
     from app.modules.leagues.engine import score_match_day, update_standings
     from app.modules.leagues.global_score_service import archive_daily_scores
 
-    for night, lines, is_published, _duels_ in plan:
+    for night, lines, night_published, _duels_ in plan:
         for s, _old, new in lines:
             s.fantasy_score = new
             await s.save()
-        if not is_published:
+        if not night_published:
             continue
         days = defaultdict(set)
         for m in await LeagueMatch.find(LeagueMatch.nba_date == night).to_list():
