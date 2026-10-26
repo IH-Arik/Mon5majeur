@@ -23,8 +23,16 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.starttls()
+        # Port 465 is implicit TLS (SMTPS): the server expects an encrypted
+        # handshake immediately, so plain SMTP + starttls() hangs/fails on it.
+        # 587 (and anything else) is STARTTLS: plaintext first, then upgrade.
+        if settings.SMTP_PORT == 465:
+            server_ctx = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+        else:
+            server_ctx = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+        with server_ctx as server:
+            if settings.SMTP_PORT != 465:
+                server.starttls()
             if settings.SMTP_USER:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.sendmail(settings.EMAILS_FROM_EMAIL, to, msg.as_string())
