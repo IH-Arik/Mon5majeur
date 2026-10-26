@@ -251,6 +251,20 @@ class AppRouter {
         },
       ),
       GoRoute(
+        name: RoutePath.leagueFinishedScreen,
+        path: RoutePath.leagueFinishedScreen.addBasePath,
+        builder: (context, state) {
+          final leagueId = int.tryParse(
+            state.uri.queryParameters['leagueId'] ?? '',
+          );
+          final isPublic = state.uri.queryParameters['isPublic'] == 'true';
+          return LeagueFinishedScreen(
+            leagueId: leagueId ?? 0,
+            isPublic: isPublic,
+          );
+        },
+      ),
+      GoRoute(
         name: RoutePath.selectPlayerScreenPublic,
         path: RoutePath.selectPlayerScreenPublic.addBasePath,
         builder: (context, state) => LeagueFantasyScreen(

@@ -24,6 +24,7 @@ export 'screens/edit_league_screen.dart';
 export 'screens/waiting_room_screen.dart';
 export 'screens/choose_a_league_screen.dart';
 export 'screens/join_league_waiting_room_screen.dart';
+export 'screens/league_finished_screen.dart';
 export 'screens/private_league_screen.dart';
 export 'screens/explore_leagues_screen.dart';
 export 'screens/global_league_screen.dart';

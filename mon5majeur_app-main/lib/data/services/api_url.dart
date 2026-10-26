@@ -59,6 +59,9 @@ class ApiUrl {
   static const startLeague = "/api/private-leagues/start_league/";
   static const joinLeague = "/api/private-leagues/join/";
   static const leavePrivateLeague = "/api/private-leagues/leave/";
+  static String privateLeagueFinished(int leagueId) =>
+      "/api/private-leagues/$leagueId/finished/";
+  static const replayPrivateLeague = "/api/private-leagues/replay/";
   static const myMatchesToday =
       "/api/private-leagues/matches/my-matches-today/";
 
@@ -116,6 +119,9 @@ class ApiUrl {
   static const activePublicLeagues = "/api/public-leagues/active_leagues/";
   static const joinPublicLeague = "/api/public-leagues/join/";
   static const leavePublicLeague = "/api/public-leagues/leave/";
+  static String publicLeagueFinished(int leagueId) =>
+      "/api/public-leagues/$leagueId/finished/";
+  static const replayPublicLeague = "/api/public-leagues/replay/";
   static const myPublicLeagues = "/api/public-leagues/my_leagues/";
   static const startPublicLeague = "/api/public-leagues/start_league/";
   static const kickPublicTeam = "/api/public-leagues/kick/";

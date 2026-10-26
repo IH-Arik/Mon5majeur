@@ -41,6 +41,7 @@ class RoutePath {
       'publicLeagueWaitingRoomScreen';
   static const String privateLeagueWaitingRoomScreen =
       'privateLeagueWaitingRoomScreen';
+  static const String leagueFinishedScreen = 'leagueFinishedScreen';
   static const String globalLeagueScreen = 'globalLeagueScreen';
   static const String faqScreen = 'faqScreen';
   static const String aboutUsScreen = 'aboutUsScreen';

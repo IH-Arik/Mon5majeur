@@ -1260,6 +1260,12 @@ class _AnimatedLeagueCard extends StatelessWidget {
   // same routing HomeController.myLeagues.first feeds into, matching
   // my_leagues_screen.dart's _navigateToLeague.
   static void _navigateToLeague(BuildContext context, MyLeagueModel league) {
+    if (league.league.status == 'completed') {
+      context.go(
+        '${RoutePath.leagueFinishedScreen.addBasePath}?leagueId=${league.leagueId}&isPublic=${!league.isPrivate}',
+      );
+      return;
+    }
     if (league.league.isStarted == true) {
       context.go(
         '${RoutePath.fantasyLeagueScreenForJoin.addBasePath}/${league.leagueId}?matchDay=${league.currentMatchday}&isPrivate=${league.isPrivate}',

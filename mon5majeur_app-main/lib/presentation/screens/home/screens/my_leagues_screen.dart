@@ -43,6 +43,15 @@ class _MyLeaguesScreenState extends State<MyLeaguesScreen>
   }
 
   void _navigateToLeague(MyLeagueModel league) {
+    // A finished league opens its own "Ligue terminee" screen (Arik QA item
+    // 10): the waiting room made it look like a fresh league, with no way to
+    // see the final standings, delete it or replay it.
+    if (league.league.status == 'completed') {
+      context.go(
+        '${RoutePath.leagueFinishedScreen.addBasePath}?leagueId=${league.leagueId}&isPublic=${!league.isPrivate}',
+      );
+      return;
+    }
     if (league.league.isStarted == true) {
       // League has started - navigate to fantasy league screen WITH isPrivate flag
       context.go(

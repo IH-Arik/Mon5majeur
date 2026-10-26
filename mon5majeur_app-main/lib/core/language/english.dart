@@ -200,6 +200,14 @@ class EnglishTranslation {
     AppString.joinCode: 'Join Code',
     AppString.editLeague: 'Edit League',
     AppString.deleteLeague: 'Delete League',
+    AppString.leagueFinished: 'League finished',
+    AppString.champion: 'Champion',
+    AppString.finalStandings: 'Final standings',
+    AppString.replayLeague: 'Replay',
+    AppString.replayLeagueConfirmation:
+        'Create a new league with the same name, settings and teams?',
+    AppString.replayAlreadyDoneCta: 'Open the new league',
+
     AppString.startLeague: 'Start League',
     AppString.kick: 'Kick',
     AppString.budget80M: '80 M',

@@ -200,6 +200,14 @@ class FrenchTranslation {
     AppString.joinCode: 'Code d\'invitation',
     AppString.editLeague: 'Modifier la ligue',
     AppString.deleteLeague: 'Supprimer la ligue',
+    AppString.leagueFinished: 'Ligue terminée',
+    AppString.champion: 'Champion',
+    AppString.finalStandings: 'Classement final',
+    AppString.replayLeague: 'Replay',
+    AppString.replayLeagueConfirmation:
+        'Créer une nouvelle ligue avec le même nom, les mêmes réglages et les mêmes équipes ?',
+    AppString.replayAlreadyDoneCta: 'Ouvrir la nouvelle ligue',
+
     AppString.startLeague: 'Démarrer la ligue',
     AppString.kick: 'Expulser',
     AppString.budget80M: '80 M',

@@ -205,6 +205,14 @@ class AppString {
   static const String joinCode = 'Join Code';
   static const String editLeague = 'Edit League';
   static const String deleteLeague = 'Delete League';
+  static const String leagueFinished = 'League finished';
+  static const String champion = 'Champion';
+  static const String finalStandings = 'Final standings';
+  static const String replayLeague = 'Replay';
+  static const String replayLeagueConfirmation =
+      'Create a new league with the same name, settings and teams?';
+  static const String replayAlreadyDoneCta = 'Open the new league';
+
   static const String startLeague = 'Start League';
   static const String kick = 'Kick';
   static const String leagueLogoAsterisk = 'League Logo*';
