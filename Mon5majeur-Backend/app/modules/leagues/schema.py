@@ -550,6 +550,31 @@ class StandingsEntry(BaseSchema):
     is_playoff_spot: bool = False  # top-4 → blue border in Flutter
 
 
+class FinishedLeagueResponse(BaseSchema):
+    """'Ligue terminee' screen: final standings, champion, trophy (Arik QA
+    item 10). The underlying league is never erased by Delete, so this can
+    always be rebuilt even for a league the creator already hid."""
+    league_id: int = 0
+    league_name: str = ""
+    league_logo: str = ""
+    ended_at: str | None = None
+    champion_team_id: int | None = None
+    champion_team_name: str = ""
+    teams: list[StandingsEntry] = []
+    # True once this league already has a Replay (the app then opens it
+    # instead of offering Replay again).
+    already_replayed: bool = False
+    replayed_league_id: int | None = None
+
+
+class ReplayLeagueRequest(BaseSchema):
+    """Body for POST .../replay/: budget/max_size default to the finished
+    league's own values; only 80/100 and 4/6/8/10 are accepted overrides."""
+    league_id: int
+    budget: int | None = None
+    max_size: int | None = None
+
+
 class StandingsResponse(BaseSchema):
     """Flutter Leaderboard tab — Regular Season view."""
     league_id: int = 0

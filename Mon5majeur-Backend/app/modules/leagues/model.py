@@ -41,6 +41,14 @@ class League(BaseDocument):
     description: str = ""
     logo: str = ""
 
+    # A finished league is never erased (trophies and history read it even
+    # after a creator "deletes" it): hidden_by lists who no longer sees it in
+    # their own "My Leagues" (Arik QA item 10).
+    hidden_by: list[PydanticObjectId] = []
+    # Set once a Replay was created from this league, so "My Leagues" only
+    # ever offers it once and the app can jump straight to the new league.
+    replayed_as_auto_id: int | None = None
+
     class Settings:
         name = "leagues"
         indexes = [

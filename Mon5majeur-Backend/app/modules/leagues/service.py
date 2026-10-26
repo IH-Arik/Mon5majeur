@@ -103,6 +103,13 @@ async def _insert_with_invite_code(**fields) -> League:
     raise BadRequestException("Could not create the league, please try again")
 
 
+# A league a Replay was already made from, or one the requester already hid,
+# is left out of "My Leagues" (Arik QA item 10): finished leagues still need
+# their own screen to reach Delete/Replay, not the waiting room.
+def _visible_to(leagues: list, user_id: PydanticObjectId) -> list:
+    return [l for l in leagues if user_id not in (l.hidden_by or [])]
+
+
 class LeagueService:
     def __init__(
         self,
@@ -283,7 +290,7 @@ class LeagueService:
         league_ids = [m.league_id for m in memberships]
         membership_map = {m.league_id: m for m in memberships}
 
-        leagues = await League.find({"_id": {"$in": league_ids}}).to_list()
+        leagues = _visible_to(await League.find({"_id": {"$in": league_ids}}).to_list(), user.id)
 
         if search:
             q = search.lower()
@@ -537,12 +544,22 @@ class LeagueService:
             from app.exceptions.errors import ForbiddenException
             raise ForbiddenException("Only the league creator can delete the league")
 
-        if league.status not in ("waiting", "cancelled"):
-            raise BadRequestException("Cannot delete a league that has already started")
+        await self._delete_or_hide(league)
 
-        # Remove all memberships first
-        await LeagueMembership.find(LeagueMembership.league_id == league_id).delete()
-        await league.delete()
+    async def _delete_or_hide(self, league: League) -> None:
+        """A waiting/cancelled league is really deleted. A completed one is
+        only hidden for the creator who asked (Arik QA item 10): its matches,
+        standings and trophies must survive so other members' history and
+        everyone's trophy count stay correct."""
+        if league.status in ("waiting", "cancelled"):
+            await LeagueMembership.find(LeagueMembership.league_id == league.id).delete()
+            await league.delete()
+            return
+        if league.status != LEAGUE_STATUS_COMPLETED:
+            raise BadRequestException("Cannot delete a league that has already started")
+        if league.admin_id and league.admin_id not in league.hidden_by:
+            league.hidden_by.append(league.admin_id)
+            await league.save()
 
     # ── Start League (by creator) ─────────────────────────────────────────────
 
@@ -692,7 +709,7 @@ class LeagueService:
         if league_type:
             query = League.find({"_id": {"$in": league_ids}, "type": league_type})
 
-        leagues = await query.to_list()
+        leagues = _visible_to(await query.to_list(), user.id)
         result: list[PublicLeagueCompatResponse] = []
         today = date.today()
         for league in leagues:
@@ -885,6 +902,97 @@ class LeagueService:
         await LeagueMembership(league_id=league.id, user_id=user.id).insert()
         return await self._to_compat_response(league, [user])
 
+    async def get_finished_league(
+        self, auto_id: int, league_type: str, user: User
+    ) -> "FinishedLeagueResponse":
+        from app.modules.leagues import leaderboard_service
+        from app.modules.leagues.schema import FinishedLeagueResponse
+
+        league = await League.find_one(League.auto_id == auto_id, League.type == league_type)
+        if not league:
+            raise NotFoundException("League not found")
+        if not user.is_superuser:
+            membership = await self.membership_repo.get_membership(league.id, user.id)
+            if not membership:
+                raise NotFoundException("League not found")
+        if league.status != LEAGUE_STATUS_COMPLETED:
+            raise BadRequestException("League is not finished yet")
+
+        standings = await leaderboard_service.get_standings(auto_id, viewer=user)
+        champion = next((t for t in standings.teams if t.rank == 1), None)
+        return FinishedLeagueResponse(
+            league_id=auto_id,
+            league_name=league.name,
+            league_logo=league.logo,
+            ended_at=league.ended_at.isoformat() if league.ended_at else None,
+            champion_team_id=champion.team_id if champion else None,
+            champion_team_name=champion.team_name if champion else "",
+            teams=standings.teams,
+            already_replayed=league.replayed_as_auto_id is not None,
+            replayed_league_id=league.replayed_as_auto_id,
+        )
+
+    async def replay_league(
+        self, auto_id: int, league_type: str, user: User,
+        budget: int | None = None, max_size: int | None = None,
+    ) -> PublicLeagueCompatResponse:
+        """A new league with the finished one's name, settings and roster
+        (Arik QA item 10): the old league is untouched (its history and
+        trophies must survive), one Replay per finished league."""
+        from app.database.counters import next_seq
+        from app.modules.leagues.constants import MATCH_DAYS_BY_SIZE
+
+        source = await League.find_one(League.auto_id == auto_id, League.type == league_type)
+        if not source:
+            raise NotFoundException("League not found")
+        if not user.is_superuser and source.admin_id != user.id:
+            from app.exceptions.errors import ForbiddenException
+            raise ForbiddenException("Only the league creator can replay the league")
+        if source.status != LEAGUE_STATUS_COMPLETED:
+            raise BadRequestException("League is not finished yet")
+        if source.replayed_as_auto_id is not None:
+            raise BadRequestException("This league was already replayed")
+
+        new_budget = budget if budget in (80, 100) else source.budget
+        new_max_size = max_size if max_size in (4, 6, 8, 10) else source.max_size
+
+        new_league = await _insert_with_invite_code(
+            name=source.name,
+            type=source.type,
+            budget=new_budget,
+            max_size=new_max_size,
+            description=source.description,
+            logo=source.logo,
+            admin_id=user.id,
+            total_match_days=MATCH_DAYS_BY_SIZE.get(new_max_size, 18),
+            current_size=0,
+        )
+        new_league.auto_id = await next_seq("leagues")
+
+        # The roster: every prior member re-joins directly (no code needed for
+        # them — the code is for anyone new taking an empty seat), the creator
+        # first, capped at the new size if it was lowered.
+        old_members = await self.membership_repo.get_league_members(source.id)
+        user_ids = [user.id] + [m.user_id for m in old_members if m.user_id != user.id]
+        seated = 0
+        for uid in user_ids:
+            if seated >= new_max_size:
+                break
+            await LeagueMembership(league_id=new_league.id, user_id=uid).insert()
+            seated += 1
+        new_league.current_size = seated
+        await new_league.save()
+
+        source.replayed_as_auto_id = new_league.auto_id
+        await source.save()
+
+        members = await self.membership_repo.get_league_members(new_league.id)
+        from app.modules.users.model import User as UserModel
+
+        user_ids = [m.user_id for m in members]
+        users = await UserModel.find({"_id": {"$in": user_ids}}).to_list() if user_ids else []
+        return await self._to_compat_response(new_league, users)
+
     async def get_private_league_by_auto_id(
         self, auto_id: int, user: User
     ) -> PublicLeagueCompatResponse:
@@ -945,11 +1053,7 @@ class LeagueService:
             from app.exceptions.errors import ForbiddenException
             raise ForbiddenException("Only the league creator can delete the league")
 
-        if league.status not in ("waiting", "cancelled"):
-            raise BadRequestException("Cannot delete a league that has already started")
-
-        await LeagueMembership.find(LeagueMembership.league_id == league.id).delete()
-        await league.delete()
+        await self._delete_or_hide(league)
 
     async def join_private_by_code(
         self, user: User, join_code: str

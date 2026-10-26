@@ -21,6 +21,8 @@ from app.modules.auth.dependencies import get_current_user
 from app.modules.leagues.dependencies import get_league_service
 from app.modules.leagues.model import League, LeagueMembership
 from app.modules.leagues.schema import (
+    FinishedLeagueResponse,
+    ReplayLeagueRequest,
     JoinPublicLeagueByIdRequest,
     CreatePublicLeagueRequest,
     JoinPrivateLeagueRequest,
@@ -282,3 +284,31 @@ async def leave_private_league(
     service: LeagueService = Depends(get_league_service),
 ) -> dict:
     return await service.leave_league_compat(payload.league_id, current_user, "private")
+
+
+@router.get(
+    "/{league_id}/finished/",
+    response_model=FinishedLeagueResponse,
+    summary="'League finished' screen: final standings, champion (private league)",
+)
+async def get_private_league_finished(
+    league_id: int,
+    current_user: User = Depends(get_current_user),
+    service: LeagueService = Depends(get_league_service),
+) -> FinishedLeagueResponse:
+    return await service.get_finished_league(league_id, "private", current_user)
+
+
+@router.post(
+    "/replay/",
+    response_model=PublicLeagueCompatResponse,
+    summary="Replay a finished league: a new one with its name, settings and roster (private league)",
+)
+async def replay_private_league(
+    payload: ReplayLeagueRequest,
+    current_user: User = Depends(get_current_user),
+    service: LeagueService = Depends(get_league_service),
+) -> PublicLeagueCompatResponse:
+    return await service.replay_league(
+        payload.league_id, "private", current_user, payload.budget, payload.max_size
+    )
