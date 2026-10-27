@@ -207,6 +207,15 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   Widget _leagueLogo() {
+    // World league: the globe alone, no dark disc (same look as the
+    // "Ligue Globale" screen).
+    if (!_isDuel) {
+      return SizedBox(
+        width: 52.w,
+        height: 52.w,
+        child: Assets.icons.leagueWorld.image(fit: BoxFit.contain),
+      );
+    }
     return Container(
       width: 35.w,
       height: 36.h,
