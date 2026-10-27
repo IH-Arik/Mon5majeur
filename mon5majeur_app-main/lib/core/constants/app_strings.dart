@@ -711,6 +711,8 @@ class AppString {
   static const String playerFormHot = 'playerFormHot';
   static const String joinedTeamsTitle = 'joinedTeamsTitle';
   static const String playerFormCold = 'playerFormCold';
+  static const String playerStatusOut = 'playerStatusOut';
+  static const String playerOutWarning = 'playerOutWarning';
 
   // Onboarding tutorial (spec Part 3)
   static const String tutorialStep0 = 'tutorialStep0';

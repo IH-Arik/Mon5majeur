@@ -589,6 +589,8 @@ class EnglishTranslation {
     AppString.playerFormHot: 'On fire',
     AppString.joinedTeamsTitle: 'Joined teams',
     AppString.playerFormCold: 'Ice cold',
+    AppString.playerStatusOut: 'OUT',
+    AppString.playerOutWarning: 'Heads up: this player is OUT (injured)',
 
     // Onboarding tutorial (spec Part 3)
     AppString.tutorialStep0: 'Welcome! Join the Global League. Everyone plays there.',
