@@ -59,6 +59,7 @@ class GlobalResultCache {
       'has_older': entry.hasOlder,
       'has_newer': entry.hasNewer,
       'nba_date': entry.date,
+      'night_number': day['night_number'],
       'total_points': day['total_points'],
       'selection': day['selection'],
     };
@@ -117,6 +118,10 @@ class GlobalResultCache {
     );
     m.days.remove(date);
     m.days[date] = {
+      // Fixed for a given date, so it is cached with the night: without it a
+      // night read back from the cache lost its "Journée N" and showed only
+      // the date.
+      'night_number': body['night_number'],
       'total_points': body['total_points'],
       'selection': selection,
     };
