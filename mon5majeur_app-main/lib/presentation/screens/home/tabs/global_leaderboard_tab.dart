@@ -8,6 +8,7 @@ import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/global_leaderboard_cache.dart';
 import '../../../../data/services/api_url.dart';
+import '../controllers/home_controller.dart';
 import '../screens/global_team_detail_screen.dart';
 
 class _LeaderboardEntry {
@@ -175,10 +176,24 @@ class _LeaderboardTabState extends State<LeaderboardTab> {
     _show();
   }
 
+  /// Teams at 0 points are hidden as soon as the period has any points (a day
+  /// has been played); while everyone is still at 0 they all stay. The user's
+  /// own team is always kept, so you never lose yourself from the list.
+  List<_LeaderboardEntry> get _visibleTeams {
+    if (!_teams.any((t) => t.points > 0)) return _teams;
+    final myId = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>().userProfile.value?.id
+        : null;
+    return _teams
+        .where((t) => t.points > 0 || (myId != null && t.userAutoId == myId))
+        .toList();
+  }
+
   List<_LeaderboardEntry> get _filteredTeams {
-    if (searchQuery.isEmpty) return _teams;
+    final teams = _visibleTeams;
+    if (searchQuery.isEmpty) return teams;
     final q = searchQuery.toLowerCase();
-    return _teams.where((t) => t.teamName.toLowerCase().contains(q)).toList();
+    return teams.where((t) => t.teamName.toLowerCase().contains(q)).toList();
   }
 
   @override

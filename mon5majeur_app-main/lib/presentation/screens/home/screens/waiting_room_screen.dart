@@ -224,6 +224,84 @@ class _CreatePrivateLeagueWaitingRoomScreenState
     );
   }
 
+  void _showLeaveConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1F2230),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Text(
+            AppString.leaveLeagueConfirmation.tr,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          actionsPadding: EdgeInsets.symmetric(
+            horizontal: 16.w,
+            vertical: 12.h,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                AppString.cancel.tr,
+                style: TextStyle(
+                  color: const Color(0xFF9B9EAF),
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _leave();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC3545),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              child: Text(
+                AppString.leave.tr,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Leaves the league on the server (same call as the post-join waiting
+  /// room), then returns to "Mes ligues".
+  Future<void> _leave() async {
+    final id = widget.leagueId;
+    if (id == null) return;
+    final error = await _controller.leaveLeague(
+      id,
+      isPublic: widget.isPublicLeague,
+    );
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    context.go(RoutePath.myLeague.addBasePath);
+  }
+
   void _kickTeam(int teamId, String teamName) {
     if (widget.leagueId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -701,8 +779,10 @@ class _CreatePrivateLeagueWaitingRoomScreenState
 
                       SizedBox(height: 32.h),
 
-                      // Show Join Code, Edit, Delete, and Start buttons ONLY if user is creator
-                      if (_isCreator) ...[
+                      // The join code and its share/copy buttons are for every
+                      // member, so anyone in the league can invite others.
+                      // Edit, Delete and Start stay creator-only below.
+                      ...[
                         // Join Code Section
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,7 +863,8 @@ class _CreatePrivateLeagueWaitingRoomScreenState
                             ),
                           ],
                         ),
-
+                      ],
+                      if (_isCreator) ...[
                         SizedBox(height: 16.h),
 
                         // Bottom Buttons
@@ -931,6 +1012,50 @@ class _CreatePrivateLeagueWaitingRoomScreenState
                           ],
                         ),
 
+                        SizedBox(height: 40.h),
+                      ] else if (widget.leagueId != null &&
+                          _currentUserTeamId != null &&
+                          _controller.currentLeague.value?.creator != null) ...[
+                        // A member who joined (not the creator) must be able
+                        // to leave while the league has not started. Shown
+                        // only once the creator is known to be someone else.
+                        SizedBox(height: 16.h),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44.h,
+                          child: ElevatedButton(
+                            onPressed: () => _showLeaveConfirmationDialog(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDC3545),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.logout,
+                                  color: Colors.white,
+                                  size: 18.r,
+                                ),
+                                SizedBox(width: 8.w),
+                                Flexible(
+                                  child: Text(
+                                    AppString.leaveLeague.tr,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14.sp,
+                                      fontFamily: 'Roboto',
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         SizedBox(height: 40.h),
                       ],
                     ],
