@@ -596,6 +596,7 @@ class FrenchTranslation {
     AppString.joinedTeamsTitle: 'Équipes inscrites',
     AppString.playerFormCold: 'Glacial',
     AppString.playerStatusOut: 'OUT',
+    AppString.nightTopRank: 'TOP',
     AppString.playerOutWarning: 'Attention : ce joueur est OUT (blessé)',
 
     // Onboarding tutorial (spec Part 3) — copy taken from the approved

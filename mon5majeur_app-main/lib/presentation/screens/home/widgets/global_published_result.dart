@@ -9,6 +9,7 @@ import '../../../../data/models/match_result_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/global_result_cache.dart';
+import '../../../../data/services/night_top_scores.dart';
 import 'match_lineups_field.dart';
 
 typedef _Result = ({Map<String, dynamic>? body, String? error});
@@ -42,10 +43,17 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
   bool _revalidated = false; // offset 0 re-read once per opening
   Future<void> _prefetchChain = Future.value();
 
+  // Gold/silver/bronze of the last published night. Only shown for offset 0:
+  // the endpoint cannot rank older nights.
+  Map<String, int> _medals = const {};
+
   @override
   void initState() {
     super.initState();
     _start();
+    NightTopScores.latest().then((m) {
+      if (mounted) setState(() => _medals = m);
+    });
   }
 
   Future<void> _start() async {
@@ -342,6 +350,7 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                         teamB: null,
                         showOpponent: false,
                         globalResultStyle: true,
+                        medals: _offset == 0 ? _medals : null,
                       ),
                       SizedBox(height: 12.h),
                       Container(

@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -41,6 +43,10 @@ class MatchLineupsField extends StatelessWidget {
   // The first tip-off has happened: an empty side then means "never set", not
   // "not ready yet". False everywhere else, so the Live keeps "not ready".
   final bool matchStarted;
+  // Best fantasy scores of the night: player id -> 1, 2 or 3 (see
+  // NightTopScores): the jersey gets a gold / silver / bronze halo. Null
+  // everywhere else.
+  final Map<String, int>? medals;
 
   const MatchLineupsField({
     super.key,
@@ -52,6 +58,7 @@ class MatchLineupsField extends StatelessWidget {
     this.duelResultStyle = false,
     this.matchFinished = false,
     this.matchStarted = false,
+    this.medals,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -569,12 +576,57 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
+  static const _haloColors = {
+    1: Color(0xFFFFC83D),
+    2: Color(0xFFDDE3EC),
+    3: Color(0xFFFF7A2F),
+  };
+
+  // Halo that follows the shirt itself (not the picture box, mostly empty
+  // around the shirt): a tinted copy of the jersey, blurred, under the jersey.
+  Widget _halo(AssetGenImage jersey, Color color, double sigma, double alpha) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+      child: ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          color.withValues(alpha: alpha),
+          BlendMode.srcIn,
+        ),
+        child: Container(
+          width: 90.w,
+          height: 72.h,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: jersey.provider(),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlayer(PlayerSelection player, AssetGenImage jersey) {
+    final rank = medals?[player.id];
+    final haloColor = rank == null ? null : _haloColors[rank];
     return SizedBox(
       width: 90.w,
       height: 107.h,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
+          if (haloColor != null) ...[
+            Positioned(
+              left: 0,
+              top: 0,
+              child: _halo(jersey, haloColor, 9.w, 0.85),
+            ),
+            Positioned(
+              left: 0,
+              top: 0,
+              child: _halo(jersey, haloColor, 3.w, 1),
+            ),
+          ],
           Positioned(
             left: 0,
             top: 0,
@@ -589,6 +641,33 @@ class MatchLineupsField extends StatelessWidget {
               ),
             ),
           ),
+          if (haloColor != null)
+            Positioned(
+              right: -4.w,
+              top: 2.h,
+              child: Transform.rotate(
+                angle: 0.2,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xCC111111),
+                    borderRadius: BorderRadius.circular(3.r),
+                    border: Border.all(color: haloColor, width: 1.2.w),
+                  ),
+                  child: Text(
+                    '${AppString.nightTopRank.tr} $rank',
+                    style: TextStyle(
+                      color: haloColor,
+                      fontSize: 8.sp,
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             left: 5.w,
             top: 66.h,

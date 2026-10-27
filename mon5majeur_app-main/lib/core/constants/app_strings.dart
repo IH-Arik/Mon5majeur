@@ -712,6 +712,7 @@ class AppString {
   static const String joinedTeamsTitle = 'joinedTeamsTitle';
   static const String playerFormCold = 'playerFormCold';
   static const String playerStatusOut = 'playerStatusOut';
+  static const String nightTopRank = 'nightTopRank';
   static const String playerOutWarning = 'playerOutWarning';
 
   // Onboarding tutorial (spec Part 3)

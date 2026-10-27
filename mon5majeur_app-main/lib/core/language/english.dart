@@ -590,6 +590,7 @@ class EnglishTranslation {
     AppString.joinedTeamsTitle: 'Joined teams',
     AppString.playerFormCold: 'Ice cold',
     AppString.playerStatusOut: 'OUT',
+    AppString.nightTopRank: 'TOP',
     AppString.playerOutWarning: 'Heads up: this player is OUT (injured)',
 
     // Onboarding tutorial (spec Part 3)

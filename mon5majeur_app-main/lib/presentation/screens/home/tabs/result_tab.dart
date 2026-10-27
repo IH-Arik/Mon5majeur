@@ -9,6 +9,7 @@ import '../../../../core/routes/routes.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../controllers/result_controller.dart';
 import '../widgets/match_lineups_field.dart';
+import '../widgets/night_top_builder.dart';
 import '../../../widgets/match_widgets.dart';
 import '../../../../core/utils/logo_assets.dart';
 
@@ -437,9 +438,16 @@ class _ResultTabState extends State<ResultTab> {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             child: isExpanded
-                ? MatchLineupsField(
+                ? NightTopBuilder(
+                    date: controller.matchResult.value?.matchDate,
+                    builder: (medals) => MatchLineupsField(
                         teamA: playerAScore,
                         teamB: playerBScore,
+                        medals:
+                            (controller.matchResult.value?.scoresHidden ??
+                                false)
+                            ? null
+                            : medals,
                         scoresHidden:
                             controller.matchResult.value?.scoresHidden ?? false,
                         duelResultStyle: true,
@@ -450,7 +458,8 @@ class _ResultTabState extends State<ResultTab> {
                             controller.matchResult.value?.started ??
                             (controller.matchResult.value?.status !=
                                 'scheduled'),
-                      )
+                      ),
+                  )
                 : SizedBox.shrink(),
           ),
         ],
