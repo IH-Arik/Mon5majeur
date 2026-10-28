@@ -609,6 +609,7 @@ class EnglishTranslation {
     AppString.replayTutorial: 'Replay Tutorial',
     AppString.lastScores: 'Last scores',
     AppString.scoreAvailableAt9: "Score available at 9 AM",
+    AppString.tieHomeWins: "Tie · home team wins",
     AppString.finalScoreAt9: "Final score at 9 AM",
     AppString.resultsAt9WithCoffee:
         "Not in a rush? Results drop at 9am with your coffee.",

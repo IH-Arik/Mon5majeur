@@ -495,6 +495,16 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                     ),
                   ],
                 ),
+                // The server gives a tie to the home team (the left one);
+                // nothing else says why a 168-168 has a winner.
+                if (published && !serverHidden && pair.scoreA == pair.scoreB) ...[
+                  SizedBox(height: 6.h),
+                  Text(
+                    AppString.tieHomeWins.tr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 10.sp),
+                  ),
+                ],
                 SizedBox(height: 8.h),
                 _buildViewDetailsButton(index),
                 if (isCurrentUser &&
