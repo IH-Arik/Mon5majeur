@@ -1,4 +1,6 @@
 // lib/presentation/screens/home/my_league_screens/tabs/result.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -19,24 +21,78 @@ class ResultTab extends StatefulWidget {
   final bool isPrivate; // ADD THIS
   final bool isGlobal;
 
+  /// Opens the league's Live screen (every duel of the day).
+  final VoidCallback? onOpenLive;
+
+  /// False while another tab of the league is shown: the tab stays alive in
+  /// the IndexedStack but must not refresh itself then.
+  final bool isActive;
+
   const ResultTab({
     super.key,
     this.leagueId,
     this.matchDay,
     this.isPrivate = false, // ADD THIS
     this.isGlobal = false,
+    this.onOpenLive,
+    this.isActive = true,
   });
 
   @override
   State<ResultTab> createState() => _ResultTabState();
 }
 
-class _ResultTabState extends State<ResultTab> {
+class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
+  /// A day still in progress is fetched again this often while it is on screen.
+  static const Duration _refreshEvery = Duration(minutes: 5);
+
   late final ResultController controller;
+  Timer? _refreshTimer;
+
+  bool get _published => controller.matchResult.value?.status == 'completed';
+
+  /// Silent refresh of the day on screen, only while it is not published yet.
+  void _refreshIfInProgress() {
+    if (!mounted || !widget.isActive || widget.isGlobal) return;
+    if (controller.matchResult.value == null || controller.isLoading.value) {
+      return;
+    }
+    if (_published) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+      return;
+    }
+    controller.fetchMatchResult(silent: true);
+  }
+
+  void _startTimer() {
+    _refreshTimer?.cancel();
+    if (widget.isGlobal || !widget.isActive) return;
+    _refreshTimer = Timer.periodic(_refreshEvery, (_) => _refreshIfInProgress());
+  }
+
+  @override
+  void didUpdateWidget(covariant ResultTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive == oldWidget.isActive) return;
+    if (widget.isActive) {
+      _startTimer();
+      _refreshIfInProgress(); // back on the tab
+    } else {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshIfInProgress();
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     controller = Get.put(ResultController());
     if (widget.isGlobal) {
       controller.setGlobalLeague(initialMatchDay: widget.matchDay);
@@ -50,10 +106,13 @@ class _ResultTabState extends State<ResultTab> {
       );
     } else {
     }
+    _startTimer();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
     controller.leave(); // nothing more is loaded once the tab is left
     super.dispose();
   }
@@ -342,6 +401,13 @@ class _ResultTabState extends State<ResultTab> {
 
     return Obx(() {
       final isExpanded = controller.expandedCardIndex.value == index;
+      final result = controller.matchResult.value;
+      final published = result?.status == 'completed';
+      final serverHidden = result?.scoresHidden ?? false;
+      // Live numbers belong to the Live screen: until the 09:00 publication
+      // the card shows the lock, for everyone.
+      final hideScores = serverHidden || !published;
+      final started = result?.started ?? (result?.status != 'scheduled');
 
       return Column(
         children: [
@@ -396,8 +462,14 @@ class _ResultTabState extends State<ResultTab> {
                     // the server is withholding a non-subscriber's numbers.
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12.w),
-                      child: (controller.matchResult.value?.scoresHidden ?? false)
-                          ? const ScoreLockedLabel()
+                      child: hideScores
+                          // A Live Scoring subscriber has the live: the lock
+                          // only says that the FINAL score comes at 9 AM.
+                          ? ScoreLockedLabel(
+                              text: serverHidden
+                                  ? null
+                                  : AppString.finalScoreAt9.tr,
+                            )
                           : ScoreLine(scoreA: pair.scoreA, scoreB: pair.scoreB),
                     ),
                     // Team B
@@ -426,10 +498,29 @@ class _ResultTabState extends State<ResultTab> {
                 SizedBox(height: 8.h),
                 _buildViewDetailsButton(index),
                 if (isCurrentUser &&
-                    controller.matchResult.value?.status == 'live' &&
-                    pair.matchObjectId != null) ...[
+                    !published &&
+                    started &&
+                    !serverHidden &&
+                    widget.onOpenLive != null) ...[
                   SizedBox(height: 8.h),
-                  _buildWatchLiveButton(pair.matchObjectId!),
+                  _buildWatchLiveButton(widget.onOpenLive!),
+                ],
+                // No Live Scoring: the same button leads to the premium
+                // screen, with a reassuring line about the 9 AM results.
+                if (isCurrentUser &&
+                    !published &&
+                    started &&
+                    serverHidden) ...[
+                  SizedBox(height: 8.h),
+                  _buildWatchLiveButton(
+                    () => context.go(RoutePath.shopScreen.addBasePath),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    AppString.resultsAt9WithCoffee.tr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 10.sp),
+                  ),
                 ],
               ],
             ),
@@ -443,13 +534,8 @@ class _ResultTabState extends State<ResultTab> {
                     builder: (medals) => MatchLineupsField(
                         teamA: playerAScore,
                         teamB: playerBScore,
-                        medals:
-                            (controller.matchResult.value?.scoresHidden ??
-                                false)
-                            ? null
-                            : medals,
-                        scoresHidden:
-                            controller.matchResult.value?.scoresHidden ?? false,
+                        medals: hideScores ? null : medals,
+                        scoresHidden: hideScores,
                         duelResultStyle: true,
                         matchFinished:
                             controller.matchResult.value?.status == 'completed',
@@ -502,13 +588,9 @@ class _ResultTabState extends State<ResultTab> {
     );
   }
 
-  Widget _buildWatchLiveButton(String matchObjectId) {
+  Widget _buildWatchLiveButton(VoidCallback onTap) {
     return GestureDetector(
-      onTap: () {
-        context.push(
-          '${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchObjectId',
-        );
-      },
+      onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 8.h),

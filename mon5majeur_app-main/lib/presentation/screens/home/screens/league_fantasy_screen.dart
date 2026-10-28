@@ -181,6 +181,8 @@ class _LeagueFantasyScreenState extends State<LeagueFantasyScreen> {
                     leagueId: widget.leagueId,
                     matchDay: widget.matchDay,
                     isPrivate: widget.isPrivate,
+                    onOpenLive: _openLive,
+                    isActive: _selectedTab == LeagueTab.result,
                   ),
                   LeaderboardTab(
                     leagueId: widget.leagueId,

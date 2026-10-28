@@ -733,6 +733,8 @@ class AppString {
 
   // QA 15/09/2026
   static const String scoreAvailableAt9 = 'scoreAvailableAt9';
+  static const String resultsAt9WithCoffee = 'resultsAt9WithCoffee';
+  static const String finalScoreAt9 = 'finalScoreAt9';
   static const String hoursMinutesTemplate = 'hoursMinutesTemplate';
   static const String minutesTemplate = 'minutesTemplate';
   static const String matchdayNumberTemplate = 'matchdayNumberTemplate';

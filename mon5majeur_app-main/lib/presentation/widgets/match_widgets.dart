@@ -112,7 +112,10 @@ class MatchStatusBadge extends StatelessWidget {
 class ScoreLockedLabel extends StatelessWidget {
   final double fontSize;
 
-  const ScoreLockedLabel({super.key, this.fontSize = 10});
+  /// Defaults to "Score dispo à 9h".
+  final String? text;
+
+  const ScoreLockedLabel({super.key, this.fontSize = 10, this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +125,7 @@ class ScoreLockedLabel extends StatelessWidget {
         Icon(Icons.lock_outline, color: Colors.grey, size: 16.r),
         SizedBox(height: 2.h),
         Text(
-          AppString.scoreAvailableAt9.tr,
+          text ?? AppString.scoreAvailableAt9.tr,
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey, fontSize: fontSize.sp),
         ),

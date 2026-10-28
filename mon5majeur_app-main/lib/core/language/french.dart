@@ -619,6 +619,9 @@ class FrenchTranslation {
     AppString.replayTutorial: 'Rejouer le tutoriel',
     AppString.lastScores: 'Derniers scores',
     AppString.scoreAvailableAt9: "Score dispo à 9h",
+    AppString.finalScoreAt9: "Score final à 9h",
+    AppString.resultsAt9WithCoffee:
+        "Pas pressé ? Les résultats arrivent à 9h avec ton café",
     AppString.noGamesToday: "Aucun match aujourd'hui",
     AppString.hoursMinutesTemplate: "@h h @m min",
     AppString.minutesTemplate: "@m min",
