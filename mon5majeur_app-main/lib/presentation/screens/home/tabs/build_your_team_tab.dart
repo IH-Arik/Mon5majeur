@@ -20,6 +20,7 @@ import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
+import '../../../../core/utils/team_save_error.dart';
 
 /// The three activatable bonuses. Only one can be active at a time.
 enum BonusType { sixthMan, chefsCurry, luxuryTax }
@@ -686,6 +687,11 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     });
 
     try {
+      if (!await hasInternetForTeamSave()) {
+        _showTeamSaveError(TeamSaveFailure.offline);
+        return;
+      }
+
       // Prepare request body — bonus flags tell the backend which strategic
       // bonus (if any) to consume from the free quota / purchased charges
       // and apply when this duel is scored (spec §4.4).
@@ -788,28 +794,16 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         }
         debugPrint('❌ 404 Error: $errorMessage');
       } else {
-        // Other errors
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Failed to save team: @msg'.trParams({'msg': response.statusText ?? 'Unknown error'.tr}),
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        // Other errors: offline / session expired / server (details in logs)
+        debugPrint(
+          '❌ Save team ${response.statusCode} ${response.statusText} '
+          '${safeServerDetail(response.body)}',
+        );
+        _showTeamSaveError(teamSaveFailureFor(response.statusCode));
       }
     } catch (e) {
       debugPrint('❌ Error submitting players: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: @e'.trParams({'e': e.toString()})),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _showTeamSaveError(TeamSaveFailure.server);
     } finally {
       if (mounted) {
         setState(() {
@@ -817,6 +811,17 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         });
       }
     }
+  }
+
+  void _showTeamSaveError(TeamSaveFailure failure) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(teamSaveFailureMessage(failure)),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   Future<void> _fetchGlobalTeam() async {

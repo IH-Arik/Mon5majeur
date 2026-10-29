@@ -91,6 +91,12 @@ class EnglishTranslation {
     AppString.teamValidated: 'Team validated!',
     AppString.teamValidatedHint: 'Come back @day at @time for your result',
     AppString.dayToday: 'today',
+    AppString.teamSaveOffline:
+        "Your connection went missing, your 5 wasn't sent. Try again? 🏀",
+    AppString.teamSaveServerError:
+        "Our servers threw up an air ball 😅 Your 5 isn't saved, try again in a moment.",
+    AppString.teamSaveSessionExpired:
+        'Your session hit the final buzzer ⏱ Log in again to submit your 5.',
     AppString.dayTomorrow: 'tomorrow',
     AppString.sixthManBonusActivated: '6th Man Bonus Activated',
     AppString.chefsCurryBonusActivated: 'Chef Curry Bonus Activated',

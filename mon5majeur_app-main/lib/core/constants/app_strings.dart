@@ -94,6 +94,9 @@ class AppString {
   static const String teamValidated = 'Team validated!';
   static const String teamValidatedHint = 'teamValidatedHint';
   static const String dayToday = 'dayToday';
+  static const String teamSaveOffline = 'teamSaveOffline';
+  static const String teamSaveServerError = 'teamSaveServerError';
+  static const String teamSaveSessionExpired = 'teamSaveSessionExpired';
   static const String dayTomorrow = 'dayTomorrow';
   static const String sixthManBonusActivated = '6th Man Bonus Activated';
   static const String chefsCurryBonusActivated = 'Chefs Curry Bonus Activated';

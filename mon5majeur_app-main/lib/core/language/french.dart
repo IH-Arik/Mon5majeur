@@ -92,6 +92,12 @@ class FrenchTranslation {
     AppString.teamValidated: 'Équipe validée !',
     AppString.teamValidatedHint: 'Reviens @day à @time pour découvrir ton résultat',
     AppString.dayToday: "aujourd'hui",
+    AppString.teamSaveOffline:
+        "Connexion aux abonnés absents, ton 5 n'est pas parti. On réessaie ? 🏀",
+    AppString.teamSaveServerError:
+        "Nos serveurs ont mis un air-ball 😅 Ton 5 n'est pas validé, réessaie dans un instant.",
+    AppString.teamSaveSessionExpired:
+        'Fin du temps réglementaire pour ta session ⏱ Reconnecte-toi pour valider ton 5.',
     AppString.dayTomorrow: 'demain',
     AppString.sixthManBonusActivated: 'Bonus 6ème homme activé',
     AppString.chefsCurryBonusActivated: 'Bonus Chef Curry activé',
