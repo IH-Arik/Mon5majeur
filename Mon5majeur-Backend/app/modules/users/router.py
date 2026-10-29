@@ -100,7 +100,13 @@ async def update_fcm_token(
     token: str,
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    # A token only exists because the OS granted notification permission:
+    # that is the real gate. push_notifications_enabled defaulted False and
+    # nothing else ever set it True, so a working token still got no push
+    # unless the player separately found the Settings toggle (Robin report:
+    # 2 of 3 silent accounts had a valid token, just this flag off).
     current_user.fcm_token = token
+    current_user.push_notifications_enabled = True
     await current_user.save()
     return {"detail": "FCM token updated"}
 
