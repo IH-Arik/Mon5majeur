@@ -35,6 +35,45 @@ String formatLocalClockTime(DateTime utcTime) {
   return '$hour12:$minute $period';
 }
 
+/// Paris UTC offset in hours at [utc] (EU rule: summer time from the last
+/// Sunday of March 01:00 UTC to the last Sunday of October 01:00 UTC).
+int _parisOffsetHours(DateTime utc) {
+  DateTime lastSunday(int month) {
+    final last = DateTime.utc(utc.year, month + 1, 0, 1);
+    return last.subtract(Duration(days: last.weekday % 7));
+  }
+
+  final summer =
+      !utc.isBefore(lastSunday(3)) && utc.isBefore(lastSunday(10));
+  return summer ? 2 : 1;
+}
+
+/// The next 9:00 Paris (results / lineup reopening time, server side) as a
+/// UTC instant, so it can be shown in the device's own time zone.
+DateTime nextParisNineAm([DateTime? now]) {
+  final nowUtc = (now ?? DateTime.now()).toUtc();
+  for (var d = 0; d < 3; d++) {
+    final day = nowUtc.add(Duration(days: d));
+    final base = DateTime.utc(day.year, day.month, day.day, 9);
+    final candidate = base.subtract(Duration(hours: _parisOffsetHours(base)));
+    if (candidate.isAfter(nowUtc)) return candidate;
+  }
+  return nowUtc;
+}
+
+/// "tomorrow at 3:00 PM" style hint: when to come back for the result, in the
+/// player's own time zone.
+String comeBackForResultHint() {
+  final now = DateTime.now();
+  final at = nextParisNineAm(now).toLocal();
+  final sameDay =
+      at.year == now.year && at.month == now.month && at.day == now.day;
+  return AppString.teamValidatedHint.trParams({
+    'day': (sameDay ? AppString.dayToday : AppString.dayTomorrow).tr,
+    'time': formatLocalClockTime(at),
+  });
+}
+
 /// Parses a game's `datetimeUtc` ISO string and returns the local clock
 /// time, or `null` if the string is missing/unparseable (caller should
 /// fall back to the raw `gameTime` string in that case).

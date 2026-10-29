@@ -249,6 +249,12 @@ Future<void> showTeamValidatedDialog(BuildContext context) {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            SizedBox(height: 8.h),
+            Text(
+              comeBackForResultHint(),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+            ),
             SizedBox(height: 20.h),
             GestureDetector(
               onTap: () => Navigator.of(ctx).pop(),

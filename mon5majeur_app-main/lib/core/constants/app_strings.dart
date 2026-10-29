@@ -92,6 +92,9 @@ class AppString {
   static const String confirmMyTeam = 'Confirm my team';
   static const String teamConfirmed = 'Team confirmed';
   static const String teamValidated = 'Team validated!';
+  static const String teamValidatedHint = 'teamValidatedHint';
+  static const String dayToday = 'dayToday';
+  static const String dayTomorrow = 'dayTomorrow';
   static const String sixthManBonusActivated = '6th Man Bonus Activated';
   static const String chefsCurryBonusActivated = 'Chefs Curry Bonus Activated';
   static const String luxuryTaxBonusActivated = 'Luxury Tax Bonus Activated';
