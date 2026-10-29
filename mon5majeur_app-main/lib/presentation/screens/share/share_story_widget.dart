@@ -10,6 +10,9 @@ import '../home/widgets/match_lineups_field.dart';
 import 'share_story_model.dart';
 
 const _orange = Color(0xFFE8642F);
+// The same green and red as ScoreLine (the duel cards in Results).
+const _win = Color(0xFF22C55E);
+const _lose = Color(0xFFEF4444);
 const _grey = Color(0xFF9A9A9A);
 
 /// The 9:16 share image (designed for 1080x1920): a fixed 360x640 canvas, so
@@ -135,15 +138,16 @@ class ShareStoryWidget extends StatelessWidget {
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Home on the left, away on the right; mine in white, theirs in grey.
+          // Home on the left, away on the right; mine in the result's color
+          // (green / red), theirs in grey. A tie follows the home rule.
           Text(
             '${data.homeScore}',
-            style: _bebas(38, data.iAmHome ? Colors.white : _grey),
+            style: _bebas(38, data.iAmHome ? _resultColor : _grey),
           ),
           Text(' – ', style: _bebas(26, _grey)),
           Text(
             '${data.awayScore}',
-            style: _bebas(38, data.iAmHome ? _grey : Colors.white),
+            style: _bebas(38, data.iAmHome ? _grey : _resultColor),
           ),
         ],
       ),
@@ -160,11 +164,14 @@ class ShareStoryWidget extends StatelessWidget {
     ],
   );
 
+  // Green after a win (a tie won at home), red after a defeat.
+  Color get _resultColor => data.category.isWin ? _win : _lose;
+
   Widget _resultStamp() {
     final win = data.category.isWin;
     return _stamp(
       (win ? AppString.shareVictory : AppString.shareDefeat).tr,
-      win ? _orange : _grey,
+      _resultColor,
     );
   }
 
