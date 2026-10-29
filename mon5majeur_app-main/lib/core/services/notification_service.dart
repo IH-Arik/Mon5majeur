@@ -10,6 +10,11 @@ import '../../data/services/api_url.dart';
 Future<bool> requestNotificationPermission() async {
   final status = await Permission.notification.request();
   if (status.isGranted) {
+    // iOS: permission_handler's prompt does not register the device for
+    // APNs. FirebaseMessaging.getToken() needs that registration first, or
+    // it throws silently and the token is never sent (many iPhones stuck
+    // with no push). This call does the registerForRemoteNotifications().
+    await FirebaseMessaging.instance.requestPermission();
     await registerFcmToken();
   }
   return status.isGranted;
@@ -56,6 +61,9 @@ Future<void> askNotificationPermissionOnce() async {
 Future<void> syncFcmTokenIfPermissionGranted() async {
   final status = await Permission.notification.status;
   if (status.isGranted) {
+    // Re-registers APNs on iOS too, for accounts that granted before this
+    // fix shipped and have been silently stuck with no token since.
+    await FirebaseMessaging.instance.requestPermission();
     await registerFcmToken();
   }
 }
