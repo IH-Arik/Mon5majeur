@@ -13,6 +13,10 @@ import '../controllers/result_controller.dart';
 import '../widgets/match_lineups_field.dart';
 import '../widgets/night_top_builder.dart';
 import '../../../widgets/match_widgets.dart';
+import '../../../../core/constants/feature_flags.dart';
+import '../../../../data/services/night_top_scores.dart';
+import '../../share/share_story_button.dart';
+import '../../share/share_story_from_duel.dart';
 import '../../../../core/utils/logo_assets.dart';
 
 class ResultTab extends StatefulWidget {
@@ -507,6 +511,26 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                 ],
                 SizedBox(height: 8.h),
                 _buildViewDetailsButton(index),
+                // Shown once the day is published, for my own duel only.
+                if (kShareStoryEnabled &&
+                    isCurrentUser &&
+                    published &&
+                    !serverHidden &&
+                    result != null) ...[
+                  SizedBox(height: 4.h),
+                  ShareStoryButton(
+                    buildStory: () async => shareStoryFromDuel(
+                      result: result,
+                      pair: pair,
+                      teamA: playerAScore,
+                      teamB: playerBScore,
+                      iAmHome: controller.currentUserId == pair.playerAId,
+                      // Waits for the ranking: no badge missing.
+                      medals: await NightTopScores.forDate(result.matchDate),
+                      phaseLabel: controller.phaseLabelFor(result.matchDay),
+                    ),
+                  ),
+                ],
                 if (isCurrentUser &&
                     !published &&
                     started &&

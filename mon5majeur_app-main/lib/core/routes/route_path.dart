@@ -65,6 +65,8 @@ class RoutePath {
   static const String profileSettingsScreen = 'profileSettingsScreen';
   static const String supportScreen = 'supportScreen';
   static const String passwordReset = 'passwordReset';
+  // Debug only.
+  static const String shareStoryPreview = 'shareStoryPreview';
 
   //==================================== myMatch screens =====================================
   static const String myMatch = 'myMatch';

@@ -47,6 +47,16 @@ class MatchLineupsField extends StatelessWidget {
   // NightTopScores): the jersey gets a gold / silver / bronze halo. Null
   // everywhere else.
   final Map<String, int>? medals;
+  // Share story layout: the same full court squeezed to 470 high instead of
+  // 700 (the whole image, so the background stays continuous, with its
+  // half-way line and center circle) and the rows of players pulled in, so it
+  // keeps the full width in a short space. False everywhere else, so no other
+  // screen changes.
+  final bool shareCompact;
+  // Widest a team label may be (court units): a longer name is shrunk to fit
+  // instead of running over the players or off the court. Null everywhere
+  // else, so no other screen changes.
+  final double? labelMaxWidth;
 
   const MatchLineupsField({
     super.key,
@@ -59,6 +69,8 @@ class MatchLineupsField extends StatelessWidget {
     this.matchFinished = false,
     this.matchStarted = false,
     this.medals,
+    this.shareCompact = false,
+    this.labelMaxWidth,
   });
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
@@ -106,13 +118,19 @@ class MatchLineupsField extends StatelessWidget {
       margin: EdgeInsets.only(top: 12.h),
       width: double.infinity,
       constraints: BoxConstraints(maxWidth: 362.w),
-      height: globalResultStyle ? 350.h : (showOpponent ? 700.h : 380.h),
+      height: shareCompact
+          ? 470.h
+          : (globalResultStyle ? 350.h : (showOpponent ? 700.h : 380.h)),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
         child: Stack(
           children: [
-            if (globalResultStyle)
+            if (shareCompact)
+              Positioned.fill(
+                child: Assets.images.fullplayground.image(fit: BoxFit.fill),
+              )
+            else if (globalResultStyle)
               // The duel court at its full 700 height: only its top half shows.
               Positioned(
                 top: 0,
@@ -471,7 +489,7 @@ class MatchLineupsField extends StatelessWidget {
     double? bottom,
     bool leftAligned = false,
   }) {
-    final label = Container(
+    Widget label = Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.8),
@@ -486,6 +504,17 @@ class MatchLineupsField extends StatelessWidget {
         ),
       ),
     );
+    final maxWidth = labelMaxWidth;
+    if (maxWidth != null) {
+      label = ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: label,
+        ),
+      );
+    }
     if (leftAligned) {
       return Positioned(top: top, bottom: bottom, left: 8.w, child: label);
     }
@@ -537,11 +566,19 @@ class MatchLineupsField extends StatelessWidget {
     PlayerScore? team, {
     required bool isTopTeam,
   }) {
-    final double y = switch (index) {
-      1 => 44.h, // center, closest to the basket
-      0 || 2 => 74.h, // wings
-      _ => 190.h, // guards, behind the 3-point line
-    };
+    final double y = shareCompact
+        ? switch (index) {
+            // Center and wings stay clear of the guards, who stand between
+            // them sideways and a row lower: no two players touch.
+            1 => 6.h,
+            0 || 2 => 44.h,
+            _ => 118.h,
+          }
+        : switch (index) {
+            1 => 44.h, // center, closest to the basket
+            0 || 2 => 74.h, // wings
+            _ => 190.h, // guards, behind the 3-point line
+          };
     double? left, right;
     switch (index) {
       case 0:
@@ -549,9 +586,9 @@ class MatchLineupsField extends StatelessWidget {
       case 2:
         right = 12.w;
       case 3:
-        left = 62.w;
+        left = shareCompact ? 88.w : 62.w;
       case 4:
-        right = 62.w;
+        right = shareCompact ? 88.w : 62.w;
     }
 
     final playerWidget = _buildPlayer(player, jerseyAsset(team?.jerseyIndex));

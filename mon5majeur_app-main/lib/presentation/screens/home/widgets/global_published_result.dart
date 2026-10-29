@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/feature_flags.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/utils/lineup_positions.dart';
 import '../../../../data/models/match_result_model.dart';
@@ -10,6 +11,8 @@ import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/global_result_cache.dart';
 import '../../../../data/services/night_top_scores.dart';
+import '../../share/share_story_button.dart';
+import '../../share/share_story_from_global.dart';
 import 'match_lineups_field.dart';
 
 typedef _Result = ({Map<String, dynamic>? body, String? error});
@@ -371,6 +374,20 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                           ),
                         ),
                       ),
+                      // My own team only (not another member's).
+                      if (kShareStoryEnabled && widget.userAutoId == null)
+                        Padding(
+                          padding: EdgeInsets.only(top: 12.h),
+                          child: ShareStoryButton(
+                            buildStory: () async => shareStoryFromGlobalResult(
+                              d,
+                              // Waits for the ranking: no badge missing.
+                              medals: _offset == 0
+                                  ? await NightTopScores.latest()
+                                  : const {},
+                            ),
+                          ),
+                        ),
                     ],
                   );
                 },

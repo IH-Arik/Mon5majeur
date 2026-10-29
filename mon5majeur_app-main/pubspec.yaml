@@ -56,6 +56,7 @@ dependencies:
   percent_indicator: ^4.2.5
   pdf: ^3.11.3
   path_provider: ^2.1.5
+  image: ^4.8.0 # JPEG encoding of the share story (already used by pdf)
   qr_flutter: ^4.1.0
   share_plus: ^12.0.1
   file_picker: ^10.3.8
@@ -104,3 +105,8 @@ flutter:
     - family: BebasNeue
       fonts:
         - asset: assets/fonts/BebasNeue-Regular.ttf
+    # Handwritten face for the humor line of the share stories.
+    # Caveat Brush, SIL Open Font License 1.1.
+    - family: CaveatBrush
+      fonts:
+        - asset: assets/fonts/CaveatBrush-Regular.ttf

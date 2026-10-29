@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -105,12 +106,20 @@ class HomeDrawer extends StatelessWidget {
             /// Decorative Element at Bottom (Optional)
             Padding(
               padding: EdgeInsets.all(32.w),
-              child: Opacity(
-                opacity: 0.1,
-                child: Icon(
-                  Icons.sports_basketball,
-                  size: 100.r,
-                  color: Colors.white,
+              // Debug builds only: a long press opens the share story preview.
+              child: GestureDetector(
+                onLongPress: kDebugMode
+                    ? () => context.push(
+                        RoutePath.shareStoryPreview.addBasePath,
+                      )
+                    : null,
+                child: Opacity(
+                  opacity: 0.1,
+                  child: Icon(
+                    Icons.sports_basketball,
+                    size: 100.r,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

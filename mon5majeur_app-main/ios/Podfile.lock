@@ -14,9 +14,9 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sign_in_with_apple/ios"
 
 SPEC CHECKSUMS:
-  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   sign_in_with_apple: c5dcc141574c8c54d5ac99dd2163c0c72ad22418
 
-PODFILE CHECKSUM: 5f7dd8a42b9e993f3b3291d65bab54006bac143f
+PODFILE CHECKSUM: db757c9d9f03b5dfa22cafb229fc8c103e650aa5
 
 COCOAPODS: 1.17.0
