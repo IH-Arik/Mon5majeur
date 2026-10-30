@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/match_result_model.dart';
@@ -472,7 +473,8 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                           ? ScoreLockedLabel(
                               text: serverHidden
                                   ? null
-                                  : AppString.finalScoreAt9.tr,
+                                  : AppString.finalScoreAt9
+                                      .trParams(publicationTimeParams()),
                             )
                           : ScoreLine(scoreA: pair.scoreA, scoreB: pair.scoreB),
                     ),
@@ -551,7 +553,7 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                   ),
                   SizedBox(height: 6.h),
                   Text(
-                    AppString.resultsAt9WithCoffee.tr,
+                    AppString.resultsAt9WithCoffee.trParams(publicationTimeParams()),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey, fontSize: 10.sp),
                   ),

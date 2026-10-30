@@ -61,6 +61,13 @@ DateTime nextParisNineAm([DateTime? now]) {
   return nowUtc;
 }
 
+/// The 9:00 Paris publication (scores, lineups reopening) as a clock time in
+/// the player's own time zone: "9h00" / "9:00 AM" in Paris, "3h00" / "3:00 AM"
+/// in New York.
+Map<String, String> publicationTimeParams() => {
+      'time': formatLocalClockTime(nextParisNineAm()),
+    };
+
 /// "tomorrow at 3:00 PM" style hint: when to come back for the result, in the
 /// player's own time zone.
 String comeBackForResultHint() {

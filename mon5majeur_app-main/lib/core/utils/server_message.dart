@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../constants/app_strings.dart';
+import 'datetime_format.dart';
 
 /// The backend answers in English and has no i18n layer; some messages also
 /// carry a name or a number. Fixed texts are translated through the normal
@@ -20,6 +21,10 @@ String localizeServerMessage(String message) {
     };
     return 'You have no @name bonus left. You can buy more in the shop.'
         .trParams({'name': name});
+  }
+  if (text == AppString.serverLineupLocked) {
+    // The server's "locked until the 09:00 publication" is Paris time.
+    return AppString.lineupLocked.trParams(publicationTimeParams());
   }
   for (final rule in _rules) {
     final m = rule.pattern.firstMatch(text);

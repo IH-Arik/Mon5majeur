@@ -125,7 +125,8 @@ class ScoreLockedLabel extends StatelessWidget {
         Icon(Icons.lock_outline, color: Colors.grey, size: 16.r),
         SizedBox(height: 2.h),
         Text(
-          text ?? AppString.scoreAvailableAt9.tr,
+          text ??
+              AppString.scoreAvailableAt9.trParams(publicationTimeParams()),
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey, fontSize: fontSize.sp),
         ),

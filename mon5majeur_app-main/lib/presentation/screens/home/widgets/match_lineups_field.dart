@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/utils/logo_assets.dart';
 import '../../../../core/utils/score_style.dart';
@@ -292,7 +293,7 @@ class MatchLineupsField extends StatelessWidget {
           Icon(Icons.lock_outline, color: Colors.grey, size: 18.r),
           SizedBox(height: 2.h),
           Text(
-            AppString.bonusRevealTime.tr,
+            AppString.bonusRevealTime.trParams(publicationTimeParams()),
             style: TextStyle(color: Colors.grey, fontSize: 11.sp),
           ),
         ],

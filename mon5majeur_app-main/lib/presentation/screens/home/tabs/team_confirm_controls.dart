@@ -37,7 +37,7 @@ LineupState lineupStateFor({
 /// "Aucun match aujourd'hui" instead of a made-up figure.
 String formatTimeLeft(int? lockInSeconds) {
   if (lockInSeconds == null) return AppString.noGamesToday.tr;
-  if (lockInSeconds <= 0) return AppString.lineupLocked.tr;
+  if (lockInSeconds <= 0) return AppString.lineupLocked.trParams(publicationTimeParams());
   return formatCountdown(lockInSeconds);
 }
 
@@ -108,7 +108,8 @@ class TeamStatusBanner extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       state == LineupState.locked
-                          ? AppString.lineupLocked.tr
+                          ? AppString.lineupLocked
+                              .trParams(publicationTimeParams())
                           : complete
                               ? AppString.teamComplete.tr
                               : AppString.youNeedMorePlayers(remainingPlayers),
