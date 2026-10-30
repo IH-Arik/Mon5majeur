@@ -606,7 +606,14 @@ class AppString {
   static const String teamNameHint = "Team name";
   static const String chooseFavoriteTeam = "Choose your favourite team";
   static const String dateOfBirth = "Date of Birth";
-  static const String acceptTerms = "I accept the Terms & Conditions";
+  static const String acceptTerms =
+      "I accept the Terms of Use and the Privacy Policy";
+  // Distinct from termsOfUse / privacyPolicy (the menu labels, "CGU" in French):
+  // the key is the English text, so equal texts could not translate differently.
+  static const String termsLinkText = "Terms of Use (link in sentence)";
+  static const String privacyLinkText = "Privacy Policy (link in sentence)";
+  static const String acceptTermsError =
+      "Please accept the Terms of Use and the Privacy Policy to continue";
   static const String acceptNotifications = "I accept to receive notifications";
 
   // Notification opt-in pop-up (shown after first team validation)

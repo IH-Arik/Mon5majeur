@@ -520,7 +520,12 @@ class FrenchTranslation {
     AppString.teamNameHint: "Nom de l'équipe",
     AppString.chooseFavoriteTeam: "Équipe favorite",
     AppString.dateOfBirth: "Date de naissance",
-    AppString.acceptTerms: "J'accepte les conditions générales",
+    AppString.acceptTerms:
+        "J'accepte les conditions générales et la politique de confidentialité",
+    AppString.termsLinkText: "conditions générales",
+    AppString.privacyLinkText: "politique de confidentialité",
+    AppString.acceptTermsError:
+        "Accepte les conditions générales et la politique de confidentialité pour continuer",
     AppString.acceptNotifications: "J'accepte les notifications",
     AppString.enableNotificationsTitle: "Activer les notifications ?",
     AppString.enableNotificationsBody:
@@ -914,7 +919,6 @@ class FrenchTranslation {
     "Something went wrong. Please try again.": "Une erreur est survenue. Réessaie.",
     "Please enter a team name": "Entre un nom d'équipe",
     "Please select your date of birth": "Choisis ta date de naissance",
-    "Please accept the terms and conditions": "Accepte les conditions générales",
     "Profile setup completed successfully!": "Profil créé avec succès !",
     "Please check your input and try again.": "Vérifie ce que tu as saisi et réessaie.",
     "Server Error": "Erreur serveur",

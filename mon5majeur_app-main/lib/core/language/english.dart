@@ -519,7 +519,11 @@ class EnglishTranslation {
     AppString.teamNameHint: "Team name",
     AppString.chooseFavoriteTeam: "Choose your favorite team",
     AppString.dateOfBirth: "Date of Birth",
-    AppString.acceptTerms: "I accept the Terms & Conditions",
+    AppString.acceptTerms: "I accept the Terms of Use and the Privacy Policy",
+    AppString.termsLinkText: "Terms of Use",
+    AppString.privacyLinkText: "Privacy Policy",
+    AppString.acceptTermsError:
+        "Please accept the Terms of Use and the Privacy Policy to continue",
     AppString.acceptNotifications: "I accept notifications",
     AppString.enableNotificationsTitle: "Enable notifications?",
     AppString.enableNotificationsBody:
