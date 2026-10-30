@@ -37,8 +37,7 @@ void publicationTextTests() {
         AppString.lineupLocked.trParams(publicationTimeParams()),
         AppString.lockClosed.trParams(publicationTimeParams()),
         AppString.scoreAvailableAt9.trParams(publicationTimeParams()),
-        AppString.finalScoreAt9.trParams(publicationTimeParams()),
-        AppString.resultsAt9WithCoffee.trParams(publicationTimeParams()),
+        AppString.officialResultsLiveHint.trParams(publicationTimeParams()),
         localizeServerMessage(AppString.serverLineupLocked),
       ]) {
         expect(text, contains(time));

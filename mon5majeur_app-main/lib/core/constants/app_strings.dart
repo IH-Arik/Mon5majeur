@@ -739,10 +739,8 @@ class AppString {
 
   // QA 15/09/2026
   static const String scoreAvailableAt9 = 'scoreAvailableAt9';
-  static const String resultsAt9WithCoffee = 'resultsAt9WithCoffee';
-  static const String finalScoreAt9 = 'finalScoreAt9';
   static const String scoreNotStarted = 'scoreNotStarted';
-  static const String liveScoreInLiveTab = 'liveScoreInLiveTab';
+  static const String officialResultsLiveHint = 'officialResultsLiveHint';
   static const String liveScoreOfficialNote = 'liveScoreOfficialNote';
   static const String tieHomeWins = 'tieHomeWins';
 

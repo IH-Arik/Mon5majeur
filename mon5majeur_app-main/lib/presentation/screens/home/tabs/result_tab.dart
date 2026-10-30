@@ -177,6 +177,15 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
             if (!loadingDay) ...[
               _buildMatchInfo(matchData),
               SizedBox(height: 16.h),
+              if (matchData.status == 'live') ...[
+                Text(
+                  AppString.officialResultsLiveHint
+                      .trParams(publicationTimeParams()),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                ),
+                SizedBox(height: 16.h),
+              ],
               ...matchData.pairs.asMap().entries.map((entry) {
                 final index = entry.key;
                 final pair = entry.value;
@@ -469,17 +478,20 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 12.w),
                       child: hideScores
                           // A Live Scoring subscriber has the live: the lock
-                          // says where it is and when the official one comes.
+                          // is explained once, above the duels.
                           ? ConstrainedBox(
                               constraints: BoxConstraints(maxWidth: 110.w),
-                              child: ScoreLockedLabel(
-                                text: serverHidden
-                                    ? null
-                                    : (result?.status == 'live'
-                                        ? AppString.liveScoreInLiveTab
-                                            .trParams(publicationTimeParams())
-                                        : AppString.scoreNotStarted.tr),
-                              ),
+                              child: result?.status == 'live'
+                                  ? Icon(
+                                      Icons.lock_outline,
+                                      color: Colors.grey,
+                                      size: 16.r,
+                                    )
+                                  : ScoreLockedLabel(
+                                      text: serverHidden
+                                          ? null
+                                          : AppString.scoreNotStarted.tr,
+                                    ),
                             )
                           : ScoreLine(scoreA: pair.scoreA, scoreB: pair.scoreB),
                     ),
@@ -547,7 +559,7 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                   _buildWatchLiveButton(widget.onOpenLive!),
                 ],
                 // No Live Scoring: the same button leads to the premium
-                // screen, with a reassuring line about the 9 AM results.
+                // screen (the 9 AM results are explained above the duels).
                 if (isCurrentUser &&
                     !published &&
                     started &&
@@ -555,12 +567,6 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                   SizedBox(height: 8.h),
                   _buildWatchLiveButton(
                     () => context.go(RoutePath.shopScreen.addBasePath),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    AppString.resultsAt9WithCoffee.trParams(publicationTimeParams()),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey, fontSize: 10.sp),
                   ),
                 ],
               ],

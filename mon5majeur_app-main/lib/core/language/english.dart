@@ -572,7 +572,7 @@ class EnglishTranslation {
     AppString.watchLive: 'Watch Live',
     AppString.liveScoreLockedTitle: 'Live Score is a Premium Feature',
     AppString.liveScoreLockedDesc:
-        'Unlock real-time scoring to follow every player\'s points as the games happen. Your results arrive for free at @time in the Results tab.',
+        'Unlock real-time scoring to follow every player\'s points as the games happen. Your results are free in the Results tab.',
     AppString.unlockNow: 'Unlock Now',
     AppString.staleDataNotice: 'Scores may be a few minutes behind',
     AppString.sixthManDropped: 'Not counted (6th Man)',
@@ -652,13 +652,11 @@ class EnglishTranslation {
     AppString.shareVariantWorldLow: "World League · under 80",
     AppString.shareVariantWorldMid: "World League · 80 to 120",
     AppString.shareVariantWorldHigh: "World League · over 120",
-    AppString.finalScoreAt9: "Final score at @time",
     AppString.scoreNotStarted: "Not started yet",
-    AppString.liveScoreInLiveTab: "Live score in the Live tab · official at @time",
+    AppString.officialResultsLiveHint:
+        "Official results at @time · follow your night live in the Live tab 🔴",
     AppString.liveScoreOfficialNote:
         "Live score · official result published at @time (stats may still be corrected).",
-    AppString.resultsAt9WithCoffee:
-        "No rush? Results drop at @time.",
     AppString.hoursMinutesTemplate: "@h h @m min",
     AppString.minutesTemplate: "@m min",
     AppString.matchdayNumberTemplate: "Matchday @n",

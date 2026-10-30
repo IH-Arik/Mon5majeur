@@ -263,7 +263,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
             ),
             SizedBox(height: 8.h),
             Text(
-              AppString.liveScoreLockedDesc.trParams(publicationTimeParams()),
+              AppString.liveScoreLockedDesc.tr,
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70, fontSize: 13.sp),
             ),

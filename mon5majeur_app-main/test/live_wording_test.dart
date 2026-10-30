@@ -31,9 +31,9 @@ void main() {
             final p = publicationTimeParams();
             final texts = [
               AppString.scoreNotStarted.tr,
-              AppString.liveScoreInLiveTab.trParams(p),
+              AppString.officialResultsLiveHint.trParams(p),
               AppString.liveScoreOfficialNote.trParams(p),
-              AppString.liveScoreLockedDesc.trParams(p),
+              AppString.liveScoreLockedDesc.tr,
               AppString.noLiveMatchHint.tr,
             ];
             for (final t in texts) {
@@ -45,7 +45,7 @@ void main() {
                 const Expanded(child: Text('Team name A', maxLines: 2)),
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: 110.w),
-                  child: ScoreLockedLabel(text: texts[1]),
+                  child: ScoreLockedLabel(text: texts[0]),
                 ),
                 const Expanded(child: Text('Team name B', maxLines: 2)),
               ]),

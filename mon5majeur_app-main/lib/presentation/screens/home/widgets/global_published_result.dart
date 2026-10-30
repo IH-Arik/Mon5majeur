@@ -332,7 +332,12 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
               ),
               SizedBox(height: 12.h),
               Text(
-                AppString.noPublishedResult.tr,
+                // My own team: when to come back and where to follow the
+                // night; another player's team keeps the plain message.
+                widget.userAutoId == null
+                    ? AppString.officialResultsLiveHint
+                        .trParams(publicationTimeParams())
+                    : AppString.noPublishedResult.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white54, fontSize: 14.sp),
               ),
