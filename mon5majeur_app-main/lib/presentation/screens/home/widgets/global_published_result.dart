@@ -13,6 +13,7 @@ import '../../../../data/services/global_result_cache.dart';
 import '../../../../data/services/night_top_scores.dart';
 import '../../share/share_story_button.dart';
 import '../../share/share_story_from_global.dart';
+import '../controllers/home_controller.dart';
 import 'match_lineups_field.dart';
 
 typedef _Result = ({Map<String, dynamic>? body, String? error});
@@ -50,13 +51,27 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
   // the endpoint cannot rank older nights.
   Map<String, int> _medals = const {};
 
+  Worker? _dayWorker;
+
   @override
   void initState() {
     super.initState();
+    // Back from a long absence: a new night may have been published, so
+    // offset 0 is read again (see HomeController.refreshDayState).
+    _dayWorker = ever<int>(Get.find<HomeController>().dayRefreshTick, (_) {
+      _revalidated = false;
+      if (mounted && _offset == 0 && _userId != null) _show();
+    });
     _start();
     NightTopScores.latest().then((m) {
       if (mounted) setState(() => _medals = m);
     });
+  }
+
+  @override
+  void dispose() {
+    _dayWorker?.dispose();
+    super.dispose();
   }
 
   Future<void> _start() async {

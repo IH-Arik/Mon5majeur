@@ -14,6 +14,7 @@ import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/player_pages.dart';
 import '../../../../controllers/global_league_controller.dart';
+import '../controllers/home_controller.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_overlays.dart';
 import '../../tutorial/tutorial_skip_button.dart';
@@ -57,6 +58,9 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   BuildContext? _showcaseContext;
   String? _lastStartedShowcaseKey;
   Worker? _selectionWorker;
+  Worker? _dayWorker;
+  int? _syncedDay;
+  bool _syncedLocked = false;
 
   // API Integration
   List<Player> availablePlayers = [];
@@ -96,6 +100,10 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     _selectionWorker = ever<GlobalLeagueSelection?>(
       _controller.globalLeagueSelection,
       _syncWithSelection,
+    );
+    _dayWorker = ever<int>(
+      Get.find<HomeController>().dayRefreshTick,
+      (_) => _fetchTodaysGames(silent: true),
     );
     _fetchPlayers();
     _loadJersey();
@@ -141,12 +149,22 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   @override
   void dispose() {
     _selectionWorker?.dispose();
+    _dayWorker?.dispose();
     _playersNotifier.dispose();
     super.dispose();
   }
 
   void _syncWithSelection(GlobalLeagueSelection? selection) {
     if (!mounted || selection == null) return;
+    final locked = isLineupLocked(selection.lockInSeconds);
+    final keepDraft = _syncedDay == selection.matchDay &&
+        !(locked && !_syncedLocked) &&
+        !isConfirmed &&
+        selectedPlayers.any((p) => p != null);
+    _syncedDay = selection.matchDay;
+    _syncedLocked = locked;
+    // Same day, still open: the lineup being built is not overwritten.
+    if (keepDraft) return;
     setState(() {
       selectedPlayers = List<Player?>.filled(5, null);
       for (int i = 0; i < selection.selectedPlayers.length && i < 5; i++) {
@@ -340,11 +358,13 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
     }
   }
 
-  Future<void> _fetchTodaysGames() async {
-    setState(() {
-      isLoadingGames = true;
-      gamesErrorMessage = null;
-    });
+  Future<void> _fetchTodaysGames({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        isLoadingGames = true;
+        gamesErrorMessage = null;
+      });
+    }
 
     try {
       final url = "${ApiUrl.baseUrl}${ApiUrl.gamesToday}";

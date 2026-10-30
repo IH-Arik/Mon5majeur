@@ -10,6 +10,7 @@ import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/match_result_model.dart';
+import '../controllers/home_controller.dart';
 import '../controllers/result_controller.dart';
 import '../widgets/match_lineups_field.dart';
 import '../widgets/night_top_builder.dart';
@@ -53,6 +54,8 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
 
   late final ResultController controller;
   Timer? _refreshTimer;
+  Worker? _dayWorker;
+  bool _staleAfterAway = false; // came back from a long absence while hidden
 
   bool get _published => controller.matchResult.value?.status == 'completed';
 
@@ -70,6 +73,36 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
     controller.fetchMatchResult(silent: true);
   }
 
+  /// Back from a long absence (see HomeController.refreshDayState): the day on
+  /// screen is read again even if it was already published, since the server
+  /// may have published it, or moved on, in the meantime.
+  void _refreshAfterLongAway() {
+    if (!mounted || widget.isGlobal) return;
+    if (!widget.isActive) {
+      _staleAfterAway = true;
+      return;
+    }
+    _staleAfterAway = false;
+    if (controller.matchResult.value == null || controller.isLoading.value) {
+      return;
+    }
+    // On the latest day when leaving (not browsing the history) and the league
+    // has moved on: follow it.
+    final id = widget.leagueId;
+    final latest = controller.lastMatchDay.value;
+    if (id != null && latest != null && controller.currentMatchDay.value >= latest) {
+      final league = Get.find<HomeController>().myLeagues.firstWhereOrNull(
+        (l) => l.leagueId == id && l.isPrivate == widget.isPrivate,
+      );
+      final day = league?.currentMatchday ?? 0;
+      if (day > latest) {
+        controller.followLeagueDay(day);
+        return;
+      }
+    }
+    controller.fetchMatchResult(force: true, silent: true);
+  }
+
   void _startTimer() {
     _refreshTimer?.cancel();
     if (widget.isGlobal || !widget.isActive) return;
@@ -82,7 +115,11 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
     if (widget.isActive == oldWidget.isActive) return;
     if (widget.isActive) {
       _startTimer();
-      _refreshIfInProgress(); // back on the tab
+      if (_staleAfterAway) {
+        _refreshAfterLongAway();
+      } else {
+        _refreshIfInProgress(); // back on the tab
+      }
     } else {
       _refreshTimer?.cancel();
       _refreshTimer = null;
@@ -112,10 +149,15 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
     } else {
     }
     _startTimer();
+    _dayWorker = ever<int>(
+      Get.find<HomeController>().dayRefreshTick,
+      (_) => _refreshAfterLongAway(),
+    );
   }
 
   @override
   void dispose() {
+    _dayWorker?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     controller.leave(); // nothing more is loaded once the tab is left

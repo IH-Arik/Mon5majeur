@@ -1,4 +1,6 @@
 // lib/controllers/global_league_controller.dart
+import 'dart:async';
+
 import '../core/utils/server_message.dart';
 import '../core/utils/team_save_error.dart';
 import 'package:get/get.dart';
@@ -186,10 +188,20 @@ class GlobalLeagueController extends GetxController {
     }
   }
 
+  bool _selectionReloadQueued = false;
+  Completer<void>? _selectionIdle; // done when the load and its queued rerun end
+
   /// Fetch current global league player selection
   Future<void> fetchGlobalLeagueSelection() async {
-    if (isLoading.value) return;
+    if (isLoading.value) {
+      // Asked while a load runs: it is read once more when that one ends, and
+      // the caller waits for it.
+      _selectionReloadQueued = true;
+      await _selectionIdle?.future;
+      return;
+    }
 
+    final idle = _selectionIdle = Completer<void>();
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
@@ -239,6 +251,11 @@ class GlobalLeagueController extends GetxController {
       logger.e('Error fetching global league selection: $e');
     } finally {
       isLoading.value = false;
+      if (_selectionReloadQueued) {
+        _selectionReloadQueued = false;
+        await fetchGlobalLeagueSelection();
+      }
+      idle.complete();
     }
   }
 

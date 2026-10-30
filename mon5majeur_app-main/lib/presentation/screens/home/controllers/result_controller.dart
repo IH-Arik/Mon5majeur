@@ -366,6 +366,14 @@ class ResultController extends GetxController {
     }
   }
 
+  /// The league moved on to [day] while the app was away: show it. When it has
+  /// no result yet, fetchMatchResult steps back to the latest day that has one.
+  void followLeagueDay(int day) {
+    lastMatchDay.value = day;
+    currentMatchDay.value = day;
+    fetchMatchResult(force: true);
+  }
+
   void nextMatchDay() {
     final bound = lastMatchDay.value;
     if (bound != null && currentMatchDay.value >= bound) return;

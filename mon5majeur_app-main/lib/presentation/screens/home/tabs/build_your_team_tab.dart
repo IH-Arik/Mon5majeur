@@ -12,6 +12,8 @@ import '../../../../data/models/player.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/player_pages.dart';
+import '../../../../data/models/my_league_model.dart';
+import '../controllers/home_controller.dart';
 import '../controllers/result_controller.dart';
 import '../screens/select_player_screen.dart';
 import '../widgets/game_card.dart';
@@ -44,6 +46,10 @@ class BuildYourTeamTab extends StatefulWidget {
 }
 
 class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
+  // The match day of this screen: starts as the one it was opened with, and
+  // follows the league when a new day starts while the screen stays open.
+  late int? _day = widget.matchDay;
+  Worker? _dayWorker;
   // Budget cap = the league's own budget (+ playoff seed bonus) as reported
   // by the server, plus the Luxury Tax bonus while that bonus is active -
   // QA 15/09/2026 item 6: the cap and progress bar used to stay at 100M
@@ -115,11 +121,49 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
   int get remainingPlayers => selectedPlayers.where((p) => p == null).length;
   bool get isTeamComplete => selectedPlayers.every((p) => p != null);
-  Future<void> _fetchTodaysGames() async {
-    setState(() {
-      isLoadingGames = true;
-      gamesErrorMessage = null;
-    });
+  /// Back from a long time in the background (HomeController has read the
+  /// leagues again). A new day starts from scratch; on the same day the
+  /// player's picks are kept, unless the lineup got locked in the meantime.
+  Future<void> _refreshAfterResume() async {
+    final id = widget.leagueId;
+    if (!mounted || id == null) return;
+    MyLeagueModel? league;
+    for (final l in Get.find<HomeController>().myLeagues) {
+      if (l.leagueId == id && l.isPrivate == widget.isPrivate) {
+        league = l;
+        break;
+      }
+    }
+    _fetchTodaysGames(silent: true);
+    if (league == null) return;
+
+    final lock = league.lockInSeconds;
+    final newDay = league.currentMatchday;
+    if (newDay > 0 && newDay != _day) {
+      setState(() {
+        _day = newDay;
+        selectedPlayers = List.filled(5, null);
+        sixthManPlayer = null;
+        activeBonus = null;
+        isConfirmed = false;
+        lockInSeconds = lock;
+      });
+      _fetchSavedTeam();
+      _fetchBonusInventory();
+      return;
+    }
+    final newlyLocked = isLineupLocked(lock) && !isLineupLocked(lockInSeconds);
+    if (lock != null) setState(() => lockInSeconds = lock);
+    if (newlyLocked) _fetchSavedTeam();
+  }
+
+  Future<void> _fetchTodaysGames({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        isLoadingGames = true;
+        gamesErrorMessage = null;
+      });
+    }
 
     try {
       final url = "${ApiUrl.baseUrl}${ApiUrl.gamesToday}";
@@ -221,6 +265,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     _fetchBonusInventory();
     _fetchGlobalTeam();
     _loadJersey();
+    _dayWorker = ever<int>(
+      Get.find<HomeController>().dayRefreshTick,
+      (_) => _refreshAfterResume(),
+    );
     // ResultTab registers the ResultController after this tab is built: read
     // it again once it exists (match-day selector label).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -234,14 +282,14 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   /// "Finale · Match 1" when the bracket already loaded by the Results tab
   /// gives the phase of this league's current match day, else "Journée N".
   String _matchdayText() {
-    final day = widget.matchDay ?? 1;
+    final day = _day ?? 1;
     final id = widget.leagueId;
     if (id != null && Get.isRegistered<ResultController>()) {
       final phase = Get.find<ResultController>().phaseFor(
         id: id,
         isPrivate: widget.isPrivate,
         day: day,
-        currentDay: widget.matchDay,
+        currentDay: _day,
       );
       if (phase != null) return ResultController.phaseText(phase);
     }
@@ -250,6 +298,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
   @override
   void dispose() {
+    _dayWorker?.dispose();
     _playersNotifier.dispose();
     super.dispose();
   }
@@ -660,7 +709,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
 
     // Check if leagueId and matchDay are provided
-    if (widget.leagueId == null || widget.matchDay == null) {
+    if (widget.leagueId == null || _day == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('League information not available'.tr),
@@ -671,7 +720,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     }
 
     // Check if matchDay is 0 (league not started)
-    if (widget.matchDay == 0) {
+    if (_day == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('League has not started yet. Cannot select players.'.tr),
@@ -709,14 +758,14 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
       // Make API call - UPDATED TO USE publicPlayersSelection
       final url = widget.isPrivate
-          ? '${ApiUrl.baseUrl}${ApiUrl.privatePlayersSelection(widget.leagueId!, widget.matchDay!)}'
-          : '${ApiUrl.baseUrl}${ApiUrl.publicPlayersSelection(widget.leagueId!, widget.matchDay!)}';
+          ? '${ApiUrl.baseUrl}${ApiUrl.privatePlayersSelection(widget.leagueId!, _day!)}'
+          : '${ApiUrl.baseUrl}${ApiUrl.publicPlayersSelection(widget.leagueId!, _day!)}';
 
       debugPrint(
         '🏀 Submitting to ${widget.isPrivate ? "PRIVATE" : "PUBLIC"} league: $url',
       );
       debugPrint('🏀 League ID: ${widget.leagueId}');
-      debugPrint('🏀 Match Day: ${widget.matchDay}');
+      debugPrint('🏀 Match Day: $_day');
       debugPrint('🏀 Request body: $requestBody');
 
       final response = await _apiClient.post(
@@ -948,8 +997,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // Add this method to fetch saved players for the current match day
   Future<void> _fetchSavedTeam() async {
     if (widget.leagueId == null ||
-        widget.matchDay == null ||
-        widget.matchDay == 0) {
+        _day == null ||
+        _day == 0) {
       debugPrint(
         '⚠️ Cannot fetch saved team: League ID or Match Day not available',
       );
@@ -958,12 +1007,12 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
     try {
       debugPrint(
-        '🔄 Fetching saved team for PUBLIC League ${widget.leagueId}, Match Day ${widget.matchDay}',
+        '🔄 Fetching saved team for PUBLIC League ${widget.leagueId}, Match Day $_day',
       );
 
       final url = widget.isPrivate
-          ? '${ApiUrl.baseUrl}${ApiUrl.privatePlayersSelection(widget.leagueId!, widget.matchDay!)}'
-          : '${ApiUrl.baseUrl}${ApiUrl.publicPlayersSelection(widget.leagueId!, widget.matchDay!)}';
+          ? '${ApiUrl.baseUrl}${ApiUrl.privatePlayersSelection(widget.leagueId!, _day!)}'
+          : '${ApiUrl.baseUrl}${ApiUrl.publicPlayersSelection(widget.leagueId!, _day!)}';
 
       final response = await _apiClient.get(url: url, showResult: true);
 

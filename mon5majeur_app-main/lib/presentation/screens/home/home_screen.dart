@@ -119,7 +119,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (state == AppLifecycleState.resumed) {
       controller.refreshMatchesSilently();
       controller.startMatchAutoRefresh();
+      controller.refreshDayState();
     } else if (state == AppLifecycleState.paused) {
+      controller.markPaused();
       controller.stopMatchAutoRefresh();
     }
   }
