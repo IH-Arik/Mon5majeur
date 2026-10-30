@@ -469,12 +469,17 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 12.w),
                       child: hideScores
                           // A Live Scoring subscriber has the live: the lock
-                          // only says that the FINAL score comes at 9 AM.
-                          ? ScoreLockedLabel(
-                              text: serverHidden
-                                  ? null
-                                  : AppString.finalScoreAt9
-                                      .trParams(publicationTimeParams()),
+                          // says where it is and when the official one comes.
+                          ? ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: 110.w),
+                              child: ScoreLockedLabel(
+                                text: serverHidden
+                                    ? null
+                                    : (result?.status == 'live'
+                                        ? AppString.liveScoreInLiveTab
+                                            .trParams(publicationTimeParams())
+                                        : AppString.scoreNotStarted.tr),
+                              ),
                             )
                           : ScoreLine(scoreA: pair.scoreA, scoreB: pair.scoreB),
                     ),

@@ -573,7 +573,7 @@ class FrenchTranslation {
     AppString.watchLive: 'Voir en direct',
     AppString.liveScoreLockedTitle: 'Le score en direct est une fonctionnalité premium',
     AppString.liveScoreLockedDesc:
-        'Débloquez le score en temps réel pour suivre les points de chaque joueur pendant les matchs.',
+        'Débloquez le score en temps réel pour suivre les points de chaque joueur pendant les matchs. Tes résultats arrivent gratuitement à @time dans l\'onglet Résultats.',
     AppString.unlockNow: 'Débloquer',
     AppString.staleDataNotice: 'Les scores peuvent avoir quelques minutes de retard',
     AppString.sixthManDropped: 'Non comptabilisé (6ème homme)',
@@ -598,7 +598,7 @@ class FrenchTranslation {
     AppString.bonusHidden: 'Bonus révélé avec les résultats',
     AppString.noLiveMatchNow: 'Aucun match en direct pour le moment',
     AppString.noLiveMatchHint:
-        'Tire pour actualiser. Les scores en direct apparaissent ici pendant les matchs.',
+        'Tes résultats officiels sont dans l\'onglet Résultats. Le live revient au prochain match.',
     AppString.budgetExceeded: 'Budget dépassé',
 
     AppString.playerFormHot: 'En feu',
@@ -664,6 +664,10 @@ class FrenchTranslation {
     AppString.shareVariantWorldMid: "Ligue Mondiale · de 80 à 120",
     AppString.shareVariantWorldHigh: "Ligue Mondiale · plus de 120",
     AppString.finalScoreAt9: "Score final à @time",
+    AppString.scoreNotStarted: "Pas encore commencé",
+    AppString.liveScoreInLiveTab: "Score en direct dans Live · officiel à @time",
+    AppString.liveScoreOfficialNote:
+        "Score en direct · l'officiel est publié à @time (les stats peuvent encore être corrigées).",
     AppString.resultsAt9WithCoffee:
         "Pas pressé ? Les résultats tombent à @time.",
     AppString.noGamesToday: "Aucun match aujourd'hui",

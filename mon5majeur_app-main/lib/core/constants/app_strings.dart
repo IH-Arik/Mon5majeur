@@ -741,6 +741,9 @@ class AppString {
   static const String scoreAvailableAt9 = 'scoreAvailableAt9';
   static const String resultsAt9WithCoffee = 'resultsAt9WithCoffee';
   static const String finalScoreAt9 = 'finalScoreAt9';
+  static const String scoreNotStarted = 'scoreNotStarted';
+  static const String liveScoreInLiveTab = 'liveScoreInLiveTab';
+  static const String liveScoreOfficialNote = 'liveScoreOfficialNote';
   static const String tieHomeWins = 'tieHomeWins';
 
   // Share story (debug preview)
