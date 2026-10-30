@@ -550,7 +550,6 @@ class AppString {
   static const String areYouSureLogout = 'Are you sure you want to\nLog Out?';
   static const String changePassword = 'Change Password';
   static const String password = 'PASSWORD';
-  static const String email = 'robmarti@gmail.com';
   static const String username = 'PARIS FC';
   static const String favoriteTeam = 'Favorite Team';
   static const String notifications = 'NOTIFICATIONS';

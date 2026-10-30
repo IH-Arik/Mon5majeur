@@ -318,7 +318,7 @@ class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
                           ),
                         ),
                         Text(
-                          'PTS',
+                          AppString.pts.tr,
                           style: TextStyle(
                             color: const Color(0xFFFF8C42),
                             fontSize: 11.sp,

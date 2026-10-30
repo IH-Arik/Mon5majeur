@@ -768,7 +768,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           )
         else if (todaysGames.isEmpty)
           Text(
-            'No games today',
+            AppString.noGamesToday.tr,
             style: TextStyle(color: Colors.white70, fontSize: 12.sp),
           )
         else
