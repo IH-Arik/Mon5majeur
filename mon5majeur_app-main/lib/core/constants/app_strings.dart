@@ -687,6 +687,8 @@ class AppString {
   static const String morePlayers = 'more players';
   static const String noMatchesToday = 'noMatchesToday';
   static const String noLeaguesJoinedYet = 'noLeaguesJoinedYet';
+  static const String otpSentSignup = 'otpSentSignup';
+  static const String otpSentForgotPassword = 'otpSentForgotPassword';
 
   // Live Score (spec §4.5)
   static const String liveScoreTitle = 'Live Score';

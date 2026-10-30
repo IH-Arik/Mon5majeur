@@ -319,14 +319,12 @@ class AuthController extends GetxController {
       logger.i("Sign Up Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.body;
         lastRegisteredEmail = emailController.text.trim().toLowerCase();
 
         showSnackbar(
           context,
-          "Success",
-          data['message'] ??
-              "OTP sent to your email. Verify to complete registration.",
+          AppString.successGeneric.tr,
+          AppString.otpSentSignup.tr,
         );
 
         // Start OTP timer
@@ -494,12 +492,10 @@ class AuthController extends GetxController {
       logger.i("Resend OTP Response: ${response.statusCode}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.body;
-
         showSnackbar(
           context,
-          "Success",
-          data['message'] ?? "OTP resent successfully.",
+          AppString.successGeneric.tr,
+          AppString.otpSentSignup.tr,
         );
 
         // Restart the timer
@@ -654,15 +650,13 @@ class AuthController extends GetxController {
       logger.i("Forgot Password Body: ${response.body}");
 
       if (response.statusCode == 200) {
-        final data = response.body;
-
         // Store email for later use
         lastRegisteredEmail = email;
 
         showSnackbar(
           context,
-          "Success",
-          data['message'] ?? "OTP sent to your email.",
+          AppString.successGeneric.tr,
+          AppString.otpSentForgotPassword.tr,
         );
 
         // Start OTP timer
@@ -882,12 +876,10 @@ class AuthController extends GetxController {
       logger.i("Resend Forgot Password OTP Response: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        final data = response.body;
-
         showSnackbar(
           context,
-          "Success",
-          data['message'] ?? "OTP resent successfully.",
+          AppString.successGeneric.tr,
+          AppString.otpSentForgotPassword.tr,
         );
 
         // Restart the timer

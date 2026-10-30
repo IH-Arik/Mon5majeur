@@ -394,13 +394,19 @@ class EnglishTranslation {
     AppString.notificationDeleted: 'Notification deleted',
     AppString.noMatchesToday: 'No games tonight 🏀',
     AppString.selectLogo: 'Select Logo',
-    AppString.noLeaguesJoinedYet: 'No league yet... come challenge your friends 👊',
+    AppString.otpSentSignup:
+        'Your code is on its way: keep an eye on it like a LaMelo Ball half-court shot. 👀',
+    AppString.otpSentForgotPassword:
+        'If this email has an account, your code is on its way. Keep an eye on your inbox. 👀',
+    AppString.noLeaguesJoinedYet:
+        'No league yet? Start your own and come trash-talk your friends. 🏀',
     AppString.myLeaguesTitle: 'My leagues',
     AppString.searchHint: 'Search your leagues by name',
     AppString.noActivePublicLeaguesAvailable:
         'No active public leagues available',
     AppString.noLeaguesFound: 'No leagues found',
-    AppString.noPrivateLeagues: 'No Private Leagues',
+    AppString.noPrivateLeagues:
+        'No league yet? Start your own and come trash-talk your friends. 🏀',
     AppString.noPublicLeagues: 'No Public Leagues',
     AppString.noLeaguesMatchSearch: 'No leagues match your search',
     AppString.joinPrivateLeagueWithCode: 'Join a private league with a code',

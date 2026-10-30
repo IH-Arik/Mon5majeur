@@ -396,13 +396,19 @@ class FrenchTranslation {
     "@n d ago": "il y a @n j",
     AppString.noMatchesToday: 'Aucun match ce soir 🏀',
     AppString.selectLogo: 'Choisir un logo',
-    AppString.noLeaguesJoinedYet: 'Pas encore de ligue... viens défier tes amis 👊',
+    AppString.otpSentSignup:
+        'Ton code arrive : garde un œil dessus comme sur un shoot du parquet de LaMelo Ball. 👀',
+    AppString.otpSentForgotPassword:
+        'Si cet e-mail a un compte, ton code arrive. Garde un œil sur ta boîte mail. 👀',
+    AppString.noLeaguesJoinedYet:
+        'Pas encore de ligue ? Monte la tienne et viens chambrer tes potes. 🏀',
     AppString.myLeaguesTitle: 'Mes ligues',
     AppString.searchHint: 'Chercher par nom',
     AppString.noActivePublicLeaguesAvailable:
         'Aucune ligue publique ouverte pour le moment',
     AppString.noLeaguesFound: 'Aucune ligue trouvée',
-    AppString.noPrivateLeagues: 'Aucune ligue privée',
+    AppString.noPrivateLeagues:
+        'Pas encore de ligue ? Monte la tienne et viens chambrer tes potes. 🏀',
     AppString.noPublicLeagues: 'Aucune ligue publique',
     AppString.noLeaguesMatchSearch: 'Aucune ligue ne correspond à ta recherche',
     AppString.joinPrivateLeagueWithCode: 'Rejoins une ligue privée avec un code',
