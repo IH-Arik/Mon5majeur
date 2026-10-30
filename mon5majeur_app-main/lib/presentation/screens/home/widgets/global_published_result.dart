@@ -387,9 +387,9 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                             buildStory: () async => shareStoryFromGlobalResult(
                               d,
                               // Waits for the ranking: no badge missing.
-                              medals: _offset == 0
-                                  ? await NightTopScores.latest()
-                                  : const {},
+                              medals: await NightTopScores.forDate(
+                                '${d['nba_date']}',
+                              ),
                             ),
                           ),
                         ),
