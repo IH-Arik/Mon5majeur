@@ -370,7 +370,7 @@ class FrenchTranslation {
     AppString.noGamesScheduled: 'Aucun match prévu',
     AppString.editYourFive: 'Modifie ton 5',
     AppString.lineupLockedCta: '5 VERROUILLÉ',
-    AppString.lineupLocked: 'Équipe verrouillée — la composition rouvre à @time',
+    AppString.lineupLocked: 'Équipe verrouillée · réouverture à @time',
     AppString.noGameTonight: 'Pas de match ce soir',
     AppString.locksAtPrefix: 'Verrouillage à ',
     AppString.earnFreeTokens: 'Gagne 6 jetons gratuits',

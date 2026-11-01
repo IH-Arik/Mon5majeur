@@ -823,12 +823,16 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
             Icon(Icons.access_time, color: Colors.white70, size: 20.r),
             SizedBox(width: 8.w),
           ],
-          Text(
-            formatTimeLeft(lock),
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: Text(
+              formatTimeLeft(lock),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
