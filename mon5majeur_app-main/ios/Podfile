@@ -46,6 +46,9 @@ post_install do |installer|
         # permission_handler: enable notification permission APIs.
         'PERMISSION_NOTIFICATIONS=1',
       ]
+      # Xcode refuses pod targets below the app's minimum (the Flutter pod
+      # was left at 13.0): align every pod with the Podfile platform.
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.6'
     end
   end
 end
