@@ -35,6 +35,10 @@ Widget _host(Widget child, {String lang = 'fr'}) {
   );
 }
 
+// "Score dispo à <9h Paris in the player's time zone>", as the widgets build it.
+String get _scoreAvailableText =>
+    'Score dispo à ${publicationTimeParams()['time']}';
+
 MyMatchTodayModel _match({
   String status = 'completed',
   bool hidden = false,
@@ -99,7 +103,8 @@ void main() {
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
     expect(find.text('En cours'), findsOneWidget);
-    expect(find.text('Score dispo à 9h'), findsOneWidget);
+    // The publication time is shown in the player's own time zone.
+    expect(find.text(_scoreAvailableText), findsOneWidget);
     expect(find.text('101'), findsNothing);
   });
 
@@ -154,11 +159,8 @@ void main() {
 
     await t.pumpWidget(_host(MatchLineupsField(teamA: null, teamB: null)));
     await t.pumpAndSettle();
-    expect(find.text('Équipes pas encore prêtes'), findsOneWidget);
-    expect(
-      find.text('Les deux joueurs doivent composer leur équipe avant le début du match.'),
-      findsOneWidget,
-    );
+    // Before tip-off each side gets its own short message.
+    expect(find.text('Équipe pas prête'), findsNWidgets(2));
   });
 
   testWidgets('series dialog: title, series score, games, hidden game, close', (t) async {
@@ -189,7 +191,7 @@ void main() {
     expect(find.text('Demi-finale — Match 1'), findsOneWidget);
     expect(find.text('Demi-finale — Match 2'), findsOneWidget);
     expect(find.text('110'), findsOneWidget);
-    expect(find.text('Score dispo à 9h'), findsOneWidget);
+    expect(find.text(_scoreAvailableText), findsOneWidget);
     expect(find.text('Toi'), findsNWidgets(2)); // user 1 is in the series
     expect(find.byIcon(Icons.close), findsOneWidget);
     expect(find.text('Quart de finale Journée 1'), findsNothing);
