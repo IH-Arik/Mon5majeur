@@ -75,7 +75,9 @@ class _StaticContentScreenState extends State<StaticContentScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Assets.icons.backButton.image(fit: BoxFit.contain),
-          onPressed: () => context.go(RoutePath.home.addBasePath),
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(RoutePath.home.addBasePath),
         ),
         title: Text(
           widget.screenTitle,

@@ -1,9 +1,13 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/custom_assets/assets.gen.dart';
+import '../../../core/routes/route_path.dart';
+import '../../../core/routes/routes.dart';
 import '../../../core/utils/datetime_format.dart';
 import '../../../data/models/profile_model.dart';
 import 'controller/profile_setup_controller.dart';
@@ -322,13 +326,7 @@ class ProfileSetupScreen extends StatelessWidget {
                       ),
                       SizedBox(width: 8.w),
                       Expanded(
-                        child: Text(
-                          AppString.acceptTerms.tr,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14.sp,
-                          ),
-                        ),
+                        child: const _TermsLabel(),
                       ),
                     ],
                   ),
@@ -432,6 +430,58 @@ class ProfileSetupScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "I accept the Terms of Use and the Privacy Policy": the two document names
+/// open their screen (pushed, so this form stays as it is); tapping anywhere
+/// else is left to the surrounding checkbox.
+class _TermsLabel extends StatefulWidget {
+  const _TermsLabel();
+
+  @override
+  State<_TermsLabel> createState() => _TermsLabelState();
+}
+
+class _TermsLabelState extends State<_TermsLabel> {
+  late final TapGestureRecognizer _terms = TapGestureRecognizer()
+    ..onTap = () => context.push(RoutePath.termsOfUseScreen.addBasePath);
+  late final TapGestureRecognizer _privacy = TapGestureRecognizer()
+    ..onTap = () => context.push(RoutePath.privacyPolicyScreen.addBasePath);
+
+  @override
+  void dispose() {
+    _terms.dispose();
+    _privacy.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = TextStyle(color: Colors.white, fontSize: 14.sp);
+    final link = base.copyWith(
+      color: const Color(0xFFFF6B35),
+      decoration: TextDecoration.underline,
+      decorationColor: const Color(0xFFFF6B35),
+    );
+    final full = AppString.acceptTerms.tr;
+    final terms = AppString.termsLinkText.tr;
+    final privacy = AppString.privacyLinkText.tr;
+    final i = full.indexOf(terms);
+    final j = full.indexOf(privacy);
+    if (i < 0 || j < i + terms.length) return Text(full, style: base);
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          TextSpan(text: full.substring(0, i)),
+          TextSpan(text: terms, style: link, recognizer: _terms),
+          TextSpan(text: full.substring(i + terms.length, j)),
+          TextSpan(text: privacy, style: link, recognizer: _privacy),
+          TextSpan(text: full.substring(j + privacy.length)),
+        ],
       ),
     );
   }

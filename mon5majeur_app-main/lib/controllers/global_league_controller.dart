@@ -1,5 +1,8 @@
 // lib/controllers/global_league_controller.dart
+import 'dart:async';
+
 import '../core/utils/server_message.dart';
+import '../core/utils/team_save_error.dart';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 import '../data/models/player.dart';
@@ -185,10 +188,20 @@ class GlobalLeagueController extends GetxController {
     }
   }
 
+  bool _selectionReloadQueued = false;
+  Completer<void>? _selectionIdle; // done when the load and its queued rerun end
+
   /// Fetch current global league player selection
   Future<void> fetchGlobalLeagueSelection() async {
-    if (isLoading.value) return;
+    if (isLoading.value) {
+      // Asked while a load runs: it is read once more when that one ends, and
+      // the caller waits for it.
+      _selectionReloadQueued = true;
+      await _selectionIdle?.future;
+      return;
+    }
 
+    final idle = _selectionIdle = Completer<void>();
     isLoading.value = true;
     hasError.value = false;
     errorMessage.value = '';
@@ -238,6 +251,11 @@ class GlobalLeagueController extends GetxController {
       logger.e('Error fetching global league selection: $e');
     } finally {
       isLoading.value = false;
+      if (_selectionReloadQueued) {
+        _selectionReloadQueued = false;
+        await fetchGlobalLeagueSelection();
+      }
+      idle.complete();
     }
   }
 
@@ -268,6 +286,12 @@ class GlobalLeagueController extends GetxController {
     errorMessage.value = '';
 
     try {
+      if (!await hasInternetForTeamSave()) {
+        hasError.value = true;
+        errorMessage.value = teamSaveFailureMessage(TeamSaveFailure.offline);
+        return false;
+      }
+
       final apiClient = ApiClient();
 
       logger.i('Submitting ${players.length} players to Global League...');
@@ -294,10 +318,12 @@ class GlobalLeagueController extends GetxController {
         logger.i('Successfully submitted player selection');
         await fetchGlobalLeagueSelection();
         return true;
-      } else if (response.statusCode == 401) {
+      } else if (response.statusCode == null || response.statusCode == 401) {
         hasError.value = true;
-        errorMessage.value = 'Session expired. Please log in again.'.tr;
-        logger.e('401 unauthorized submitting player selection');
+        errorMessage.value = teamSaveFailureMessage(
+          teamSaveFailureFor(response.statusCode),
+        );
+        logger.e('Submit player selection: ${response.statusCode} ${response.statusText}');
         return false;
       } else if (response.statusCode == 404) {
         hasError.value = true;
@@ -306,18 +332,18 @@ class GlobalLeagueController extends GetxController {
         return false;
       } else {
         hasError.value = true;
-        final detail = response.body?['detail'] as String? ?? 'Unknown error'.tr;
+        final detail = safeServerDetail(response.body);
         // A refused lineup shows its own translated reason (position, OUT
         // player, not playing tonight ...), not an English "(403): ...".
-        errorMessage.value = response.statusCode == 403
+        errorMessage.value = response.statusCode == 403 && detail != null
             ? localizeServerMessage(detail)
-            : 'Failed to save team (@code): @detail'.trParams({'code': '${response.statusCode}', 'detail': detail});
+            : teamSaveFailureMessage(TeamSaveFailure.server);
         logger.e('Failed to submit player selection: ${response.statusCode} - $detail');
         return false;
       }
     } catch (e) {
       hasError.value = true;
-      errorMessage.value = 'Network error: @e'.trParams({'e': '$e'});
+      errorMessage.value = teamSaveFailureMessage(TeamSaveFailure.server);
       logger.e('Error submitting player selection: $e');
       return false;
     } finally {

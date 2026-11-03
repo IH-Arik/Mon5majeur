@@ -37,7 +37,7 @@ LineupState lineupStateFor({
 /// "Aucun match aujourd'hui" instead of a made-up figure.
 String formatTimeLeft(int? lockInSeconds) {
   if (lockInSeconds == null) return AppString.noGamesToday.tr;
-  if (lockInSeconds <= 0) return AppString.lineupLocked.tr;
+  if (lockInSeconds <= 0) return AppString.lineupLocked.trParams(publicationTimeParams());
   return formatCountdown(lockInSeconds);
 }
 
@@ -99,21 +99,33 @@ class TeamStatusBanner extends StatelessWidget {
               top: 3.h,
               child: Align(
                 alignment: Alignment.center,
-                child: Text(
-                  state == LineupState.locked
-                      ? AppString.lineupLocked.tr
-                      : complete
-                          ? AppString.teamComplete.tr
-                          : AppString.youNeedMorePlayers(remainingPlayers),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: complete
-                        ? const Color(0xFF5DD243)
-                        : const Color(0xFFF84A4A),
-                    fontSize: 10.sp,
-                    fontFamily: 'Roboto',
-                    fontWeight: FontWeight.w400,
-                    height: 2.20,
+                // One line that shrinks to fit: the locked message is far
+                // longer than the others and was clipped by the fixed
+                // banner height (FR and EN alike).
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14.w),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      state == LineupState.locked
+                          ? AppString.lineupLocked
+                              .trParams(publicationTimeParams())
+                          : complete
+                              ? AppString.teamComplete.tr
+                              : AppString.youNeedMorePlayers(remainingPlayers),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(
+                        color: complete
+                            ? const Color(0xFF5DD243)
+                            : const Color(0xFFF84A4A),
+                        fontSize: 10.sp,
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w400,
+                        height: 2.20,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -237,6 +249,12 @@ Future<void> showTeamValidatedDialog(BuildContext context) {
                 fontSize: 16.sp,
                 fontWeight: FontWeight.w700,
               ),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              comeBackForResultHint(),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 13.sp),
             ),
             SizedBox(height: 20.h),
             GestureDetector(

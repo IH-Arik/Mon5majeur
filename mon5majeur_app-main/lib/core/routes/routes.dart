@@ -1,4 +1,5 @@
 // lib/core/routes/routes.dart
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ import '../../presentation/screens/profile/password_reset.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/profile/profile_settings.dart';
 import '../../presentation/screens/profile/support_screen.dart';
+import '../../presentation/screens/share/share_story_preview_screen.dart';
 import '../../presentation/screens/shop/buy_token.dart';
 import '../../presentation/screens/shop/shop_screen.dart';
 import '../../presentation/widgets/error_screen.dart';
@@ -416,6 +418,12 @@ class AppRouter {
         path: RoutePath.supportScreen.addBasePath,
         builder: (context, state) => const SupportScreen(),
       ),
+      if (kDebugMode)
+        GoRoute(
+          name: RoutePath.shareStoryPreview,
+          path: RoutePath.shareStoryPreview.addBasePath,
+          builder: (context, state) => const ShareStoryPreviewScreen(),
+        ),
       GoRoute(
         name: RoutePath.passwordReset,
         path: RoutePath.passwordReset.addBasePath,

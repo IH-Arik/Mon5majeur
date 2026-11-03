@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
@@ -207,6 +208,15 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   }
 
   Widget _leagueLogo() {
+    // World league: the globe alone, no dark disc (same look as the
+    // "Ligue Globale" screen).
+    if (!_isDuel) {
+      return SizedBox(
+        width: 52.w,
+        height: 52.w,
+        child: Assets.icons.leagueWorld.image(fit: BoxFit.contain),
+      );
+    }
     return Container(
       width: 35.w,
       height: 36.h,
@@ -311,7 +321,10 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     );
   }
 
-  Widget _buildStaleBanner() {
+  String _officialNote() =>
+      AppString.liveScoreOfficialNote.trParams(publicationTimeParams());
+
+  Widget _buildStaleBanner({String? text}) {
     return Container(
       width: double.infinity,
       margin: EdgeInsets.only(bottom: 8.h),
@@ -329,7 +342,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
-              AppString.staleDataNotice.tr,
+              text ?? AppString.staleDataNotice.tr,
               style: TextStyle(color: Colors.white54, fontSize: 11.sp),
             ),
           ),
@@ -403,6 +416,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       padding: EdgeInsets.all(16.w),
       child: Column(
         children: [
+          _buildStaleBanner(text: _officialNote()),
           if (shown.any((m) => m.isStale)) _buildStaleBanner(),
           for (var i = 0; i < shown.length; i++) ...[
             _buildDuelSection(shown[i]),
@@ -485,6 +499,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       padding: EdgeInsets.all(16.w),
       child: Column(
         children: [
+          _buildStaleBanner(text: _officialNote()),
           if (score.isStale) _buildStaleBanner(),
           const MatchStatusBadge(status: 'live'),
           // Same court as the Global League Results tab; with no lineup it

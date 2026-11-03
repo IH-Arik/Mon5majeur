@@ -27,8 +27,6 @@ Future<Map<String, String>> bearerHeaderInfo() async {
   };
 }
 
-String get noInternetConnection => "No internet connection.".tr;
-
 class ApiClient {
   final GetConnect _connect = GetConnect(timeout: const Duration(seconds: 30));
 

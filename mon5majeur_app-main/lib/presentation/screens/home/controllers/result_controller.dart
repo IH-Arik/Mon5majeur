@@ -216,7 +216,9 @@ class ResultController extends GetxController {
     }
   }
 
-  Future<void> fetchMatchResult({bool force = false}) async {
+  /// [silent]: the day on screen stays visible while it is fetched again (no
+  /// spinner), for the automatic refreshes of a day still in progress.
+  Future<void> fetchMatchResult({bool force = false, bool silent = false}) async {
     if (leagueType != LeagueType.global && leagueId == null) {
       logger.e("League ID is null");
       return;
@@ -242,11 +244,14 @@ class ResultController extends GetxController {
         return;
       }
       isRefreshing.value = true;
+    } else if (silent && matchResult.value?.matchDay == day) {
+      isRefreshing.value = true;
     } else {
       isLoading.value = true;
       isRefreshing.value = false;
     }
-    final background = cached != null;
+    final background =
+        cached != null || (silent && matchResult.value?.matchDay == day);
 
     try {
       final response = await _requestDay(type, id, day);
@@ -359,6 +364,14 @@ class ResultController extends GetxController {
       logger.e("❌ Error fetching match result: $e");
       return (status: null, body: null);
     }
+  }
+
+  /// The league moved on to [day] while the app was away: show it. When it has
+  /// no result yet, fetchMatchResult steps back to the latest day that has one.
+  void followLeagueDay(int day) {
+    lastMatchDay.value = day;
+    currentMatchDay.value = day;
+    fetchMatchResult(force: true);
   }
 
   void nextMatchDay() {

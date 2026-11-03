@@ -12,6 +12,7 @@ import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../widgets/match_widgets.dart';
 import '../widgets/match_lineups_field.dart';
+import '../widgets/night_top_builder.dart';
 
 final _log = Logger();
 
@@ -231,11 +232,15 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
               ],
             ),
           ),
-          MatchLineupsField(
-            teamA: a,
-            teamB: b,
-            scoresHidden: hidden,
-            matchFinished: result.status == 'completed',
+          NightTopBuilder(
+            date: result.matchDate,
+            builder: (medals) => MatchLineupsField(
+              teamA: a,
+              teamB: b,
+              scoresHidden: hidden,
+              matchFinished: result.status == 'completed',
+              medals: hidden ? null : medals,
+            ),
           ),
           SizedBox(height: 24.h),
         ],

@@ -2,12 +2,15 @@
 import '../../../../core/utils/logo_assets.dart';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../core/constants/api_constants.dart';
+import '../../../../controllers/global_league_controller.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/local_db/local_db.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../data/models/my_league_model.dart';
 import '../../../../data/models/my_match_today_model.dart';
 import '../../../../data/models/private_league_model.dart';
@@ -27,6 +30,11 @@ const Duration kIdleMatchRefresh = Duration(minutes: 2);
 
 Duration matchRefreshInterval(List<MyMatchTodayModel> matches) =>
     matches.any((m) => m.status == 'live') ? kLiveMatchRefresh : kIdleMatchRefresh;
+
+/// Time in the background after which the day state (match day, lock, lineup)
+/// is read again on return. 1 min in debug builds, to test without waiting.
+const Duration kLongBackground =
+    kDebugMode ? Duration(minutes: 1) : Duration(minutes: 10);
 
 class HomeController extends GetxController {
   // Observable variables
@@ -54,6 +62,13 @@ class HomeController extends GetxController {
 
   Timer? _matchTimer;
   bool _matchRefreshInFlight = false;
+
+  DateTime? _pausedAt;
+  DateTime _dayLoadedAt = DateTime.now();
+
+  /// Bumped once the day state has been read again on return from the
+  /// background: open lineup screens listen to it.
+  final dayRefreshTick = 0.obs;
 
   @override
   void onInit() {
@@ -92,6 +107,29 @@ class HomeController extends GetxController {
   /// Reload the matches WITHOUT the loading spinner, so the card updates in
   /// place instead of flashing.
   Future<void> refreshMatchesSilently() => _loadMatches(silent: true);
+
+  void markPaused() => _pausedAt = DateTime.now();
+
+  /// On return to the foreground: read the leagues and the Global League
+  /// selection again (match day, lock, validated flag) when the app stayed
+  /// away for [kLongBackground], or when a 09:00 Paris publication has passed
+  /// since the last load. Otherwise nothing is called.
+  Future<void> refreshDayState() async {
+    final now = DateTime.now();
+    final paused = _pausedAt;
+    _pausedAt = null;
+    final longAway = paused != null && now.difference(paused) > kLongBackground;
+    final published = !nextParisNineAm(_dayLoadedAt).isAfter(now.toUtc());
+    if (!longAway && !published) return;
+
+    _dayLoadedAt = now;
+    final global = Get.find<GlobalLeagueController>();
+    await Future.wait([
+      fetchMyLeagues(),
+      if (global.hasJoined.value) global.fetchGlobalLeagueSelection(),
+    ]);
+    dayRefreshTick.value++;
+  }
 
   void resetSessionState() {
     stopMatchAutoRefresh();
@@ -212,6 +250,7 @@ class HomeController extends GetxController {
   }
 
   bool _leaguesReloadQueued = false;
+  Completer<void>? _leaguesIdle; // done when the load and its queued rerun end
 
   // Fetch my leagues: private AND public (QA #9 2.1: only private ones were
   // loaded, so a user whose league was public saw "Pas encore de ligue").
@@ -220,9 +259,11 @@ class HomeController extends GetxController {
       // A refresh asked while one is running (e.g. right after creating a
       // league) must not be dropped: run once more when the current ends.
       _leaguesReloadQueued = true;
+      await _leaguesIdle?.future;
       return;
     }
 
+    final idle = _leaguesIdle = Completer<void>();
     leaguesLoading.value = true;
 
     try {
@@ -243,8 +284,9 @@ class HomeController extends GetxController {
       leaguesLoading.value = false;
       if (_leaguesReloadQueued) {
         _leaguesReloadQueued = false;
-        fetchMyLeagues();
+        await fetchMyLeagues();
       }
+      idle.complete();
     }
   }
 

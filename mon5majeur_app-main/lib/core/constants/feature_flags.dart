@@ -5,3 +5,6 @@
 /// ad-related shop surfaces (the "watch a rewarded ad → tokens" button and the
 /// "Stop-Pub / Remove all ads" card).
 const bool kAdsEnabled = false;
+
+/// "Share as a story" (the 9:16 result image), open to every player.
+const bool kShareStoryEnabled = true;

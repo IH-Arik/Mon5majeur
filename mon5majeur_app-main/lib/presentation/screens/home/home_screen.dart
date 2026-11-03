@@ -9,6 +9,7 @@ import 'package:showcaseview/showcaseview.dart';
 import '../../../controllers/global_league_controller.dart';
 import '../../../controllers/notifications_controller.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/utils/datetime_format.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
@@ -118,7 +119,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (state == AppLifecycleState.resumed) {
       controller.refreshMatchesSilently();
       controller.startMatchAutoRefresh();
+      controller.refreshDayState();
     } else if (state == AppLifecycleState.paused) {
+      controller.markPaused();
       controller.stopMatchAutoRefresh();
     }
   }
@@ -814,7 +817,7 @@ _HomeCardCta _homeCardCta(bool validated, int? lockInSeconds) {
     return _HomeCardCta(
       Colors.grey,
       AppString.lineupLockedCta.tr,
-      AppString.lockClosed.tr,
+      AppString.lockClosed.trParams(publicationTimeParams()),
     );
   }
   final lockTime = DateTime.now().add(Duration(seconds: lockInSeconds));

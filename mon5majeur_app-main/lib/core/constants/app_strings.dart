@@ -92,6 +92,12 @@ class AppString {
   static const String confirmMyTeam = 'Confirm my team';
   static const String teamConfirmed = 'Team confirmed';
   static const String teamValidated = 'Team validated!';
+  static const String teamValidatedHint = 'teamValidatedHint';
+  static const String dayToday = 'dayToday';
+  static const String teamSaveOffline = 'teamSaveOffline';
+  static const String teamSaveServerError = 'teamSaveServerError';
+  static const String teamSaveSessionExpired = 'teamSaveSessionExpired';
+  static const String dayTomorrow = 'dayTomorrow';
   static const String sixthManBonusActivated = '6th Man Bonus Activated';
   static const String chefsCurryBonusActivated = 'Chefs Curry Bonus Activated';
   static const String luxuryTaxBonusActivated = 'Luxury Tax Bonus Activated';
@@ -544,7 +550,6 @@ class AppString {
   static const String areYouSureLogout = 'Are you sure you want to\nLog Out?';
   static const String changePassword = 'Change Password';
   static const String password = 'PASSWORD';
-  static const String email = 'robmarti@gmail.com';
   static const String username = 'PARIS FC';
   static const String favoriteTeam = 'Favorite Team';
   static const String notifications = 'NOTIFICATIONS';
@@ -601,7 +606,14 @@ class AppString {
   static const String teamNameHint = "Team name";
   static const String chooseFavoriteTeam = "Choose your favourite team";
   static const String dateOfBirth = "Date of Birth";
-  static const String acceptTerms = "I accept the Terms & Conditions";
+  static const String acceptTerms =
+      "I accept the Terms of Use and the Privacy Policy";
+  // Distinct from termsOfUse / privacyPolicy (the menu labels, "CGU" in French):
+  // the key is the English text, so equal texts could not translate differently.
+  static const String termsLinkText = "Terms of Use (link in sentence)";
+  static const String privacyLinkText = "Privacy Policy (link in sentence)";
+  static const String acceptTermsError =
+      "Please accept the Terms of Use and the Privacy Policy to continue";
   static const String acceptNotifications = "I accept to receive notifications";
 
   // Notification opt-in pop-up (shown after first team validation)
@@ -682,6 +694,8 @@ class AppString {
   static const String morePlayers = 'more players';
   static const String noMatchesToday = 'noMatchesToday';
   static const String noLeaguesJoinedYet = 'noLeaguesJoinedYet';
+  static const String otpSentSignup = 'otpSentSignup';
+  static const String otpSentForgotPassword = 'otpSentForgotPassword';
 
   // Live Score (spec §4.5)
   static const String liveScoreTitle = 'Live Score';
@@ -711,6 +725,9 @@ class AppString {
   static const String playerFormHot = 'playerFormHot';
   static const String joinedTeamsTitle = 'joinedTeamsTitle';
   static const String playerFormCold = 'playerFormCold';
+  static const String playerStatusOut = 'playerStatusOut';
+  static const String nightTopRank = 'nightTopRank';
+  static const String playerOutWarning = 'playerOutWarning';
 
   // Onboarding tutorial (spec Part 3)
   static const String tutorialStep0 = 'tutorialStep0';
@@ -730,6 +747,46 @@ class AppString {
 
   // QA 15/09/2026
   static const String scoreAvailableAt9 = 'scoreAvailableAt9';
+  static const String scoreNotStarted = 'scoreNotStarted';
+  static const String officialResultsLiveHint = 'officialResultsLiveHint';
+  static const String liveScoreOfficialNote = 'liveScoreOfficialNote';
+  static const String tieHomeWins = 'tieHomeWins';
+
+  // Share story (debug preview)
+  static const String shareStoryButton = 'shareStoryButton';
+  static const String shareStoryError = 'shareStoryError';
+  static const String shareStoryPreparing = 'shareStoryPreparing';
+  static const String shareVictory = 'shareVictory';
+  static const String shareDefeat = 'shareDefeat';
+  static const String shareNightScore = 'shareNightScore';
+  static const String sharePts = 'sharePts';
+  static const String shareCta = 'shareCta';
+  static const String shareAppStore = 'shareAppStore';
+  static const String shareGooglePlay = 'shareGooglePlay';
+  static const String shareChefCurryPill = 'shareChefCurryPill';
+  static const String shareHumorBigWin = 'shareHumorBigWin';
+  static const String shareHumorCloseWin = 'shareHumorCloseWin';
+  static const String shareHumorTieWon = 'shareHumorTieWon';
+  static const String shareHumorTieLost = 'shareHumorTieLost';
+  static const String shareHumorCloseLoss = 'shareHumorCloseLoss';
+  static const String shareHumorBigLoss = 'shareHumorBigLoss';
+  static const String shareHumorWorldLow = 'shareHumorWorldLow';
+  static const String shareHumorWorldMid = 'shareHumorWorldMid';
+  static const String shareHumorWorldHigh = 'shareHumorWorldHigh';
+  static const String sharePreviewTitle = 'sharePreviewTitle';
+  static const String shareVariantBigWin = 'shareVariantBigWin';
+  static const String shareVariantCloseWin = 'shareVariantCloseWin';
+  static const String shareVariantCloseLoss = 'shareVariantCloseLoss';
+  static const String shareVariantBigLoss = 'shareVariantBigLoss';
+  static const String shareVariantTieWon = 'shareVariantTieWon';
+  static const String shareVariantTieLost = 'shareVariantTieLost';
+  static const String shareVariantChefCurry = 'shareVariantChefCurry';
+  static const String shareVariantBonusBoth1 = 'shareVariantBonusBoth1';
+  static const String shareVariantBonusBoth2 = 'shareVariantBonusBoth2';
+  static const String shareVariantNoOpponent = 'shareVariantNoOpponent';
+  static const String shareVariantWorldLow = 'shareVariantWorldLow';
+  static const String shareVariantWorldMid = 'shareVariantWorldMid';
+  static const String shareVariantWorldHigh = 'shareVariantWorldHigh';
   static const String hoursMinutesTemplate = 'hoursMinutesTemplate';
   static const String minutesTemplate = 'minutesTemplate';
   static const String matchdayNumberTemplate = 'matchdayNumberTemplate';

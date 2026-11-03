@@ -4,7 +4,7 @@
     <uses-permission android:name="com.android.vending.BILLING"/>
 
     <application
-        android:label="Mon5majeur"
+        android:label="Mon5Majeur"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

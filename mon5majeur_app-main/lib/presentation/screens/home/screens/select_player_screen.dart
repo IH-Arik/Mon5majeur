@@ -380,11 +380,26 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
   }
 
   Widget _buildPlayerCard(Player player, {bool isFirst = false}) {
+    // Cross-cutting rule (spec Part 1 §6.0): an OUT player's card is dimmed
+    // uniformly, background included; the OUT badge, the dimming and the
+    // warning below all hang off this one condition.
+    final isOut = player.status == 'OUT';
+
     void handleTap() {
       if (isFirst && _tutorial.active.value && _tutorial.step.value == 2) {
         _tutorial.advanceTo(3);
       }
       widget.onPlayerSelected(player);
+      // An OUT player stays selectable, with a heads-up. The messenger is
+      // the app-level one (GetMaterialApp), so the SnackBar survives the
+      // pop below and shows on the screen we return to.
+      if (isOut) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text(AppString.playerOutWarning.tr)),
+          );
+      }
       // Reached via Navigator.push() from build_your_team_*_tab.dart, so
       // this is normally safe unconditionally — but the tutorial showcase
       // fires this same handler through its own onTargetClick, whose
@@ -398,49 +413,56 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
       }
     }
 
-    // Cross-cutting rule (spec Part 1 §6.0): an OUT player is dimmed
-    // uniformly across the WHOLE row — jersey, trigram, name, form badge,
-    // scores, venue icon, opponent and price all included, none left at
-    // full colour.
-    final isOut = player.status == 'OUT';
-
     final card = GestureDetector(
       onTap: handleTap,
-      child: Opacity(
-        opacity: isOut ? 0.4 : 1.0,
-        child: Container(
-          padding: EdgeInsets.all(16.w),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1C2A),
-            borderRadius: BorderRadius.circular(12.r),
-          ),
-          child: Row(
-            children: [
-              _buildPlayerAvatar(player),
-              SizedBox(width: 12.w),
-              Expanded(child: _buildPlayerInfo(player)),
-              // QA4 #9: fixed-width box wider than the chips, left-aligned
-              // within it, so the empty space on its right pushes the
-              // badges away from the price instead of hugging it. Same
-              // width as the header's matching box above.
-              SizedBox(
-                width: 76.w,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _buildLastScores(player),
-                ),
+      child: Stack(
+        children: [
+          Opacity(
+            opacity: isOut ? 0.4 : 1.0,
+            child: Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1C2A),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              SizedBox(width: 12.w),
-              SizedBox(
-                width: 48.w,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildPlayerPrice(player),
-                ),
+              child: Row(
+                children: [
+                  _buildPlayerAvatar(player),
+                  SizedBox(width: 12.w),
+                  Expanded(child: _buildPlayerInfo(player)),
+                  // QA4 #9: fixed-width box wider than the chips,
+                  // left-aligned within it, so the empty space on its
+                  // right pushes the badges away from the price instead of
+                  // hugging it. Same width as the header's matching box
+                  // above.
+                  SizedBox(
+                    width: 76.w,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildLastScores(player),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  SizedBox(
+                    width: 48.w,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _buildPlayerPrice(player),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          // Outside the Opacity so it stays at full strength; pinned to the
+          // card's top-right corner, above the vertically centred price.
+          if (isOut)
+            Positioned(
+              top: 6.h,
+              right: 8.w,
+              child: _buildOutBadge(),
+            ),
+        ],
       ),
     );
 
@@ -461,6 +483,25 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
               targetBorderRadius: BorderRadius.circular(12.r),
               child: card,
             ),
+    );
+  }
+
+  /// Same shape and font as the position badge, in red.
+  Widget _buildOutBadge() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE05353),
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Text(
+        AppString.playerStatusOut.tr,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 

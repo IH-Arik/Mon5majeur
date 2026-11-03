@@ -1,5 +1,6 @@
 import '../../../../core/utils/logo_assets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -8,6 +9,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
+import '../../../../core/utils/share_league.dart';
 import '../controllers/create_league_controller.dart';
 
 class JoinLeagueWaitingRoomScreen extends StatefulWidget {
@@ -423,6 +425,91 @@ class _JoinLeagueWaitingRoomScreenState
                       ),
 
                       SizedBox(height: 24.h),
+
+                      // Join code with share/copy: any member can invite.
+                      if ((league.joinCode ?? '').isNotEmpty) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            AppString.joinCode.tr,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontFamily: 'Roboto',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        Container(
+                          height: 44.h,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1F2230),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: const Color(0xFF2C2C2C),
+                              width: 1.w,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 16.w),
+                              Expanded(
+                                child: Text(
+                                  league.joinCode ?? '',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16.sp,
+                                    fontFamily: 'Roboto',
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ),
+                              Builder(
+                                builder: (btnContext) => GestureDetector(
+                                  onTap: () => shareLeagueInvite(
+                                    btnContext,
+                                    name: league.leagueName,
+                                    code: league.joinCode,
+                                  ),
+                                  child: Container(
+                                    padding: EdgeInsets.all(10.r),
+                                    child: Icon(
+                                      Icons.share,
+                                      size: 20.r,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: league.joinCode ?? ''),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(AppString.codeCopied.tr),
+                                      backgroundColor: const Color(0xFF4CAF50),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.all(10.r),
+                                  child: Icon(
+                                    Icons.copy,
+                                    size: 20.r,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                      ],
 
                       // Leave League Button
                       SizedBox(

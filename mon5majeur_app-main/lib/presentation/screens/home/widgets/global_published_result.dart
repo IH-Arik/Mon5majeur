@@ -3,12 +3,17 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/feature_flags.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/utils/lineup_positions.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/global_result_cache.dart';
+import '../../../../data/services/night_top_scores.dart';
+import '../../share/share_story_button.dart';
+import '../../share/share_story_from_global.dart';
+import '../controllers/home_controller.dart';
 import 'match_lineups_field.dart';
 
 typedef _Result = ({Map<String, dynamic>? body, String? error});
@@ -42,10 +47,31 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
   bool _revalidated = false; // offset 0 re-read once per opening
   Future<void> _prefetchChain = Future.value();
 
+  // Gold/silver/bronze of the last published night. Only shown for offset 0:
+  // the endpoint cannot rank older nights.
+  Map<String, int> _medals = const {};
+
+  Worker? _dayWorker;
+
   @override
   void initState() {
     super.initState();
+    // Back from a long absence: a new night may have been published, so
+    // offset 0 is read again (see HomeController.refreshDayState).
+    _dayWorker = ever<int>(Get.find<HomeController>().dayRefreshTick, (_) {
+      _revalidated = false;
+      if (mounted && _offset == 0 && _userId != null) _show();
+    });
     _start();
+    NightTopScores.latest().then((m) {
+      if (mounted) setState(() => _medals = m);
+    });
+  }
+
+  @override
+  void dispose() {
+    _dayWorker?.dispose();
+    super.dispose();
   }
 
   Future<void> _start() async {
@@ -321,7 +347,12 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
               ),
               SizedBox(height: 12.h),
               Text(
-                AppString.noPublishedResult.tr,
+                // My own team: when to come back and where to follow the
+                // night; another player's team keeps the plain message.
+                widget.userAutoId == null
+                    ? AppString.officialResultsLiveHint
+                        .trParams(publicationTimeParams())
+                    : AppString.noPublishedResult.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white54, fontSize: 14.sp),
               ),
@@ -342,6 +373,7 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                         teamB: null,
                         showOpponent: false,
                         globalResultStyle: true,
+                        medals: _offset == 0 ? _medals : null,
                       ),
                       SizedBox(height: 12.h),
                       Container(
@@ -362,6 +394,20 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                           ),
                         ),
                       ),
+                      // My own team only (not another member's).
+                      if (kShareStoryEnabled && widget.userAutoId == null)
+                        Padding(
+                          padding: EdgeInsets.only(top: 12.h),
+                          child: ShareStoryButton(
+                            buildStory: () async => shareStoryFromGlobalResult(
+                              d,
+                              // Waits for the ranking: no badge missing.
+                              medals: await NightTopScores.forDate(
+                                '${d['nba_date']}',
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   );
                 },

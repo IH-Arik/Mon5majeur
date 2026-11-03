@@ -1,15 +1,24 @@
 // lib/presentation/screens/home/my_league_screens/tabs/result.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/match_result_model.dart';
+import '../controllers/home_controller.dart';
 import '../controllers/result_controller.dart';
 import '../widgets/match_lineups_field.dart';
+import '../widgets/night_top_builder.dart';
 import '../../../widgets/match_widgets.dart';
+import '../../../../core/constants/feature_flags.dart';
+import '../../../../data/services/night_top_scores.dart';
+import '../../share/share_story_button.dart';
+import '../../share/share_story_from_duel.dart';
 import '../../../../core/utils/logo_assets.dart';
 
 class ResultTab extends StatefulWidget {
@@ -18,24 +27,114 @@ class ResultTab extends StatefulWidget {
   final bool isPrivate; // ADD THIS
   final bool isGlobal;
 
+  /// Opens the league's Live screen (every duel of the day).
+  final VoidCallback? onOpenLive;
+
+  /// False while another tab of the league is shown: the tab stays alive in
+  /// the IndexedStack but must not refresh itself then.
+  final bool isActive;
+
   const ResultTab({
     super.key,
     this.leagueId,
     this.matchDay,
     this.isPrivate = false, // ADD THIS
     this.isGlobal = false,
+    this.onOpenLive,
+    this.isActive = true,
   });
 
   @override
   State<ResultTab> createState() => _ResultTabState();
 }
 
-class _ResultTabState extends State<ResultTab> {
+class _ResultTabState extends State<ResultTab> with WidgetsBindingObserver {
+  /// A day still in progress is fetched again this often while it is on screen.
+  static const Duration _refreshEvery = Duration(minutes: 5);
+
   late final ResultController controller;
+  Timer? _refreshTimer;
+  Worker? _dayWorker;
+  bool _staleAfterAway = false; // came back from a long absence while hidden
+
+  bool get _published => controller.matchResult.value?.status == 'completed';
+
+  /// Silent refresh of the day on screen, only while it is not published yet.
+  void _refreshIfInProgress() {
+    if (!mounted || !widget.isActive || widget.isGlobal) return;
+    if (controller.matchResult.value == null || controller.isLoading.value) {
+      return;
+    }
+    if (_published) {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+      return;
+    }
+    controller.fetchMatchResult(silent: true);
+  }
+
+  /// Back from a long absence (see HomeController.refreshDayState): the day on
+  /// screen is read again even if it was already published, since the server
+  /// may have published it, or moved on, in the meantime.
+  void _refreshAfterLongAway() {
+    if (!mounted || widget.isGlobal) return;
+    if (!widget.isActive) {
+      _staleAfterAway = true;
+      return;
+    }
+    _staleAfterAway = false;
+    if (controller.matchResult.value == null || controller.isLoading.value) {
+      return;
+    }
+    // On the latest day when leaving (not browsing the history) and the league
+    // has moved on: follow it.
+    final id = widget.leagueId;
+    final latest = controller.lastMatchDay.value;
+    if (id != null && latest != null && controller.currentMatchDay.value >= latest) {
+      final league = Get.find<HomeController>().myLeagues.firstWhereOrNull(
+        (l) => l.leagueId == id && l.isPrivate == widget.isPrivate,
+      );
+      final day = league?.currentMatchday ?? 0;
+      if (day > latest) {
+        controller.followLeagueDay(day);
+        return;
+      }
+    }
+    controller.fetchMatchResult(force: true, silent: true);
+  }
+
+  void _startTimer() {
+    _refreshTimer?.cancel();
+    if (widget.isGlobal || !widget.isActive) return;
+    _refreshTimer = Timer.periodic(_refreshEvery, (_) => _refreshIfInProgress());
+  }
+
+  @override
+  void didUpdateWidget(covariant ResultTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive == oldWidget.isActive) return;
+    if (widget.isActive) {
+      _startTimer();
+      if (_staleAfterAway) {
+        _refreshAfterLongAway();
+      } else {
+        _refreshIfInProgress(); // back on the tab
+      }
+    } else {
+      _refreshTimer?.cancel();
+      _refreshTimer = null;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshIfInProgress();
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     controller = Get.put(ResultController());
     if (widget.isGlobal) {
       controller.setGlobalLeague(initialMatchDay: widget.matchDay);
@@ -49,10 +148,18 @@ class _ResultTabState extends State<ResultTab> {
       );
     } else {
     }
+    _startTimer();
+    _dayWorker = ever<int>(
+      Get.find<HomeController>().dayRefreshTick,
+      (_) => _refreshAfterLongAway(),
+    );
   }
 
   @override
   void dispose() {
+    _dayWorker?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
     controller.leave(); // nothing more is loaded once the tab is left
     super.dispose();
   }
@@ -112,6 +219,15 @@ class _ResultTabState extends State<ResultTab> {
             if (!loadingDay) ...[
               _buildMatchInfo(matchData),
               SizedBox(height: 16.h),
+              if (matchData.status == 'live') ...[
+                Text(
+                  AppString.officialResultsLiveHint
+                      .trParams(publicationTimeParams()),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                ),
+                SizedBox(height: 16.h),
+              ],
               ...matchData.pairs.asMap().entries.map((entry) {
                 final index = entry.key;
                 final pair = entry.value;
@@ -244,7 +360,7 @@ class _ResultTabState extends State<ResultTab> {
                           ),
                         ),
                         Text(
-                          'PTS',
+                          AppString.pts.tr,
                           style: TextStyle(
                             color: const Color(0xFFFF8C42),
                             fontSize: 11.sp,
@@ -341,6 +457,13 @@ class _ResultTabState extends State<ResultTab> {
 
     return Obx(() {
       final isExpanded = controller.expandedCardIndex.value == index;
+      final result = controller.matchResult.value;
+      final published = result?.status == 'completed';
+      final serverHidden = result?.scoresHidden ?? false;
+      // Live numbers belong to the Live screen: until the 09:00 publication
+      // the card shows the lock, for everyone.
+      final hideScores = serverHidden || !published;
+      final started = result?.started ?? (result?.status != 'scheduled');
 
       return Column(
         children: [
@@ -395,8 +518,23 @@ class _ResultTabState extends State<ResultTab> {
                     // the server is withholding a non-subscriber's numbers.
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12.w),
-                      child: (controller.matchResult.value?.scoresHidden ?? false)
-                          ? const ScoreLockedLabel()
+                      child: hideScores
+                          // A Live Scoring subscriber has the live: the lock
+                          // is explained once, above the duels.
+                          ? ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: 110.w),
+                              child: result?.status == 'live'
+                                  ? Icon(
+                                      Icons.lock_outline,
+                                      color: Colors.grey,
+                                      size: 16.r,
+                                    )
+                                  : ScoreLockedLabel(
+                                      text: serverHidden
+                                          ? null
+                                          : AppString.scoreNotStarted.tr,
+                                    ),
+                            )
                           : ScoreLine(scoreA: pair.scoreA, scoreB: pair.scoreB),
                     ),
                     // Team B
@@ -422,13 +560,56 @@ class _ResultTabState extends State<ResultTab> {
                     ),
                   ],
                 ),
+                // The server gives a tie to the home team (the left one);
+                // nothing else says why a 168-168 has a winner.
+                if (published && !serverHidden && pair.scoreA == pair.scoreB) ...[
+                  SizedBox(height: 6.h),
+                  Text(
+                    AppString.tieHomeWins.tr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 10.sp),
+                  ),
+                ],
                 SizedBox(height: 8.h),
                 _buildViewDetailsButton(index),
+                // Shown once the day is published, for my own duel only.
+                if (kShareStoryEnabled &&
+                    isCurrentUser &&
+                    published &&
+                    !serverHidden &&
+                    result != null) ...[
+                  SizedBox(height: 4.h),
+                  ShareStoryButton(
+                    buildStory: () async => shareStoryFromDuel(
+                      result: result,
+                      pair: pair,
+                      teamA: playerAScore,
+                      teamB: playerBScore,
+                      iAmHome: controller.currentUserId == pair.playerAId,
+                      // Waits for the ranking: no badge missing.
+                      medals: await NightTopScores.forDate(result.matchDate),
+                      phaseLabel: controller.phaseLabelFor(result.matchDay),
+                    ),
+                  ),
+                ],
                 if (isCurrentUser &&
-                    controller.matchResult.value?.status == 'live' &&
-                    pair.matchObjectId != null) ...[
+                    !published &&
+                    started &&
+                    !serverHidden &&
+                    widget.onOpenLive != null) ...[
                   SizedBox(height: 8.h),
-                  _buildWatchLiveButton(pair.matchObjectId!),
+                  _buildWatchLiveButton(widget.onOpenLive!),
+                ],
+                // No Live Scoring: the same button leads to the premium
+                // screen (the 9 AM results are explained above the duels).
+                if (isCurrentUser &&
+                    !published &&
+                    started &&
+                    serverHidden) ...[
+                  SizedBox(height: 8.h),
+                  _buildWatchLiveButton(
+                    () => context.go(RoutePath.shopScreen.addBasePath),
+                  ),
                 ],
               ],
             ),
@@ -437,11 +618,13 @@ class _ResultTabState extends State<ResultTab> {
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             child: isExpanded
-                ? MatchLineupsField(
+                ? NightTopBuilder(
+                    date: controller.matchResult.value?.matchDate,
+                    builder: (medals) => MatchLineupsField(
                         teamA: playerAScore,
                         teamB: playerBScore,
-                        scoresHidden:
-                            controller.matchResult.value?.scoresHidden ?? false,
+                        medals: hideScores ? null : medals,
+                        scoresHidden: hideScores,
                         duelResultStyle: true,
                         matchFinished:
                             controller.matchResult.value?.status == 'completed',
@@ -450,7 +633,8 @@ class _ResultTabState extends State<ResultTab> {
                             controller.matchResult.value?.started ??
                             (controller.matchResult.value?.status !=
                                 'scheduled'),
-                      )
+                      ),
+                  )
                 : SizedBox.shrink(),
           ),
         ],
@@ -493,13 +677,9 @@ class _ResultTabState extends State<ResultTab> {
     );
   }
 
-  Widget _buildWatchLiveButton(String matchObjectId) {
+  Widget _buildWatchLiveButton(VoidCallback onTap) {
     return GestureDetector(
-      onTap: () {
-        context.push(
-          '${RoutePath.liveScoreScreen.addBasePath}?matchId=$matchObjectId',
-        );
-      },
+      onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 8.h),

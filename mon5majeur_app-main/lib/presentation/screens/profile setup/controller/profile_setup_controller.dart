@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/local_db/local_db.dart';
 import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
@@ -27,7 +28,7 @@ class ProfileSetupController extends GetxController {
   var selectedLogoIndex = 0.obs;
   var selectedFavoriteTeam = ''.obs;
   var selectedDate = Rx<DateTime?>(null);
-  var termsAccepted = true.obs;
+  var termsAccepted = false.obs;
   var notificationsAccepted = false.obs;
   var showNotificationOptions = false.obs;
 
@@ -169,7 +170,7 @@ class ProfileSetupController extends GetxController {
       showSnackbar(
         context,
         'Validation Error'.tr,
-        'Please accept the terms and conditions'.tr,
+        AppString.acceptTermsError.tr,
         isError: true,
       );
       return false;
