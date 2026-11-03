@@ -29,8 +29,6 @@ class ProfileSetupController extends GetxController {
   var selectedFavoriteTeam = ''.obs;
   var selectedDate = Rx<DateTime?>(null);
   var termsAccepted = false.obs;
-  var notificationsAccepted = false.obs;
-  var showNotificationOptions = false.obs;
 
   // Text controller
   final teamNameController = TextEditingController();
@@ -72,7 +70,6 @@ class ProfileSetupController extends GetxController {
       selectedFavoriteTeam.value = profile.favoriteTeam;
       selectedDate.value = DateTime.parse(profile.dateOfBirth);
       termsAccepted.value = profile.acceptTermsConditions;
-      notificationsAccepted.value = profile.recivedNotifications;
       selectedLogoIndex.value = TeamLogoChoices.indexOf(profile.teamLogo);
     }
   }
@@ -80,17 +77,6 @@ class ProfileSetupController extends GetxController {
   // Toggle methods
   void toggleTermsAccepted() {
     termsAccepted.value = !termsAccepted.value;
-  }
-
-  void toggleNotificationsAccepted() {
-    notificationsAccepted.value = !notificationsAccepted.value;
-    if (!notificationsAccepted.value) {
-      showNotificationOptions.value = false;
-    }
-  }
-
-  void toggleNotificationOptions() {
-    showNotificationOptions.value = !showNotificationOptions.value;
   }
 
   void updateSelectedLogo(int index) {
@@ -207,7 +193,13 @@ class ProfileSetupController extends GetxController {
         favoriteTeam: selectedFavoriteTeam.value,
         dateOfBirth: formattedDate,
         acceptTermsConditions: termsAccepted.value,
-        recivedNotifications: notificationsAccepted.value,
+        // The real choice is recorded when the OS permission is answered
+        // (see requestNotificationPermission); keep what the account has.
+        recivedNotifications: Get.find<HomeController>()
+                .userProfile
+                .value
+                ?.recivedNotifications ??
+            false,
       );
 
       logger.i('Profile Setup Request: ${profileData.toJson()}');

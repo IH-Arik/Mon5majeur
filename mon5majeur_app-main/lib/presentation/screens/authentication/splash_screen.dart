@@ -7,6 +7,7 @@ import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/language/language_controller.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/revenuecat_service.dart';
 import '../../../data/services/session_service.dart';
 import '../home/controllers/home_controller.dart';
@@ -45,6 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     switch (destination) {
       case SessionDestination.home:
+        syncPushToken(reason: 'session restored');
         RevenueCatService.instance.loginUser();
         if (Get.isRegistered<HomeController>()) {
           Get.find<HomeController>().fetchUserProfile();

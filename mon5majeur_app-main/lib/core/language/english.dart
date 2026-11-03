@@ -524,14 +524,13 @@ class EnglishTranslation {
     AppString.privacyLinkText: "Privacy Policy",
     AppString.acceptTermsError:
         "Please accept the Terms of Use and the Privacy Policy to continue",
-    AppString.acceptNotifications: "I accept notifications",
-    AppString.enableNotificationsTitle: "Enable notifications?",
-    AppString.enableNotificationsBody:
-        "Get your team results and a reminder before lineup lock",
-    AppString.notNow: "Not now",
-    AppString.enableAction: "Enable",
-    AppString.notifOptionMakeTeam: "Don't forget to make your team",
-    AppString.notifOptionResultsIn: "The results are in",
+    AppString.pushExplainerTitle: "Turn on notifications?",
+    AppString.pushExplainerBody:
+        "Turn on notifications to get your results tomorrow morning and your lineup reminder at 7pm.",
+    AppString.pushExplainerEnable: "Enable",
+    AppString.pushExplainerLater: "Later",
+    AppString.pushBannerText: "Turn on notifications to never miss your lineup",
+    AppString.pushBannerAction: "Settings",
     AppString.saveAndContinue: "Save and Continue",
     AppString.bottomInfoText: "You can change this from your profile",
     AppString.teamMiamiHeat: "Miami Heat",

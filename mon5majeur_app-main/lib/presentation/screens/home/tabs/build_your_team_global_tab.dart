@@ -26,6 +26,7 @@ import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
+import '../../../widgets/push_notification_prompts.dart';
 
 class BuildYourTeamTabGlobal extends StatefulWidget {
   final VoidCallback? onTeamSaved;
@@ -503,7 +504,10 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
         }
 
         if (mounted) {
-          await maybeShowNotificationPromptAfterFirstValidation(context);
+          await maybeShowNotificationExplainer(
+            context,
+            afterValidation: true,
+          );
         }
 
         if (tutorialAtStep3 && mounted) {

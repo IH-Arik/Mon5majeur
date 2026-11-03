@@ -526,14 +526,13 @@ class FrenchTranslation {
     AppString.privacyLinkText: "politique de confidentialité",
     AppString.acceptTermsError:
         "Accepte les conditions générales et la politique de confidentialité pour continuer",
-    AppString.acceptNotifications: "J'accepte les notifications",
-    AppString.enableNotificationsTitle: "Activer les notifications ?",
-    AppString.enableNotificationsBody:
-        "Reçois tes résultats et un rappel avant le verrouillage",
-    AppString.notNow: "Plus tard",
-    AppString.enableAction: "Activer",
-    AppString.notifOptionMakeTeam: "N'oublie pas de faire ton équipe",
-    AppString.notifOptionResultsIn: "Les résultats sont là",
+    AppString.pushExplainerTitle: "Activer les notifications ?",
+    AppString.pushExplainerBody:
+        "Active les notifications pour recevoir tes résultats demain matin et ton rappel de compo à 19h.",
+    AppString.pushExplainerEnable: "Activer",
+    AppString.pushExplainerLater: "Plus tard",
+    AppString.pushBannerText: "Active les notifications pour ne jamais rater ta compo",
+    AppString.pushBannerAction: "Réglages",
     AppString.saveAndContinue: "Enregistrer",
     AppString.bottomInfoText: "Modifiable depuis ton profil",
     AppString.teamMiamiHeat: "Miami Heat",

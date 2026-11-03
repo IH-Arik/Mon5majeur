@@ -614,16 +614,16 @@ class AppString {
   static const String privacyLinkText = "Privacy Policy (link in sentence)";
   static const String acceptTermsError =
       "Please accept the Terms of Use and the Privacy Policy to continue";
-  static const String acceptNotifications = "I accept to receive notifications";
 
-  // Notification opt-in pop-up (shown after first team validation)
-  static const String enableNotificationsTitle = "Enable notifications?";
-  static const String enableNotificationsBody =
-      "Get your team results and a reminder before lineup lock";
-  static const String notNow = "Not now";
-  static const String enableAction = "Enable";
-  static const String notifOptionMakeTeam = "Don't forget to make your team";
-  static const String notifOptionResultsIn = "The results are in";
+  // Push notifications: explainer (after the first team validation) + banner
+  static const String pushExplainerTitle = "Turn on notifications?";
+  static const String pushExplainerBody =
+      "Turn on notifications to get your results tomorrow morning and your lineup reminder at 7pm.";
+  static const String pushExplainerEnable = "Enable";
+  static const String pushExplainerLater = "Later";
+  static const String pushBannerText =
+      "Turn on notifications to never miss your lineup";
+  static const String pushBannerAction = "Settings";
   static const String saveAndContinue = "Save & Continue";
   static const String bottomInfoText =
       "You can update these details directly from your profile page";

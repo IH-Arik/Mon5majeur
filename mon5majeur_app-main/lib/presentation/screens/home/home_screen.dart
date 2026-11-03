@@ -22,6 +22,7 @@ import '../tutorial/tutorial_skip_button.dart';
 import '../tutorial/tutorial_style.dart';
 import 'controllers/home_controller.dart';
 import 'widgets/home_drawer.dart';
+import '../../widgets/push_notification_prompts.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -61,10 +62,12 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _tutorial.checkHomeReadiness(),
     );
-    // Push permission at first launch (QA #9 2.7), asked only once.
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => askNotificationPermissionOnce(),
-    );
+    // Push: keep the token in sync, and show the explainer once as a safety
+    // net (from the 2nd launch) for players who never validated a team.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      syncPushToken(reason: 'home opened');
+      maybeShowNotificationExplainer(context, afterValidation: false);
+    });
 
     // Logo bounce animation
     _logoController = AnimationController(
@@ -117,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final controller = Get.find<HomeController>();
     if (state == AppLifecycleState.resumed) {
+      syncPushToken(reason: 'app resumed');
       controller.refreshMatchesSilently();
       controller.startMatchAutoRefresh();
       controller.refreshDayState();
@@ -376,6 +380,9 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Column(
                             children: [
                               SizedBox(height: 12.h),
+
+                              /// 🔹 "Turn on notifications" (refused permission only)
+                              const PushPermissionBanner(),
 
                               /// 🔹 Global League status + stats card
                               _GlobalLeagueCard(),
