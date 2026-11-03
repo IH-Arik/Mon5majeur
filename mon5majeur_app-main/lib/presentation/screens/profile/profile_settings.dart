@@ -177,12 +177,21 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
+  bool _loggingOut = false;
+
   Future<void> _logout() async {
-    // While the session is still valid: detach this phone from the account.
-    await unregisterPushToken();
-    await RevenueCatService.instance.logoutUser();
-    await _clearTokens();
-    if (mounted) context.go(RoutePath.signInScreen.addBasePath);
+    // A second tap (or call) while the first one runs must do nothing.
+    if (_loggingOut) return;
+    _loggingOut = true;
+    try {
+      // While the session is still valid: detach this phone from the account.
+      await unregisterPushToken();
+      await RevenueCatService.instance.logoutUser();
+      await _clearTokens();
+      if (mounted) context.go(RoutePath.signInScreen.addBasePath);
+    } finally {
+      _loggingOut = false;
+    }
   }
 
   Future<void> _deleteAccountConfirmed() async {

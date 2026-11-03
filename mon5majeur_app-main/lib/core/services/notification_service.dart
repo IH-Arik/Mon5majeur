@@ -57,44 +57,144 @@ Future<bool> requestNotificationPermission() async {
   return false;
 }
 
+/// The pieces of a sync that talk to the phone or the network. Tests replace
+/// them; the app never touches this.
+@visibleForTesting
+class PushDeps {
+  static Future<PushPermission> Function() permission = pushPermissionState;
+  static Future<String?> Function() fcmToken = _obtainFcmToken;
+  static Future<int?> Function(String token) postToken = _postToken;
+  static Future<bool> Function() deleteToken = _deleteToken;
+  static Future<bool> Function() isOptOut = isNotificationsOptOut;
+  static Future<void> Function(bool enabled) setServerFlag =
+      _setServerNotificationsFlag;
+  // Delay between two POST attempts (a test shrinks it).
+  static List<Duration> retryDelays = const [
+    Duration(seconds: 2),
+    Duration(seconds: 4),
+    Duration(seconds: 8),
+  ];
+  // Nothing may keep the one-at-a-time lock for longer than this.
+  static Duration maxRun = const Duration(seconds: 120);
+  // Wait before asking again when the phone had no token yet.
+  static Duration noTokenRetryDelay = const Duration(seconds: 20);
+
+  static void reset() {
+    permission = pushPermissionState;
+    fcmToken = _obtainFcmToken;
+    postToken = _postToken;
+    deleteToken = _deleteToken;
+    isOptOut = isNotificationsOptOut;
+    setServerFlag = _setServerNotificationsFlag;
+    retryDelays = const [
+      Duration(seconds: 2),
+      Duration(seconds: 4),
+      Duration(seconds: 8),
+    ];
+    maxRun = const Duration(seconds: 120);
+    noTokenRetryDelay = const Duration(seconds: 20);
+    _noTokenRetries = 0;
+    _syncing = null;
+    _unregistering = null;
+    _generation = 0;
+  }
+}
+
 Future<void>? _syncing;
+// Bumped to cancel whatever run is in flight: a run that sees a newer number
+// stops before it sends anything.
+int _generation = 0;
 
 /// The single place that sends this device's push token to the backend.
 /// Safe to call from anywhere, any number of times: concurrent calls share
 /// one run. Waits for a session, for APNs on iOS, checks the HTTP status and
 /// retries (3 attempts, growing delays). Never throws, never blocks the UI.
-Future<void> syncPushToken({String reason = ''}) {
-  return _syncing ??=
-      _syncPushToken(reason).whenComplete(() => _syncing = null);
+///
+/// [force] is for a new session (login): the run in flight, if any, is
+/// abandoned and a fresh one starts, so a stuck or stale run can never stand
+/// between a login and the token reaching the server. A hard time limit also
+/// frees the lock whatever happens inside a run.
+Future<void> syncPushToken({String reason = '', bool force = false}) {
+  if (force) {
+    _generation++;
+    _syncing = null;
+    _noTokenRetries = 0;
+  } else if (_syncing != null) {
+    return _syncing!;
+  }
+  final generation = _generation;
+  late final Future<void> run;
+  run = _syncPushToken(reason, generation)
+      .timeout(PushDeps.maxRun, onTimeout: () {
+    debugPrint('🔔 syncPushToken [$reason] timed out: lock released');
+  }).whenComplete(() {
+    if (identical(_syncing, run)) _syncing = null;
+  });
+  return _syncing = run;
 }
 
-Future<void> _syncPushToken(String reason) async {
+int _noTokenRetries = 0;
+
+/// The phone had no token yet (APNs slow to answer, plugin error): try again
+/// shortly, three times at most, instead of waiting for the next app opening.
+void _retryLater(String reason, int generation, String tag) {
+  if (_noTokenRetries >= 3) return;
+  _noTokenRetries++;
+  debugPrint('$tag no token yet: retry $_noTokenRetries/3 in 20 s');
+  Future.delayed(PushDeps.noTokenRetryDelay, () {
+    if (generation == _generation) syncPushToken(reason: 'retry ($reason)');
+  });
+}
+
+/// True while this run is still the current one and a session still exists.
+Future<bool> _stillValid(int generation, String tag, String step) async {
+  if (generation != _generation) {
+    debugPrint('$tag cancelled before $step (a newer sync or a logout)');
+    return false;
+  }
+  if (!await _hasSession()) {
+    debugPrint('$tag stopped before $step: the session is gone');
+    return false;
+  }
+  return true;
+}
+
+Future<bool> _hasSession() async {
+  final access = await SharedPrefsHelper.getString(AppConstants.token);
+  final refresh = await SharedPrefsHelper.getString(AppConstants.refreshToken);
+  return access.isNotEmpty || refresh.isNotEmpty;
+}
+
+Future<void> _syncPushToken(String reason, int generation) async {
   const tag = '🔔 syncPushToken';
   try {
-    final access = await SharedPrefsHelper.getString(AppConstants.token);
-    final refresh = await SharedPrefsHelper.getString(AppConstants.refreshToken);
-    if (access.isEmpty && refresh.isEmpty) {
+    if (!await _hasSession()) {
       debugPrint('$tag [$reason] skipped: no session yet');
       return;
     }
 
-    final permission = await pushPermissionState();
+    final permission = await PushDeps.permission();
     if (permission != PushPermission.granted) {
       debugPrint('$tag [$reason] skipped: permission is $permission');
       return;
     }
 
-    final token = await _obtainFcmToken(tag);
-    if (token == null) return;
+    final token = await PushDeps.fcmToken();
+    if (token == null) {
+      _retryLater(reason, generation, tag);
+      return;
+    }
+    _noTokenRetries = 0;
+    if (!await _stillValid(generation, tag, 'sending the token')) return;
 
-    final registered = await _postTokenWithRetries(token, tag);
+    final registered = await _postTokenWithRetries(token, tag, generation);
     if (!registered) return;
 
     // The server turns pushes on when it receives a token; a player who
     // switched them off in Settings must stay off.
-    if (await isNotificationsOptOut()) {
+    if (await PushDeps.isOptOut()) {
       debugPrint('$tag opt-out is on: sending recived_notifications=false');
-      await _setServerNotificationsFlag(false);
+      await PushDeps.setServerFlag(false);
     }
   } catch (e) {
     debugPrint('$tag [$reason] unexpected failure: $e');
@@ -103,16 +203,20 @@ Future<void> _syncPushToken(String reason) async {
 
 /// iOS needs the APNs token before FCM can hand out its own; it arrives
 /// asynchronously after registration, so wait for it with short retries.
-Future<String?> _obtainFcmToken(String tag) async {
+/// Every call into the plugin has a time limit: none may wait forever.
+Future<String?> _obtainFcmToken() async {
+  const tag = '🔔 syncPushToken';
   final messaging = FirebaseMessaging.instance;
   try {
     if (Platform.isIOS) {
       // Permission is already granted here: this call only (re-)registers the
       // device for remote notifications, it does not prompt again.
-      await messaging.requestPermission();
+      await messaging.requestPermission().timeout(const Duration(seconds: 10));
       String? apns;
       for (var i = 0; i < 10 && (apns == null || apns.isEmpty); i++) {
-        apns = await messaging.getAPNSToken();
+        apns = await messaging
+            .getAPNSToken()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null);
         if (apns == null || apns.isEmpty) {
           debugPrint('$tag APNs token not ready (try ${i + 1}/10)');
           await Future.delayed(const Duration(seconds: 1));
@@ -123,7 +227,8 @@ Future<String?> _obtainFcmToken(String tag) async {
         return null;
       }
     }
-    final token = await messaging.getToken();
+    final token =
+        await messaging.getToken().timeout(const Duration(seconds: 15));
     if (token == null || token.isEmpty) {
       debugPrint('$tag getToken() returned no token');
       return null;
@@ -135,15 +240,23 @@ Future<String?> _obtainFcmToken(String tag) async {
   }
 }
 
-Future<bool> _postTokenWithRetries(String token, String tag) async {
-  const delays = [Duration(seconds: 2), Duration(seconds: 4), Duration(seconds: 8)];
+Future<int?> _postToken(String token) async {
   final url =
       '${ApiUrl.baseUrl}${ApiUrl.registerFcmToken}?token=${Uri.encodeQueryComponent(token)}';
+  final response = await ApiClient().post(url: url, showResult: true);
+  return response.statusCode;
+}
+
+Future<bool> _postTokenWithRetries(
+  String token,
+  String tag,
+  int generation,
+) async {
+  final delays = PushDeps.retryDelays;
   for (var attempt = 0; attempt < delays.length; attempt++) {
     int? code;
     try {
-      final response = await ApiClient().post(url: url, showResult: true);
-      code = response.statusCode;
+      code = await PushDeps.postToken(token);
     } catch (e) {
       debugPrint('$tag POST failed (attempt ${attempt + 1}/3): $e');
     }
@@ -162,7 +275,10 @@ Future<bool> _postTokenWithRetries(String token, String tag) async {
       debugPrint('$tag rejected by the server: stopping');
       return false;
     }
-    if (attempt < delays.length - 1) await Future.delayed(delays[attempt]);
+    if (attempt < delays.length - 1) {
+      await Future.delayed(delays[attempt]);
+      if (!await _stillValid(generation, tag, 'the next attempt')) return false;
+    }
   }
   debugPrint('$tag gave up after 3 attempts');
   return false;
@@ -195,15 +311,30 @@ Future<void> _setServerNotificationsFlag(bool enabled) async {
   }
 }
 
+Future<void>? _unregistering;
+
 /// Logout: detach this device from the account that is leaving, so the next
-/// player on the phone does not share its token. Older servers answer
-/// 404/405 — that is only logged.
-Future<void> unregisterPushToken() async {
+/// player on the phone does not share its token. Call it BEFORE the session
+/// is erased. It runs once: a second call while one is running shares it, and
+/// with no session left (already logged out) nothing is sent. Older servers
+/// answer 404/405 — that is only logged.
+Future<void> unregisterPushToken() {
+  return _unregistering ??= _unregisterPushToken().whenComplete(() {
+    _unregistering = null;
+  });
+}
+
+Future<void> _unregisterPushToken() async {
   const tag = '🔔 unregisterPushToken';
+  // Whatever sync is in flight must not put the token back after this.
+  _generation++;
+  _syncing = null;
   try {
-    final ok = await ApiClient()
-        .delete(url: '${ApiUrl.baseUrl}${ApiUrl.registerFcmToken}', code: 204)
-        .timeout(const Duration(seconds: 5));
+    if (!await _hasSession()) {
+      debugPrint('$tag skipped: no session (already logged out)');
+      return;
+    }
+    final ok = await PushDeps.deleteToken().timeout(const Duration(seconds: 5));
     if (!ok) {
       debugPrint('$tag not accepted (server may not support it yet)');
     }
@@ -211,6 +342,9 @@ Future<void> unregisterPushToken() async {
     debugPrint('$tag failed: $e');
   }
 }
+
+Future<bool> _deleteToken() => ApiClient()
+    .delete(url: '${ApiUrl.baseUrl}${ApiUrl.registerFcmToken}', code: 204);
 
 /// Call after the Settings switch is turned on: honour it with the OS.
 Future<void> enablePushFromSettings() async {

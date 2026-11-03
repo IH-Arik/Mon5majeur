@@ -157,7 +157,7 @@ class AuthController extends GetxController {
 
     // The FCM token is sent to the backend for THIS account (at app start
     // there was no session yet, so that first registration was refused).
-    syncPushToken(reason: 'login');
+    syncPushToken(reason: 'login', force: true);
 
     // ── RevenueCat: link this auth session to the RC subscriber ID ──
     // Fire-and-forget; a failure here is non-fatal.
