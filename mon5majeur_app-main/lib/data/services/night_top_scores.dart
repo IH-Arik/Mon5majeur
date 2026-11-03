@@ -1,91 +1,77 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/player_today_score_model.dart';
 import 'api_service.dart';
 import 'api_url.dart';
 
-/// Gold / silver / bronze for the best fantasy scores of the night, over ALL
-/// the NBA players (the same ranking as "Scores fantasy du jour").
+/// Gold / silver / bronze for the best fantasy scores of a night, over ALL the
+/// NBA players (the same ranking as "Scores fantasy du jour").
 ///
-/// The endpoint has no date: it only answers for the LAST PUBLISHED night, so
-/// the medals are only valid for that night. Callers must only ask for them
-/// when the night on screen is the latest one. Once the server takes a night
-/// date, [latest] is the only place to change.
+/// The server ranks the night asked for (`nba_date`) and answers with the
+/// night it really used. A server that does not know the parameter answers for
+/// the last published night, or without that field: the answer is then
+/// ignored, so a night is never given another night's medals.
 class NightTopScores {
   NightTopScores._();
 
   static const Duration _ttl = Duration(minutes: 10);
 
-  static Map<String, int>? _cache;
-  static DateTime? _fetchedAt;
-  static Future<Map<String, int>>? _running;
+  static final Map<String, (Map<String, int>, DateTime)> _cache = {};
+  static final Map<String, Future<Map<String, int>>> _running = {};
 
-  /// Player id -> medal rank (1 gold, 2 silver, 3 bronze) for the last
-  /// published night. Empty when unknown or on any error: no medals then.
-  static Future<Map<String, int>> latest() {
-    final at = _fetchedAt;
-    if (_cache != null && at != null && DateTime.now().difference(at) < _ttl) {
-      return Future.value(_cache);
-    }
-    return _running ??= _fetch().whenComplete(() => _running = null);
+  /// The request itself (status code and decoded body); tests replace it.
+  @visibleForTesting
+  static Future<(int?, dynamic)> Function(String night) request = _request;
+
+  @visibleForTesting
+  static void reset() {
+    _cache.clear();
+    _running.clear();
+    request = _request;
   }
 
-  static Future<Map<String, int>> _fetch() async {
+  static Future<(int?, dynamic)> _request(String night) async {
+    final resp = await ApiClient().get(
+      url: '${ApiUrl.baseUrl}${ApiUrl.playersTodayScores}?nba_date=$night',
+    );
+    return (resp.statusCode, resp.body);
+  }
+
+  /// Player id -> medal rank (1 gold, 2 silver, 3 bronze) for the night
+  /// [date] (yyyy-mm-dd, or a longer ISO date): empty when unknown, not
+  /// published yet, or on any error.
+  static Future<Map<String, int>> forDate(String? date) {
+    if (date == null || date.length < 10) return Future.value(const {});
+    final night = date.substring(0, 10);
+    final hit = _cache[night];
+    if (hit != null && DateTime.now().difference(hit.$2) < _ttl) {
+      return Future.value(hit.$1);
+    }
+    return _running[night] ??= _fetch(night).whenComplete(() {
+      _running.remove(night);
+    });
+  }
+
+  static Future<Map<String, int>> _fetch(String night) async {
     try {
-      final resp = await ApiClient().get(
-        url: ApiUrl.baseUrl + ApiUrl.playersTodayScores,
-      );
-      if (resp.statusCode == 200 && resp.body is Map) {
-        final results = resp.body['results'] as List? ?? const [];
+      final (status, body) = await request(night);
+      if (status == 200 && body is Map) {
+        final answered = body['nba_date'];
+        if (answered is! String || !answered.startsWith(night)) {
+          return const {};
+        }
+        final results = body['results'] as List? ?? const [];
         final players = results
             .map((e) => PlayerTodayScore.fromJson(Map<String, dynamic>.from(e)))
             .toList();
-        _cache = medalRanks(players);
-        _fetchedAt = DateTime.now();
-        return _cache!;
+        final medals = medalRanks(players);
+        // An empty answer (night not published yet) is not kept: asking again
+        // after the 09:00 publication must reach the server.
+        if (medals.isNotEmpty) _cache[night] = (medals, DateTime.now());
+        return medals;
       }
     } catch (_) {}
     return const {};
-  }
-
-  static String? _latestDate;
-  static DateTime? _dateFetchedAt;
-  static Future<String?>? _runningDate;
-
-  /// The top 3 for the night [date] (yyyy-mm-dd, a duel's match date): the
-  /// medals only when it is the last published night, else empty. The server
-  /// takes no date for the scores, so no other night can be ranked.
-  static Future<Map<String, int>> forDate(String? date) async {
-    if (date == null || date.length < 10) return const {};
-    final latest = await _latestNight();
-    if (latest == null || latest != date.substring(0, 10)) return const {};
-    return NightTopScores.latest();
-  }
-
-  /// Date of the last published night: the World League result at offset 0.
-  static Future<String?> _latestNight() {
-    final at = _dateFetchedAt;
-    if (_latestDate != null &&
-        at != null &&
-        DateTime.now().difference(at) < _ttl) {
-      return Future.value(_latestDate);
-    }
-    return _runningDate ??= _fetchNight().whenComplete(() => _runningDate = null);
-  }
-
-  static Future<String?> _fetchNight() async {
-    try {
-      final resp = await ApiClient().get(
-        url: '${ApiUrl.baseUrl}${ApiUrl.globalPublishedResult}?offset=0',
-      );
-      if (resp.statusCode == 200 && resp.body is Map) {
-        final d = resp.body['match_date'];
-        if (d is String && d.length >= 10) {
-          _latestDate = d.substring(0, 10);
-          _dateFetchedAt = DateTime.now();
-          return _latestDate;
-        }
-      }
-    } catch (_) {}
-    return null;
   }
 
   /// Same ranking as the "Scores fantasy du jour" list: highest score first,
