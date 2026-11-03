@@ -41,15 +41,14 @@ Future<void> main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  // Best-effort: registers the device's FCM token with the backend if the
-  // user already granted notification permission in a previous session.
-  // The actual permission *request* still only happens from the post-team-
-  // validation prompt (team_confirm_controls.dart) — this just keeps the
-  // token in sync on every app start once permission already exists.
-  unawaited(syncFcmTokenIfPermissionGranted());
+  // Counts launches (the notification explainer's safety net starts at the
+  // 2nd). The token itself is synced once the session is confirmed (splash /
+  // login / app resumed), never here: there may be no session yet.
+  unawaited(registerAppOpen());
   // Tokens rotate: send the new one to the backend whenever it changes, and
   // show pushes that arrive while the app is open (iOS hides them otherwise).
-  FirebaseMessaging.instance.onTokenRefresh.listen((_) => registerFcmToken());
+  FirebaseMessaging.instance.onTokenRefresh
+      .listen((_) => syncPushToken(reason: 'token refreshed'));
   unawaited(
     FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
       alert: true,

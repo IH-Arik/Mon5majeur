@@ -337,52 +337,6 @@ class ProfileSetupScreen extends StatelessWidget {
 
               SizedBox(height: 16.h),
 
-              /// Notifications Checkbox
-              // Obx(
-              //   () => Column(
-              //     children: [
-              //       GestureDetector(
-              //         onTap: controller.toggleNotificationsAccepted,
-              //         child: Row(
-              //           children: [
-              //             Container(
-              //               width: 20.w,
-              //               height: 20.w,
-              //               decoration: BoxDecoration(
-              //                 color: controller.notificationsAccepted.value
-              //                     ? const Color(0xFFFF6B35)
-              //                     : Colors.transparent,
-              //                 border: Border.all(
-              //                   color: controller.notificationsAccepted.value
-              //                       ? const Color(0xFFFF6B35)
-              //                       : Colors.grey,
-              //                 ),
-              //                 borderRadius: BorderRadius.circular(4.r),
-              //               ),
-              //               child: controller.notificationsAccepted.value
-              //                   ? Icon(
-              //                       Icons.check,
-              //                       color: Colors.white,
-              //                       size: 16.r,
-              //                     )
-              //                   : null,
-              //             ),
-              //             SizedBox(width: 8.w),
-              //             Expanded(
-              //               child: Text(
-              //                 AppString.acceptNotifications.tr,
-              //                 style: TextStyle(
-              //                   color: Colors.white,
-              //                   fontSize: 14.sp,
-              //                 ),
-              //               ),
-              //             ),
-              //           ],
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
               SizedBox(height: 20.h),
 
               /// Save & Continue Button

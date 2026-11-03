@@ -11,6 +11,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/nba_teams.dart';
 import '../../../core/custom_assets/assets.gen.dart';
 import '../../../core/local_db/local_db.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/routes/route_path.dart';
 import '../../../core/routes/routes.dart';
 import '../../../data/services/api_service.dart';
@@ -177,6 +178,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Future<void> _logout() async {
+    // While the session is still valid: detach this phone from the account.
+    await unregisterPushToken();
     await RevenueCatService.instance.logoutUser();
     await _clearTokens();
     if (mounted) context.go(RoutePath.signInScreen.addBasePath);
@@ -207,7 +210,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _toggleNotifications() async {
     setState(() => _notificationsEnabled = !_notificationsEnabled);
+    // The only place that records the player's own choice: turned off here
+    // means "never re-enable behind my back" (token sync, banner, explainer).
+    await SharedPrefsHelper.setBool(
+      AppConstants.notificationsOptOut,
+      !_notificationsEnabled,
+    );
     await _saveProfile();
+    if (_notificationsEnabled) await enablePushFromSettings();
   }
 
   // Real backend action, not just a display flag: while off, the account is

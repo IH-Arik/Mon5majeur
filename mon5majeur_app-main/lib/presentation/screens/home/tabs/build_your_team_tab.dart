@@ -20,6 +20,7 @@ import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
+import '../../../widgets/push_notification_prompts.dart';
 
 /// The three activatable bonuses. Only one can be active at a time.
 enum BonusType { sixthMan, chefsCurry, luxuryTax }
@@ -739,7 +740,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           } else {
             await showTeamValidatedDialog(context);
             if (mounted) {
-              await maybeShowNotificationPromptAfterFirstValidation(context);
+              await maybeShowNotificationExplainer(
+            context,
+            afterValidation: true,
+          );
             }
           }
 

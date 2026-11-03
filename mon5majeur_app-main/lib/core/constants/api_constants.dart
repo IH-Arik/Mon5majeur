@@ -20,7 +20,21 @@ class AppConstants {
   static const String isProfileCompleted = 'is_profile_completed';
 
   // Notifications
-  static const String notificationPromptHandled = 'notification_prompt_handled';
+  // Set once the OS permission prompt has been shown (iOS cannot tell
+  // "never asked" from "refused" through permission_handler alone).
+  static const String notificationPermissionAsked =
+      'notification_permission_asked';
+  // Set once the explainer screen has been shown, so it never comes back.
+  static const String notificationExplainerShown =
+      'notification_explainer_shown';
+  // Number of app launches; the explainer's safety net shows from the 2nd.
+  static const String appOpenCount = 'app_open_count';
+  // Written ONLY by the Settings switch: the player turned notifications off
+  // in the app. Never re-enable, never nag.
+  static const String notificationsOptOut = 'notifications_opt_out';
+  // The player hid the "enable notifications" home banner.
+  static const String notificationBannerDismissed =
+      'notification_banner_dismissed';
 
   // Onboarding tutorial (spec Part 3)
   static const String tutorialStep = 'tutorial_step';
