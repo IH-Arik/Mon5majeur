@@ -86,4 +86,10 @@ class User(BaseDocument):
             IndexModel([("google_id", ASCENDING)], sparse=True),
             IndexModel([("apple_id", ASCENDING)], sparse=True),
             IndexModel([("auto_id", ASCENDING)], sparse=True),
+            # Looked up on every token registration (de-duplication) and on
+            # delivery; accounts without a token are left out of the index.
+            IndexModel(
+                [("fcm_token", ASCENDING)],
+                partialFilterExpression={"fcm_token": {"$type": "string"}},
+            ),
         ]

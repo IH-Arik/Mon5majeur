@@ -98,6 +98,7 @@ async def update_language(
 @router.post("/me/fcm-token", summary="Register / update FCM push token")
 async def update_fcm_token(
     token: str,
+    enable: bool = True,
     current_user: User = Depends(get_current_user),
 ) -> dict:
     # A token only exists because the OS granted notification permission:
@@ -105,10 +106,35 @@ async def update_fcm_token(
     # nothing else ever set it True, so a working token still got no push
     # unless the player separately found the Settings toggle (Robin report:
     # 2 of 3 silent accounts had a valid token, just this flag off).
+    #
+    # `enable=false` stores the token WITHOUT turning pushes on, for a player
+    # who switched them off in the app. Omitted by older app versions, which
+    # keep the original behaviour (default True).
+    #
+    # A token identifies one phone. If another account registered it earlier
+    # (logout then login of someone else on the same phone), that account no
+    # longer owns it: leaving it would send its pushes to the wrong person.
+    await User.find({"fcm_token": token, "_id": {"$ne": current_user.id}}).update_many(
+        {"$set": {"fcm_token": None}}
+    )
     current_user.fcm_token = token
-    current_user.push_notifications_enabled = True
+    if enable:
+        current_user.push_notifications_enabled = True
     await current_user.save()
     return {"detail": "FCM token updated"}
+
+
+@router.delete(
+    "/me/fcm-token",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Forget this account's FCM push token (logout)",
+)
+async def delete_fcm_token(current_user: User = Depends(get_current_user)) -> None:
+    # Only the token goes: the push_notifications_enabled preference is the
+    # player's choice and is kept for the next login.
+    if current_user.fcm_token is not None:
+        current_user.fcm_token = None
+        await current_user.save()
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Delete my account")
