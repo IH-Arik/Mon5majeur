@@ -30,6 +30,9 @@ from app.modules.leagues.schema import (
     MatchResultCompatResponse,
     PlayersSelectionRequest,
 )
+from app.modules.leagues.substitution_service import (
+    counted_starters, describe, mark_absent, resolve_substitution,
+)
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
 from app.modules.players.nba_night import global_night_number
@@ -175,17 +178,25 @@ async def _build_response(
     league: League,
     selected_players: list[dict],
     user_id: PydanticObjectId,
+    substitute_player: dict | None = None,
 ) -> GlobalLeagueSelectionResponse:
     from app.modules.leagues.global_score_service import get_weekly_monthly_rank
 
     used = sum(_parse_price(p.get("price", 0)) for p in selected_players)
     remaining = max(0.0, _MAX_BALANCE - used)
     night = await _composing_night()
-    total_points = await _today_total_points(selected_players, night)
+    # Live: the substitute only comes in once every game of the lineup is final.
+    result = await resolve_substitution(selected_players, substitute_player, night, closing=False)
+    total_points = await _today_total_points(result.starters, night)
     submitted, lock_in_seconds, lineup_state = await _lock_info(user_id, league)
     today = await _nba_today()
     weekly_rank, monthly_rank = await get_weekly_monthly_rank(league, user_id, today)
     enriched_players = await _enrich_with_scores(selected_players, for_date=night)
+    mark_absent(enriched_players, result)
+    substitute_out = (
+        (await _enrich_with_scores([substitute_player], for_date=night))[0]
+        if substitute_player is not None else None
+    )
 
     return GlobalLeagueSelectionResponse(
         night_number=await global_night_number(night),
@@ -200,6 +211,8 @@ async def _build_response(
         lineup_state=lineup_state,
         weekly_rank=weekly_rank,
         monthly_rank=monthly_rank,
+        substitute_player=substitute_out,
+        substitution=describe(result),
     )
 
 
@@ -267,7 +280,7 @@ async def _global_total_for_user(
     )
     if not sel:
         return 0.0
-    return await _today_total_points(sel.selected_players)
+    return await _today_total_points(await counted_starters(sel, nba_date, closing=False))
 
 
 async def _global_selection_items(
@@ -276,9 +289,11 @@ async def _global_selection_items(
     match_day: int,
     nba_date: date,
     include_selection: bool,
-) -> list[dict]:
+) -> tuple[list[dict], dict | None, dict | None]:
+    """(starters, substitute, substitution) of a night being played: the
+    substitute only comes in once every game of the lineup is final."""
     if not include_selection:
-        return []
+        return [], None, None
 
     sel = await FlutterPlayerSelection.find_one(
         FlutterPlayerSelection.user_id == user_id,
@@ -286,10 +301,9 @@ async def _global_selection_items(
         FlutterPlayerSelection.match_day == match_day,
     )
     if not sel:
-        return []
+        return [], None, None
 
-    items: list[dict] = []
-    for p in sel.selected_players:
+    async def _item(p: dict) -> dict:
         score = 0
         raw_id = p.get("id", "")
         try:
@@ -303,13 +317,22 @@ async def _global_selection_items(
                 score = int(round(stats.fantasy_score))
         except Exception:
             pass
-        items.append({
+        return {
             "id": raw_id,
             "name": p.get("name", ""),
             "position": p.get("position", ""),
             "score": score,
-        })
-    return items
+        }
+
+    items = [await _item(p) for p in sel.selected_players]
+    if sel.substitute_player is None:
+        return items, None, None
+
+    result = await resolve_substitution(
+        sel.selected_players, sel.substitute_player, nba_date, closing=False
+    )
+    mark_absent(items, result)
+    return items, await _item(sel.substitute_player), describe(result)
 
 
 async def _composing_night() -> date:
@@ -364,7 +387,9 @@ async def get_global_selection(
     if not doc:
         return await _build_response(league, [], current_user.id)
 
-    return await _build_response(league, doc.selected_players, current_user.id)
+    return await _build_response(
+        league, doc.selected_players, current_user.id, doc.substitute_player
+    )
 
 
 @router.post(
@@ -433,7 +458,9 @@ async def post_global_selection(
         )
         await doc.insert()
 
-    return await _build_response(league, doc.selected_players, current_user.id)
+    return await _build_response(
+        league, doc.selected_players, current_user.id, doc.substitute_player
+    )
 
 
 @router.get(
@@ -469,7 +496,7 @@ async def get_global_match_result(
             nba_date,
             use_archive,
         )
-        selection_items = await _global_selection_items(
+        selection_items, substitute_item, substitution = await _global_selection_items(
             membership.user_id,
             league.auto_id or 0,
             match_day,
@@ -483,6 +510,8 @@ async def get_global_match_result(
             "username": user.full_name or display_name,
             "total_points": int(round(total)),
             "selection": selection_items,
+            "substitute": substitute_item,
+            "substitution": substitution,
         })
 
     player_scores.sort(key=lambda item: item["total_points"], reverse=True)
@@ -622,11 +651,24 @@ async def get_global_leaderboard_team_detail(
     selected_players = selection_doc.selected_players if selection_doc else []
     enriched = await _enrich_with_scores(selected_players, for_date=last_score.nba_date)
 
+    substitute_out = substitution = None
+    if selection_doc is not None and selection_doc.substitute_player is not None:
+        result = await resolve_substitution(
+            selected_players, selection_doc.substitute_player, last_score.nba_date, closing=True
+        )
+        mark_absent(enriched, result)
+        substitute_out = (
+            await _enrich_with_scores([selection_doc.substitute_player], for_date=last_score.nba_date)
+        )[0]
+        substitution = describe(result)
+
     return GlobalTeamDetailResponse(
         team_name=display_name,
         nba_date=str(last_score.nba_date),
         total_points=int(round(last_score.total_points)),
         selected_players=enriched,
+        substitute_player=substitute_out,
+        substitution=substitution,
     )
 
 
@@ -687,10 +729,13 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
     )
 
     items: list[dict] = []
+    substitute_item: dict | None = None
+    substitution: dict | None = None
     stats_settled = True
     if sel:
+        sub = getattr(sel, "substitute_player", None)
         ids = []
-        for p in sel.selected_players:
+        for p in sel.selected_players + ([sub] if sub else []):
             try:
                 ids.append(PydanticObjectId(p.get("id", "")))
             except Exception:
@@ -707,14 +752,23 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
         # and that must not blank the player out.
         stats_settled = all(s.score_computed for s in stats)
         by_player = {s.player_id: s for s in stats}
-        for p, pid in zip(sel.selected_players, ids):
+
+        def _night_item(p: dict, pid) -> dict:
             st = by_player.get(pid) if pid else None
-            items.append({
+            return {
                 "id": p.get("id", ""),
                 "name": p.get("name", ""),
                 "position": p.get("position", ""),
                 "score": int(round(st.fantasy_score)) if st and st.fantasy_score is not None else 0,
-            })
+            }
+
+        for p, pid in zip(sel.selected_players, ids):
+            items.append(_night_item(p, pid))
+        if sub is not None:
+            result = await resolve_substitution(sel.selected_players, sub, night, closing=True)
+            mark_absent(items, result)
+            substitute_item = _night_item(sub, ids[len(sel.selected_players)])
+            substitution = describe(result)
 
     # No lineup that night = 0 points, never a weekly/monthly total.
     payload = {
@@ -723,6 +777,9 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
         "total_points": int(round(score.total_points)) if score and sel else 0,
         "selection": items,
     }
+    if substitution is not None:           # only lineups that have a substitute
+        payload["substitute"] = substitute_item
+        payload["substitution"] = substitution
     # Only a closed night with settled stats is kept: a payload computed while
     # the close is running (or a box score is being re-synced) is served but
     # never stored.

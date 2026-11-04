@@ -367,6 +367,7 @@ class PlayerSelectionItem(BaseSchema):
     position: str = ""
     score: int = 0
     is_sixth_man: bool = False
+    absent: bool = False        # starter replaced by the substitute (shown greyed)
 
 
 class PlayerScoreItem(BaseSchema):
@@ -383,6 +384,10 @@ class PlayerScoreItem(BaseSchema):
     bonus: str | None = None    # sixth_man | chef_curry | luxury_tax | None (none used)
     bonus_hidden: bool = False  # opponent's bonus, revealed with the results
     selection_hidden: bool = False  # opponent's lineup, revealed at tip-off
+    # Substitute (lineup rule, not a bonus): his line, and the state of the
+    # substitution (status none|pending|not_entered|entered, replaced_id).
+    substitute: PlayerSelectionItem | None = None
+    substitution: dict | None = None
 
 
 class MatchPairItem(BaseSchema):
@@ -699,6 +704,11 @@ class GlobalLeagueSelectionResponse(BaseSchema):
     weekly_rank: int | None = None
     monthly_rank: int | None = None
 
+    # Substitute (lineup rule): his player with today's points, and the state of
+    # the substitution. None for a lineup without a substitute.
+    substitute_player: dict | None = None
+    substitution: dict | None = None
+
 
 class GlobalLeaderboardEntry(BaseSchema):
     rank: int
@@ -734,3 +744,5 @@ class GlobalTeamDetailResponse(BaseSchema):
     nba_date: str | None = None   # None if this player has never played a night yet
     total_points: int = 0
     selected_players: list[dict] = []
+    substitute_player: dict | None = None
+    substitution: dict | None = None
