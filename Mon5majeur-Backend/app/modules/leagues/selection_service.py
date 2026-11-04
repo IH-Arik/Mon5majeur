@@ -9,7 +9,9 @@ from beanie import PydanticObjectId
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.leagues.positions import can_fill_lineup
-from app.modules.leagues.substitution_service import counted_starters
+from app.modules.leagues.substitution_service import (
+    counted_starters, describe, mark_absent, resolve_substitution,
+)
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.users.model import User
@@ -43,16 +45,23 @@ async def score_selection_for_date(selected_players: list[dict], nba_date: date)
 
 
 def total_from_scores(
-    sel: FlutterPlayerSelection, scores_by_player: dict, with_chef_curry: bool = True
+    sel: FlutterPlayerSelection,
+    scores_by_player: dict,
+    with_chef_curry: bool = True,
+    starters: list[dict] | None = None,
 ) -> float:
     """Same rule as score_full_selection, from scores already loaded (one query
     for the whole match day instead of one per player): 6th man = best 5 of 6,
     Chef Curry = +3. with_chef_curry=False leaves the +3 out, for a total shown
-    to someone who may not know about the bonus yet."""
+    to someone who may not know about the bonus yet.
+
+    ``starters`` is the five that count once the substitute is applied (see
+    substitution_service); the default is the five saved starters, so a lineup
+    without a substitute is scored exactly as before."""
     def one(p: dict) -> float:
         return scores_by_player.get(str(p.get("id", "")), 0.0)
 
-    scores = [one(p) for p in sel.selected_players]
+    scores = [one(p) for p in (sel.selected_players if starters is None else starters)]
     if sel.sixth_man_player is not None:
         scores.append(one(sel.sixth_man_player))
         scores = sorted(scores, reverse=True)[:5]
@@ -522,7 +531,10 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
     sel_by_user = {d.user_id: d for d in sel_docs}
     pids: set = set()
     for d in sel_docs:
-        for p in d.selected_players + ([d.sixth_man_player] if d.sixth_man_player else []):
+        extra = [d.sixth_man_player] if d.sixth_man_player else []
+        if getattr(d, "substitute_player", None):
+            extra.append(d.substitute_player)
+        for p in d.selected_players + extra:
             try:
                 pids.add(PydanticObjectId(str(p.get("id", ""))))
             except Exception:
@@ -552,6 +564,8 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
         sel_doc = sel_by_user.get(user_oid)
 
         selection_items: list[dict] = []
+        substitute_item: dict | None = None
+        substitution: dict | None = None
         total = 0
         bonus: str | None = None
         bonus_hidden = False
@@ -568,6 +582,16 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
                 real_bonus = None
 
             selection_hidden = not is_me and not started
+
+            # Substitute: decided with the close rule once the day is published,
+            # with the live rule (every game final) before. Same function as the
+            # duel close, so both give the same total.
+            sub_result = None
+            if getattr(sel_doc, "substitute_player", None) is not None:
+                sub_result = await resolve_substitution(
+                    sel_doc.selected_players, sel_doc.substitute_player, nba_date,
+                    closing=published, user_id=user_oid,
+                )
             if is_me or published:
                 bonus = real_bonus
             elif real_bonus == "sixth_man" and started:
@@ -592,6 +616,10 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
                 selection_items = starters
                 if sel_doc.sixth_man_player is not None:
                     selection_items.append(await _item(sel_doc.sixth_man_player, True))
+                if sub_result is not None:
+                    mark_absent(selection_items, sub_result)
+                    substitute_item = await _item(sel_doc.substitute_player, False)
+                    substitution = describe(sub_result)
 
             # Authoritative total: same bonus-aware calculation that decides
             # the duel (score_full_selection) — top-5-of-6 + Chef Curry, not
@@ -604,6 +632,7 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             # scores read this same total.
             total = int(round(total_from_scores(
                 sel_doc, scores_by_player, with_chef_curry=is_me or published,
+                starters=sub_result.starters if sub_result is not None else None,
             )))
 
         # An opponent's bonus stays secret until the results are published -
@@ -625,6 +654,8 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             "bonus": bonus,
             "bonus_hidden": bonus_hidden,
             "selection_hidden": selection_hidden,
+            "substitute": substitute_item,
+            "substitution": substitution,
         })
 
     # Build pairs from each LeagueMatch
@@ -665,6 +696,8 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
             ps["total_points"] = 0
             for item in ps["selection"]:
                 item["score"] = 0
+            if ps.get("substitute"):
+                ps["substitute"]["score"] = 0
         for pr in pairs:
             pr["score_a"] = 0
             pr["score_b"] = 0

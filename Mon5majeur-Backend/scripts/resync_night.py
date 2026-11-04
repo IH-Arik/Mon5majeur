@@ -72,6 +72,7 @@ async def _diff(night: date) -> list[dict]:
 
 async def _duel_totals(night: date, new_fp: dict) -> list[str]:
     from app.modules.leagues.selection_service import total_from_scores
+    from app.modules.leagues.substitution_service import counted_starters
 
     lines = []
     matches = await LeagueMatch.find(LeagueMatch.nba_date == night).to_list()
@@ -89,7 +90,10 @@ async def _duel_totals(night: date, new_fp: dict) -> list[str]:
                 FlutterPlayerSelection.league_auto_id == league.auto_id,
                 FlutterPlayerSelection.match_day == m.match_day,
             )
-            return total_from_scores(sel, scores) if sel else 0.0
+            if not sel:
+                return 0.0
+            # the substitute is decided on the stored minutes, like the 09:00 close
+            return total_from_scores(sel, scores, starters=await counted_starters(sel, night))
 
         old = (await total(m.home_user_id, before), await total(m.away_user_id, before))
         new = (await total(m.home_user_id, after), await total(m.away_user_id, after))
