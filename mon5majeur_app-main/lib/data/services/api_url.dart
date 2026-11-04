@@ -1,8 +1,39 @@
+import 'package:flutter/foundation.dart';
+
 // Update api_url.dart
 class ApiUrl {
-  static const baseUrl = "https://api.mon5majeur.com"; // Production
-  // Dev: ngrok tunnel → localhost:8000
-  // static const baseUrl = "https://energize-dyslexic-frisbee.ngrok-free.dev";
+  /// The production server. A release build MUST point here (see
+  /// [assertSafeForRelease]); anything else is for local testing only.
+  static const productionBaseUrl = "https://api.mon5majeur.com";
+
+  /// Production unless the app is started with
+  /// `--dart-define=API_BASE_URL=http://127.0.0.1:8000` (iOS simulator) or
+  /// `http://10.0.2.2:8000` (Android emulator). Without the define, nothing
+  /// changes: this is the production address.
+  static const baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: productionBaseUrl,
+  );
+
+  /// True when the app talks to the production server.
+  static bool get isProduction => isProductionUrl(baseUrl);
+
+  static bool isProductionUrl(String url) => url == productionBaseUrl;
+
+  /// A release build that does not point at production refuses to start: a
+  /// store build can never ship with a test server address. Exact comparison on
+  /// purpose (no trailing slash, no http, no other host).
+  static void assertSafeForRelease({
+    String url = baseUrl,
+    bool isRelease = kReleaseMode,
+  }) {
+    if (isRelease && !isProductionUrl(url)) {
+      throw StateError(
+        'Refusing to start: a release build must use $productionBaseUrl '
+        '(API_BASE_URL is "$url").',
+      );
+    }
+  }
 
   static const imageBaseUrl = baseUrl;
 

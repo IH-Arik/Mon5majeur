@@ -1,6 +1,7 @@
 // lib/data/models/live_score_model.dart
 // Matches backend LivePlayerScore / LiveMatchScore / LiveGlobalScore
 // (app/modules/live_scores/schema.py).
+import 'substitution_model.dart';
 
 class LivePlayerScore {
   final String playerId;
@@ -21,6 +22,9 @@ class LivePlayerScore {
   final bool isFinalized;
   // False only for the dropped 6th-Man score (spec §4.4: top 5 of 6 count).
   final bool isCounted;
+  // A starter the substitute replaced (greyed, "absent"). Never set before
+  // every game of the lineup is final.
+  final bool isAbsent;
 
   LivePlayerScore({
     required this.playerId,
@@ -38,6 +42,7 @@ class LivePlayerScore {
     required this.fantasyScoreLive,
     required this.isFinalized,
     required this.isCounted,
+    this.isAbsent = false,
   });
 
   factory LivePlayerScore.fromJson(Map<String, dynamic> json) {
@@ -57,10 +62,12 @@ class LivePlayerScore {
       fantasyScoreLive: (json['fantasy_score_live'] as num?)?.toDouble() ?? 0.0,
       isFinalized: json['is_finalized'] as bool? ?? false,
       isCounted: json['is_counted'] as bool? ?? true,
+      isAbsent: json['is_absent'] as bool? ?? false,
     );
   }
 
   bool get isSixthMan => slot == 'SIXTH_MAN';
+  bool get isSubstitute => slot == 'SUBSTITUTE';
 }
 
 class LiveMatchScore {
@@ -88,6 +95,12 @@ class LiveMatchScore {
 
   final List<LivePlayerScore> homePlayers;
   final List<LivePlayerScore> awayPlayers;
+  // Each team's substitute and what became of him. Null without one, for an
+  // opponent before the first tip-off, and with an older server.
+  final LivePlayerScore? homeSubstitute;
+  final LivePlayerScore? awaySubstitute;
+  final SubstitutionState? homeSubstitution;
+  final SubstitutionState? awaySubstitution;
 
   final bool isStale;
   final DateTime refreshedAt;
@@ -111,6 +124,10 @@ class LiveMatchScore {
     this.hasLiveGames = false,
     required this.homePlayers,
     required this.awayPlayers,
+    this.homeSubstitute,
+    this.awaySubstitute,
+    this.homeSubstitution,
+    this.awaySubstitution,
     required this.isStale,
     required this.refreshedAt,
   });
@@ -145,6 +162,10 @@ class LiveMatchScore {
               ?.map((e) => LivePlayerScore.fromJson(e))
               .toList() ??
           [],
+      homeSubstitute: _liveSubstitute(json['home_substitute']),
+      awaySubstitute: _liveSubstitute(json['away_substitute']),
+      homeSubstitution: SubstitutionState.fromJson(json['home_substitution']),
+      awaySubstitution: SubstitutionState.fromJson(json['away_substitution']),
       isStale: json['is_stale'] as bool? ?? false,
       refreshedAt:
           DateTime.tryParse(json['refreshed_at'] ?? '') ?? DateTime.now(),
@@ -152,11 +173,16 @@ class LiveMatchScore {
   }
 }
 
+LivePlayerScore? _liveSubstitute(dynamic json) =>
+    json is Map<String, dynamic> ? LivePlayerScore.fromJson(json) : null;
+
 class LiveGlobalScore {
   final String leagueId;
   final String leagueName;
   final double totalScore;
   final List<LivePlayerScore> players;
+  final LivePlayerScore? substitute;
+  final SubstitutionState? substitution;
   // Any NBA game in progress right now. Defaults to true when an older
   // backend does not send it, so data is never hidden by mistake.
   final bool hasLiveGames;
@@ -168,6 +194,8 @@ class LiveGlobalScore {
     required this.leagueName,
     required this.totalScore,
     required this.players,
+    this.substitute,
+    this.substitution,
     this.hasLiveGames = true,
     required this.isStale,
     required this.refreshedAt,
@@ -183,6 +211,8 @@ class LiveGlobalScore {
               ?.map((e) => LivePlayerScore.fromJson(e))
               .toList() ??
           [],
+      substitute: _liveSubstitute(json['substitute']),
+      substitution: SubstitutionState.fromJson(json['substitution']),
       hasLiveGames: json['has_live_games'] as bool? ?? true,
       isStale: json['is_stale'] as bool? ?? false,
       refreshedAt:

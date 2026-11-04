@@ -6,6 +6,8 @@ import '../core/utils/team_save_error.dart';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 import '../data/models/player.dart';
+import '../data/models/substitution_model.dart';
+import '../core/utils/lineup_request.dart';
 import '../data/services/api_service.dart';
 import '../data/services/api_url.dart';
 
@@ -38,6 +40,10 @@ class GlobalLeagueSelection {
   // World League night number since the season opening (Arik QA item 11);
   // null with an older server.
   final int? nightNumber;
+  // The substitute (a lineup rule, not a bonus) with today's points, and what
+  // became of him. Null for a lineup without one and with an older server.
+  final Player? substitutePlayer;
+  final SubstitutionState? substitution;
 
   GlobalLeagueSelection({
     required this.matchDay,
@@ -50,6 +56,8 @@ class GlobalLeagueSelection {
     this.weeklyRank,
     this.monthlyRank,
     this.nightNumber,
+    this.substitutePlayer,
+    this.substitution,
   }) : _lockAtReceipt = lockInSeconds;
 
   factory GlobalLeagueSelection.fromJson(Map<String, dynamic> json) {
@@ -68,6 +76,10 @@ class GlobalLeagueSelection {
       weeklyRank: json['weekly_rank'],
       monthlyRank: json['monthly_rank'],
       nightNumber: (json['night_number'] as num?)?.toInt(),
+      substitutePlayer: json['substitute_player'] is Map<String, dynamic>
+          ? Player.fromJson(json['substitute_player'] as Map<String, dynamic>)
+          : null,
+      substitution: SubstitutionState.fromJson(json['substitution']),
     );
   }
 
@@ -82,6 +94,8 @@ class GlobalLeagueSelection {
       'lock_in_seconds': lockInSeconds,
       'weekly_rank': weeklyRank,
       'monthly_rank': monthlyRank,
+      if (substitutePlayer != null)
+        'substitute_player': substitutePlayer!.toJson(),
     };
   }
 
@@ -278,7 +292,15 @@ class GlobalLeagueController extends GetxController {
   }
 
   /// Submit/Update player selection to global league
-  Future<bool> submitPlayerSelection(List<Player> players) async {
+  ///
+  /// [sendSubstitute] false (default) leaves the substitute out of the request,
+  /// so the server keeps the one it has; true sends [substitute], and a null
+  /// [substitute] removes it (see substituteRequestField).
+  Future<bool> submitPlayerSelection(
+    List<Player> players, {
+    Player? substitute,
+    bool sendSubstitute = false,
+  }) async {
     if (isSaving.value) return false;
 
     isSaving.value = true;
@@ -303,6 +325,7 @@ class GlobalLeagueController extends GetxController {
         'selected_players': players
             .map((player) => player.toApiJson())
             .toList(),
+        ...substituteRequestField(substitute, send: sendSubstitute),
       };
 
       final response = await apiClient.post(

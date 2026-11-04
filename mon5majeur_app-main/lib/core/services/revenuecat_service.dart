@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logger/logger.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../../data/services/api_url.dart';
 import '../constants/api_constants.dart';
 import '../local_db/local_db.dart';
 
@@ -19,8 +20,30 @@ import '../local_db/local_db.dart';
 final _log = Logger(printer: PrettyPrinter(methodCount: 0));
 
 class RevenueCatService {
-  RevenueCatService._();
+  RevenueCatService._() : _baseUrl = ApiUrl.baseUrl;
+
+  /// Only for tests: a service that believes the app talks to [baseUrl].
+  @visibleForTesting
+  RevenueCatService.forBaseUrl(String baseUrl) : _baseUrl = baseUrl;
+
   static final RevenueCatService instance = RevenueCatService._();
+
+  final String _baseUrl;
+
+  /// RevenueCat is used only when the app talks to the production server. A test
+  /// build pointed at a local backend must not create or identify customers in
+  /// the real RevenueCat project (anonymous users, backend ids of test accounts).
+  static bool isEnabledFor(String baseUrl) => ApiUrl.isProductionUrl(baseUrl);
+
+  bool get enabled => isEnabledFor(_baseUrl);
+
+  void _ensureEnabled() {
+    if (!enabled) {
+      throw StateError(
+        'RevenueCat is switched off: the server is $_baseUrl, not production.',
+      );
+    }
+  }
 
   // ── API keys ──────────────────────────────────────────────────────────────
   static const _appleApiKey = 'appl_KAyxZwXTxwQrOmZozDfmKWyuvQW';
@@ -31,6 +54,10 @@ class RevenueCatService {
 
   // ── Init ───────────────────────────────────────────────────────────────────
   Future<void> init({String? googleApiKey}) async {
+    if (!enabled) {
+      _log.w('RevenueCat is switched off: the server is $_baseUrl, not production');
+      return;
+    }
     if (_initialized) return;
 
     await Purchases.setLogLevel(LogLevel.debug);
@@ -59,6 +86,7 @@ class RevenueCatService {
   /// Call after successful login / registration so RevenueCat links the
   /// subscription history to the backend user id.
   Future<void> loginUser() async {
+    if (!enabled) return;
     final userId = await SharedPrefsHelper.getString(AppConstants.userId);
     if (userId.isNotEmpty) {
       final result = await Purchases.logIn(userId);
@@ -71,6 +99,7 @@ class RevenueCatService {
 
   /// Call on logout so a new anonymous ID is created.
   Future<void> logoutUser() async {
+    if (!enabled) return;
     if (await Purchases.isAnonymous) return;
     await Purchases.logOut();
     _log.i('🔓 RevenueCat user logged out');
@@ -78,6 +107,7 @@ class RevenueCatService {
 
   // ── Offerings ─────────────────────────────────────────────────────────────
   Future<Offerings> fetchOfferings() async {
+    _ensureEnabled();
     final offerings = await Purchases.getOfferings();
     _log.i('📦 Offerings fetched — ${offerings.all.length} offering(s)');
     return offerings;
@@ -88,6 +118,7 @@ class RevenueCatService {
   /// completed [PurchaseResult] after a successful transaction, or null if
   /// the user cancelled.
   Future<CustomerInfo?> purchasePackage(Package package) async {
+    _ensureEnabled();
     try {
       final result = await Purchases.purchase(
         PurchaseParams.package(package),
@@ -110,6 +141,7 @@ class RevenueCatService {
     List<String> productIdentifiers, {
     ProductCategory productCategory = ProductCategory.nonSubscription,
   }) async {
+    _ensureEnabled();
     try {
       var products = await Purchases.getProducts(
         productIdentifiers,
@@ -141,6 +173,7 @@ class RevenueCatService {
 
   /// Triggers the native payment sheet for a StoreProduct directly.
   Future<CustomerInfo?> purchaseStoreProduct(StoreProduct product) async {
+    _ensureEnabled();
     try {
       final result = await Purchases.purchase(
         PurchaseParams.storeProduct(product),
@@ -160,6 +193,7 @@ class RevenueCatService {
 
   // ── Restore ───────────────────────────────────────────────────────────────
   Future<CustomerInfo> restorePurchases() async {
+    _ensureEnabled();
     final info = await Purchases.restorePurchases();
     _log.i('♻️ Purchases restored');
     return info;
@@ -167,6 +201,7 @@ class RevenueCatService {
 
   // ── Customer Info ─────────────────────────────────────────────────────────
   Future<CustomerInfo> getCustomerInfo() async {
+    _ensureEnabled();
     return await Purchases.getCustomerInfo();
   }
 }

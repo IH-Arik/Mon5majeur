@@ -1,4 +1,6 @@
 // lib/data/models/match_result_model.dart
+import 'substitution_model.dart';
+
 class MatchResultModel {
   final int id;
   final int leagueId;
@@ -69,6 +71,11 @@ class PlayerScore {
   final String? bonus; // sixth_man | chef_curry | luxury_tax | null = none used
   final bool bonusHidden; // opponent's bonus, revealed with the results
   final bool selectionHidden; // opponent's lineup, revealed at tip-off
+  // The substitute (a lineup rule, not a bonus) and what became of him. Both
+  // null for a lineup without one, for an opponent before the first tip-off,
+  // and with an older server.
+  final PlayerSelection? substitute;
+  final SubstitutionState? substitution;
 
   PlayerScore({
     required this.playerId,
@@ -82,6 +89,8 @@ class PlayerScore {
     this.bonus,
     this.bonusHidden = false,
     this.selectionHidden = false,
+    this.substitute,
+    this.substitution,
   });
 
   factory PlayerScore.fromJson(Map<String, dynamic> json) {
@@ -103,6 +112,10 @@ class PlayerScore {
       bonus: json['bonus'],
       bonusHidden: json['bonus_hidden'] ?? false,
       selectionHidden: json['selection_hidden'] ?? false,
+      substitute: json['substitute'] is Map<String, dynamic>
+          ? PlayerSelection.fromJson(json['substitute'] as Map<String, dynamic>)
+          : null,
+      substitution: SubstitutionState.fromJson(json['substitution']),
     );
   }
 }
@@ -113,6 +126,8 @@ class PlayerSelection {
   final String position;
   final int score;
   final bool isSixthMan;
+  // A starter the substitute replaced: shown greyed, "absent".
+  final bool absent;
 
   PlayerSelection({
     required this.id,
@@ -120,6 +135,7 @@ class PlayerSelection {
     required this.position,
     required this.score,
     this.isSixthMan = false,
+    this.absent = false,
   });
 
   factory PlayerSelection.fromJson(Map<String, dynamic> json) {
@@ -131,6 +147,7 @@ class PlayerSelection {
       // an int throws (double is not a subtype of int); coerce via num.
       score: (json['score'] as num?)?.round() ?? 0,
       isSixthMan: json['is_sixth_man'] ?? false,
+      absent: json['absent'] ?? false,
     );
   }
 }

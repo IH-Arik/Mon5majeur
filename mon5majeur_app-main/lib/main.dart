@@ -15,8 +15,10 @@ import 'core/constants/app_strings.dart';
 import 'core/routes/routes.dart';
 import 'core/language/language_controller.dart';
 import 'core/dependency_injection/getx_injection.dart';
+import 'core/services/analytics_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/revenuecat_service.dart';
+import 'data/services/api_url.dart';
 import 'firebase_options.dart';
 
 /// =======================================
@@ -36,10 +38,16 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // A release build that does not point at the production server stops here,
+  // before anything else starts.
+  ApiUrl.assertSafeForRelease();
+
   // Initialize SharedPreferences
   await SharedPreferences.getInstance();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // No usage statistics unless the app talks to the production server.
+  await AnalyticsService.configureForEnvironment();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   // Counts launches (the notification explainer's safety net starts at the
   // 2nd). The token itself is synced once the session is confirmed (splash /
