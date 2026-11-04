@@ -104,6 +104,19 @@ def run(monkeypatch, *, selected, substitute, stats):
         monkeypatch.setattr(mod, "PlayerGameStats", Stats)
     monkeypatch.setattr(ss, "PlayerGameStats", Stats)
 
+    class NoGames:                      # only read by the close-time warning trace
+        nba_date = _F()
+
+        @staticmethod
+        def find(*_):
+            async def to_list():
+                return []
+
+            return SimpleNamespace(to_list=to_list)
+
+    monkeypatch.setattr(ss, "NBAGame", NoGames)
+    monkeypatch.setattr(ss, "Player", NoGames)
+
     asyncio.run(gss.archive_daily_scores(NIGHT))
     assert len(inserted) == 1
     return inserted[0].total_points, queries["stats_find"]

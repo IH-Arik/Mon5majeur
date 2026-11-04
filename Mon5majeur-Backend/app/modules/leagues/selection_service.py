@@ -9,6 +9,7 @@ from beanie import PydanticObjectId
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.leagues.positions import can_fill_lineup
+from app.modules.leagues.substitution_service import counted_starters
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.users.model import User
@@ -78,8 +79,14 @@ async def score_full_selection(sel: FlutterPlayerSelection, nba_date: date) -> f
     """Duel score including strategic bonuses (spec §4.4):
     6th Man = top 5 of 6 (starters + the 6th man, best 5 counted);
     Chef Curry = +3 applied after summing the 5 counted scores.
-    Luxury Tax doesn't appear here — it only affects the selection budget."""
-    scores = [await _score_one_player(p.get("id"), nba_date) for p in sel.selected_players]
+    Luxury Tax doesn't appear here — it only affects the selection budget.
+
+    The substitute (a lineup rule, not a bonus) comes FIRST: the starter he
+    replaces drops out and he takes his place, and only then does the 6th Man
+    rule keep the best 5 of 6. Chef Curry's +3 belongs to the match and is
+    unaffected by who played."""
+    starters = await counted_starters(sel, nba_date)
+    scores = [await _score_one_player(p.get("id"), nba_date) for p in starters]
 
     if sel.sixth_man_player is not None:
         scores.append(await _score_one_player(sel.sixth_man_player.get("id"), nba_date))
