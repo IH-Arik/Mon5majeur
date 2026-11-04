@@ -100,6 +100,43 @@ async def _warn_if_decided_on_unfinished_game(
     )
 
 
+async def _warn_if_decided_on_missing_row(
+    result: SubstitutionResult, minutes: dict, nba_date: date, user_id
+) -> None:
+    """At the close, a replacement that rests on the ABSENCE of a stats row (not
+    on a row with 0 minute) while the starter's game is final. Usually the player
+    was simply not in the box score, but a data gap would look the same, so the
+    log gives the team's number of stats rows that night: a team with none at all
+    stands out. Only a trace, never an alert, and it can never fail the close."""
+    if result.status != ENTERED:
+        return
+    rid = str(result.replaced.get("id", ""))
+    if rid in minutes:                         # a row exists (even at 0 minute): nothing unusual
+        return
+    try:
+        statuses = await _game_statuses([result.replaced], nba_date) or {}
+        if statuses.get(rid) != "final":       # an unfinished game has its own trace
+            return
+        player = await Player.get(PydanticObjectId(rid))
+        team = player.team_name if player else None
+        rows = 0
+        if team:
+            mates = await Player.find({"team_name": team}).to_list()
+            found = await PlayerGameStats.find(
+                {"player_id": {"$in": [m.id for m in mates]},
+                 "nba_date": datetime.combine(nba_date, datetime.min.time())}
+            ).to_list()
+            rows = len(found)
+    except Exception:  # noqa: BLE001
+        logger.debug("missing-row trace skipped: lookup failed", exc_info=True)
+        return
+    logger.warning(
+        "Substitution rests on a missing stats row although the game is final: "
+        "user=%s night=%s starter=%s (%s) team=%s team_stat_rows=%d",
+        user_id, nba_date, rid, result.replaced.get("name", ""), team or "unknown", rows,
+    )
+
+
 async def resolve_substitution(
     selected_players: list[dict],
     substitute: dict | None,
@@ -116,6 +153,7 @@ async def resolve_substitution(
     result = apply_substitution(selected_players, substitute, minutes, settled=settled)
     if closing:
         await _warn_if_decided_on_unfinished_game(result, nba_date, user_id)
+        await _warn_if_decided_on_missing_row(result, minutes, nba_date, user_id)
     return result
 
 
