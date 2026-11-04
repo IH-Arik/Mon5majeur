@@ -165,6 +165,8 @@ async def post_public_players_selection(
         luxury_tax=payload.luxury_tax,
         chef_curry=payload.chef_curry,
         sixth_man_player=payload.sixth_man_player,
+        substitute_player=payload.substitute_player,
+        substitute_provided="substitute_player" in payload.model_fields_set,
     )
     return PlayersSelectionPostResponse(**data)
 

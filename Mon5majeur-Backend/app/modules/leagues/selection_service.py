@@ -9,6 +9,7 @@ from beanie import PydanticObjectId
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.leagues.positions import can_fill_lineup
+from app.modules.leagues.substitution_save import prepare_substitute
 from app.modules.leagues.substitution_service import (
     counted_starters, describe, mark_absent, resolve_substitution,
 )
@@ -183,6 +184,7 @@ async def get_player_selection(
         "luxury_tax": doc.luxury_tax if doc else False,
         "chef_curry": doc.chef_curry if doc else False,
         "sixth_man_player": doc.sixth_man_player if doc else None,
+        "substitute_player": doc.substitute_player if doc else None,
     }
 
 
@@ -306,6 +308,8 @@ async def save_player_selection(
     luxury_tax: bool = False,
     chef_curry: bool = False,
     sixth_man_player: dict | None = None,
+    substitute_player: dict | None = None,
+    substitute_provided: bool = False,
 ) -> dict:
     league = await League.find_one(League.auto_id == league_auto_id)
     if not league:
@@ -359,6 +363,18 @@ async def save_player_selection(
         FlutterPlayerSelection.match_day == match_day,
     )
 
+    # The substitute is outside the budget: validated here (price read from the
+    # database, 10M max, same checks as a starter) but never added to `used`.
+    substitute, substitute_set_at = await prepare_substitute(
+        provided=substitute_provided,
+        requested=substitute_player,
+        existing=getattr(existing, "substitute_player", None),
+        existing_set_at=getattr(existing, "substitute_set_at", None),
+        starters=selected_players,
+        sixth_man=sixth_man_player,
+        nba_date=match.nba_date,
+    )
+
     # Budget check (spec §4.1/§4.4/§4.6.3): Luxury Tax adds +5M, and — for a
     # playoff game — the seeding budget bonus from this user's frozen
     # regular-season rank (+4M/+2M/+1M/+0M for seed 1-4) adds on top.
@@ -406,6 +422,8 @@ async def save_player_selection(
             "luxury_tax": existing.luxury_tax,
             "chef_curry": existing.chef_curry,
             "sixth_man_player": existing.sixth_man_player,
+            "substitute_player": getattr(existing, "substitute_player", None),
+            "substitute_set_at": getattr(existing, "substitute_set_at", None),
         }
         if existing
         else None
@@ -418,6 +436,8 @@ async def save_player_selection(
         doc.luxury_tax = luxury_tax
         doc.chef_curry = chef_curry
         doc.sixth_man_player = sixth_man_player
+        doc.substitute_player = substitute
+        doc.substitute_set_at = substitute_set_at
         await doc.save()
     else:
         doc = await FlutterPlayerSelection(
@@ -431,6 +451,8 @@ async def save_player_selection(
             luxury_tax=luxury_tax,
             chef_curry=chef_curry,
             sixth_man_player=sixth_man_player,
+            substitute_player=substitute,
+            substitute_set_at=substitute_set_at,
         ).insert()
 
     try:

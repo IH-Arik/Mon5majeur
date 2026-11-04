@@ -440,6 +440,9 @@ class PlayersSelectionRequest(BaseSchema):
     luxury_tax: bool = False
     chef_curry: bool = False
     sixth_man_player: dict | None = None
+    # Substitute (lineup rule, not a bonus; also valid in the Global League).
+    # Absent = an older app: the saved one is kept. null = remove it.
+    substitute_player: dict | None = None
 
 
 class PlayersSelectionGetResponse(BaseSchema):
@@ -462,6 +465,7 @@ class PlayersSelectionGetResponse(BaseSchema):
     luxury_tax: bool = False
     chef_curry: bool = False
     sixth_man_player: dict | None = None
+    substitute_player: dict | None = None
 
 
 class PlayersSelectionPostResponse(BaseSchema):

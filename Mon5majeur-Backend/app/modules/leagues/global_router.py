@@ -289,9 +289,12 @@ async def _global_selection_items(
     match_day: int,
     nba_date: date,
     include_selection: bool,
+    show_substitute: bool = True,
 ) -> tuple[list[dict], dict | None, dict | None]:
     """(starters, substitute, substitution) of a night being played: the
-    substitute only comes in once every game of the lineup is final."""
+    substitute only comes in once every game of the lineup is final. Someone
+    else's substitute is lineup information and stays hidden until the first
+    tip-off (show_substitute=False)."""
     if not include_selection:
         return [], None, None
 
@@ -325,7 +328,7 @@ async def _global_selection_items(
         }
 
     items = [await _item(p) for p in sel.selected_players]
-    if sel.substitute_player is None:
+    if sel.substitute_player is None or not show_substitute:
         return items, None, None
 
     result = await resolve_substitution(
@@ -442,9 +445,25 @@ async def post_global_selection(
         payload.selected_players, night if games_tonight else None
     )
 
+    # The substitute is a lineup rule, not a bonus: allowed here. Same checks
+    # as a starter, price read from the database (10M max), outside the budget.
+    from app.modules.leagues.substitution_save import prepare_substitute
+
+    substitute, substitute_set_at = await prepare_substitute(
+        provided="substitute_player" in payload.model_fields_set,
+        requested=payload.substitute_player,
+        existing=doc.substitute_player if doc else None,
+        existing_set_at=doc.substitute_set_at if doc else None,
+        starters=payload.selected_players,
+        sixth_man=None,
+        nba_date=night if games_tonight else None,
+    )
+
     if doc:
         doc.selected_players = payload.selected_players
         doc.nba_date = night
+        doc.substitute_player = substitute
+        doc.substitute_set_at = substitute_set_at
         await doc.save()
     else:
         doc = FlutterPlayerSelection(
@@ -455,6 +474,8 @@ async def post_global_selection(
             selected_players=payload.selected_players,
             submitted_at=datetime.now(timezone.utc),
             nba_date=night,
+            substitute_player=substitute,
+            substitute_set_at=substitute_set_at,
         )
         await doc.insert()
 
@@ -485,6 +506,7 @@ async def get_global_match_result(
     user_map = {u.id: u for u in users}
 
     player_scores: list[dict] = []
+    started = await _is_locked_today()      # first tip-off of the night reached
     for membership in memberships:
         user = user_map.get(membership.user_id)
         if not user:
@@ -502,6 +524,7 @@ async def get_global_match_result(
             match_day,
             nba_date,
             include_selection=is_live_day,
+            show_substitute=started or membership.user_id == current_user.id,
         )
         display_name = user.team_name or (user.email.split("@")[0] if user.email else "Unknown")
         player_scores.append({
