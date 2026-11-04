@@ -16,6 +16,7 @@ from beanie import PydanticObjectId
 from app.core.logging import get_logger
 from app.modules.leagues.global_score_model import GlobalLeagueDailyScore
 from app.modules.leagues.model import League, LeagueMembership
+from app.modules.leagues.substitution_service import counted_starters
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.model import PlayerGameStats
 
@@ -64,7 +65,7 @@ async def archive_daily_scores(nba_date: date) -> int:
 
     count = 0
     for sel in selections:
-        score = await _score_selection(sel.selected_players, nba_date)
+        score = await _score_selection(await counted_starters(sel, nba_date), nba_date)
 
         existing = await GlobalLeagueDailyScore.find_one(
             GlobalLeagueDailyScore.user_id == sel.user_id,

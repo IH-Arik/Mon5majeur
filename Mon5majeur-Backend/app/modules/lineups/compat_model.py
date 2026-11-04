@@ -31,6 +31,14 @@ class FlutterPlayerSelection(BaseDocument):
     chef_curry: bool = False
     sixth_man_player: dict | None = None   # raw Player.toApiJson(), price ≤ 8M
 
+    # Substitute (lineup rule, NOT a bonus): outside the 100M budget, comes in
+    # for one starter of 10M+ who played 0 minute (leagues/substitution.py).
+    # None = no substitute: every lineup saved before this field existed, which
+    # therefore keeps exactly the score it had. `price` inside the dict is the
+    # reference price read from the database when the lineup was validated.
+    substitute_player: dict | None = None
+    substitute_set_at: datetime | None = None
+
     class Settings:
         name = "flutter_player_selections"
         indexes = [
