@@ -1,0 +1,15 @@
+# Throwaway MongoDB for the local simulator (iOS simulator / Android emulator).
+# Reachable ONLY from this Mac (127.0.0.1:27019); nothing else is started.
+#
+#   docker compose -f scripts/local_sim/docker-compose.local.yml up -d
+#   docker compose -f scripts/local_sim/docker-compose.local.yml down -v     # throws it away
+services:
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "127.0.0.1:27019:27017"
+    volumes:
+      - m5m_local_mongo:/data/db
+
+volumes:
+  m5m_local_mongo:
