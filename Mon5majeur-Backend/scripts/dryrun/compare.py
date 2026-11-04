@@ -58,6 +58,7 @@ async def main() -> None:
     await recompute(nights)
     diffs = await compare_with(published, nights, say)
 
+    await real_lineups_with_absent_starters(nights, say)
     await fictitious_lineups(nights, say)
 
     out = Path("dryrun_report.txt")
@@ -130,6 +131,82 @@ async def compare_with(published, nights, say):
     return diffs
 
 
+# ── Part A2 ──────────────────────────────────────────────────────────────────
+
+async def real_lineups_with_absent_starters(nights, say):
+    """Every REAL lineup that would have triggered a substitution had it had a
+    substitute: a starter of 10M+ with 0 minute, or with no stats row at all
+    (an absent player usually has no row). Also checks, on the real ids, that
+    the substitution service sees the same minutes as the stats rows."""
+    from app.modules.leagues.model import League
+    from app.modules.leagues.substitution_service import _minutes, resolve_substitution
+    from app.modules.lineups.compat_model import FlutterPlayerSelection
+    from app.modules.players.model import Player, PlayerGameStats
+
+    def price(p):
+        try:
+            return float(str(p.get("price", "0")).replace("M", ""))
+        except ValueError:
+            return 0.0
+
+    leagues = {l.auto_id: l for l in await League.find_all().to_list()}
+    names = {str(p.id): p.full_name for p in await Player.find_all().to_list()}
+    say("\n" + "=" * 78)
+    say("PART A2 - real lineups that would have triggered a substitution")
+    mismatches = seen = no_row = 0
+    found = []
+    for night in nights:
+        rows = {str(r.player_id): r for r in await PlayerGameStats.find(PlayerGameStats.nba_date == night).to_list()}
+        # a neutral hypothetical substitute: median scorer among players of <=10M who played
+        cheap = sorted(
+            (i for i, r in rows.items() if not r.did_not_play and (r.minutes_played or 0) > 0
+             and i in names and r.fantasy_score is not None),
+            key=lambda i: rows[i].fantasy_score)
+        sels = await FlutterPlayerSelection.find(FlutterPlayerSelection.nba_date == night).to_list()
+        for sel in sels:
+            starters = sel.selected_players
+            minutes = await _minutes(starters, night)             # what the real service sees
+            for p in starters:
+                pid = str(p["id"])
+                direct = None if pid not in rows else (0 if rows[pid].did_not_play else (rows[pid].minutes_played or 0))
+                seen += 1
+                no_row += direct is None
+                if direct != minutes.get(pid):
+                    mismatches += 1
+            absent = [p for p in starters if price(p) >= 10 and (minutes.get(str(p["id"])) or 0) == 0]
+            if not absent:
+                continue
+            in_lineup = {str(p["id"]) for p in starters}
+            sub_id = next((i for i in cheap if i not in in_lineup), None)
+            res = None
+            if sub_id is not None:
+                sub = {"id": sub_id, "name": names.get(sub_id, ""), "position": "", "price": "7M"}
+                res = await resolve_substitution(starters, sub, night, closing=True)
+            lg = leagues.get(sel.league_auto_id)
+            found.append((night, lg.type if lg else "?", sel.league_auto_id, str(sel.user_id)[:8], absent, minutes, rows, res, sub_id, names))
+    say(f"Check on real ids: {seen} starters looked up, {no_row} have no stats row, "
+        f"minutes seen by the service differ from the stats rows for {mismatches} of them")
+    if mismatches:
+        say("  !!! the substitution service does NOT find the minutes of some real starters")
+    by_night = {}
+    for f in found:
+        by_night.setdefault(f[0], []).append(f)
+    say(f"Real lineups with an absent 10M+ starter: {len(found)}  "
+        + "  ".join(f"{n}: {len(by_night.get(n, []))}" for n in nights))
+    for night in nights:
+        say(f"\n  --- night {night}")
+        for (_n, kind, auto_id, user, absent, minutes, rows, res, sub_id, nm) in by_night.get(night, []):
+            ab = "; ".join(
+                f"{nm.get(str(p['id']), p['id'])} {p['price']} ({'no stats row' if str(p['id']) not in rows else '0 minute'})"
+                for p in absent)
+            who = ""
+            if res is not None:
+                who = (f" -> replaced: {nm.get(str(res.replaced['id']), '?')} {res.replaced['price']}" if res.entered
+                       else f" -> {res.status}")
+            say(f"  {kind:<7} league {auto_id}  user {user}…  absent: {ab}{who}")
+    say("\n(the hypothetical substitute is the median scorer among those who played; only the rule's decision matters here)")
+
+
 # ── Part B ───────────────────────────────────────────────────────────────────
 
 async def fictitious_lineups(nights, say):
@@ -147,9 +224,25 @@ async def fictitious_lineups(nights, say):
     stats = {str(r.player_id): r for r in await PlayerGameStats.find(PlayerGameStats.nba_date == night).to_list()}
     players = {str(p.id): p for p in await Player.find({"_id": {"$in": [r.player_id for r in stats.values()]}}).to_list()}
 
+    # an absent player usually has NO stats row: take the 10M+ starters of the real
+    # lineups of that night who have none
+    missing = {}
+    for sel in await FlutterPlayerSelection.find(FlutterPlayerSelection.nba_date == night).to_list():
+        for p in sel.selected_players:
+            try:
+                if str(p["id"]) not in stats and float(str(p.get("price", "0")).replace("M", "")) >= 10:
+                    missing[str(p["id"])] = p
+            except ValueError:
+                pass
+    for extra in await Player.find({"_id": {"$in": [PydanticObjectId(i) for i in missing]}}).to_list():
+        players[str(extra.id)] = extra
+
     def minutes(pid):
-        r = stats[pid]
-        return 0 if r.did_not_play else (r.minutes_played or 0)
+        r = stats.get(pid)
+        return 0 if r is None or r.did_not_play else (r.minutes_played or 0)
+
+    def pts(pid):
+        return stats[pid].fantasy_score if pid in stats else 0
 
     def entry(pid):
         p = players[pid]
@@ -158,7 +251,8 @@ async def fictitious_lineups(nights, say):
     ids = [i for i in stats if i in players and stats[i].score_computed]
     played_high = sorted((i for i in ids if players[i].daily_price >= 10 and minutes(i) > 0),
                          key=lambda i: -stats[i].fantasy_score)
-    absent_high = [i for i in ids if players[i].daily_price >= 10 and minutes(i) == 0]
+    absent_high = [i for i in ids if players[i].daily_price >= 10 and minutes(i) == 0] + [
+        i for i in missing if i in players and players[i].daily_price >= 10]
     played_low = sorted((i for i in ids if players[i].daily_price < 10 and minutes(i) > 0),
                         key=lambda i: -stats[i].fantasy_score)
     absent_low = [i for i in ids if players[i].daily_price < 10 and minutes(i) == 0]
@@ -216,16 +310,15 @@ async def fictitious_lineups(nights, say):
 
     for label, k, user, sel, starters, sub, sixth, chef in rows:
         res = await resolve_substitution(sel.selected_players, sel.substitute_player, night, closing=True)
-        plain = sum(stats[i].fantasy_score for i in starters)
-        plain_6 = sorted([stats[i].fantasy_score for i in starters] + ([stats[sixth].fantasy_score] if sixth else []), reverse=True)[:5]
-        plain_total = round(sum(plain_6 if sixth else [stats[i].fantasy_score for i in starters]) + (3 if chef else 0), 2)
+        plain_6 = sorted([pts(i) for i in starters] + ([pts(sixth)] if sixth else []), reverse=True)[:5]
+        plain_total = round(sum(plain_6 if sixth else [pts(i) for i in starters]) + (3 if chef else 0), 2)
         duel = await LeagueMatch.find_one(LeagueMatch.league_id == league.id, LeagueMatch.match_day == k)
         glob_row = await GlobalLeagueDailyScore.find_one(
             GlobalLeagueDailyScore.user_id == user, GlobalLeagueDailyScore.nba_date == night) if glob else None
         say(f"\n[{k}] {label}")
         for i in starters:
             tag = "  <- replaced" if res.entered and str(res.replaced["id"]) == i else ""
-            say(f"      starter {players[i].full_name:<24}{players[i].daily_price:>4g}M  {minutes(i):>3} min  {stats[i].fantasy_score:>5g} pts{tag}")
+            say(f"      starter {players[i].full_name:<24}{players[i].daily_price:>4g}M  {minutes(i):>3} min  {pts(i):>5g} pts{tag}")
         say(f"      substitute {players[sub].full_name:<21}{players[sub].daily_price:>4g}M  {minutes(sub):>3} min  {stats[sub].fantasy_score:>5g} pts  -> {res.status}")
         if sixth:
             say(f"      6th Man {players[sixth].full_name:<24}{players[sixth].daily_price:>4g}M  {minutes(sixth):>3} min  {stats[sixth].fantasy_score:>5g} pts")

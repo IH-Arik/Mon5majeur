@@ -181,7 +181,9 @@ def connect():
 
 def suggest(c, days):
     """Table of recent nights to help choosing: a normal one, and one where a
-    lineup had a starter of 10M+ who played 0 minute."""
+    lineup had a starter of 10M+ who did not play. An absent player usually has
+    NO stats row at all (the box score only lists players who were on the
+    roster sheet), so "absent" = no row that night OR a row with 0 minute."""
     start = midnight(date.today() - timedelta(days=days))
     lineups = defaultdict(list)
     for d in c["flutter_player_selections"].find({"nba_date": {"$gte": start}},
@@ -191,12 +193,14 @@ def suggest(c, days):
     for night in sorted(lineups):
         games = list(c["nba_games"].find({"nba_date": night}, {"status": 1}))
         finals = sum(1 for g in games if g.get("status") == "final")
-        absent = {s["player_id"] for s in c["player_game_stats"].find(
-            {"nba_date": night, "$or": [{"minutes_played": 0}, {"did_not_play": True}]}, {"player_id": 1})}
-        absent_ids = {str(a) for a in absent}
+        played = set()
+        for r in c["player_game_stats"].find({"nba_date": night},
+                                             {"player_id": 1, "minutes_played": 1, "did_not_play": 1}):
+            if (r.get("minutes_played") or 0) > 0 and not r.get("did_not_play"):
+                played.add(str(r["player_id"]))
         hit = sum(
             1 for team in lineups[night]
-            if any(str(p.get("id")) in absent_ids and _price(p) >= 10 for p in team)
+            if any(str(p.get("id")) not in played and _price(p) >= 10 for p in team)
         )
         print(f"{night.date()!s:<12}{len(lineups[night]):>8}{f'{finals}/{len(games)}':>17}{hit:>40}")
 
