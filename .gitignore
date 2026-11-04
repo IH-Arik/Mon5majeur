@@ -7,7 +7,6 @@ Thumbs.db
 
 # IDEs and Editors
 .idea/
-.vscode/
 *.swp
 *.swo
 *.iml
@@ -64,9 +63,6 @@ Thumbs.db
 **/.fvm/
 
 # Sensitive environment files (NEVER COMMIT)
-.env
-.env*
-**/.env
 **/.env*
 !**/.env.example
 env
@@ -105,3 +101,4 @@ logs/
 mon5majeur_app-main/macos/
 mon5majeur_app-main/windows/
 public/fonts/fa-solid-600.eot
+config.bat
