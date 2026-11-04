@@ -26,6 +26,7 @@ _FIXED = {
         "On revient vers toi."
     ),
     "🏆 You won the league!": "🏆 Tu as gagné la ligue !",
+    "Change him before tip-off.": "Change-le avant le coup d'envoi.",
 }
 
 # (pattern, French template using the pattern's groups as {1}, {2} ...)
@@ -36,6 +37,7 @@ _PATTERNS = [
      "Ce soir, tu affrontes {1} : compose ton équipe 🏀"),
     (r"^🏀 Your duel vs (.+) is over — come see the result\.$",
      "🏀 Ton duel contre {1} est terminé : viens voir le résultat."),
+    (r"^Your substitute (.+) is OUT tonight$", "Ton remplaçant {1} est OUT ce soir"),
     (r"^(.+) is OUT$", "{1} est absent (OUT)"),
     (r"^Reason: (.+)\. Update your lineup before tip-off\.$",
      "Motif : {1}. Mets à jour ta composition avant le coup d'envoi."),

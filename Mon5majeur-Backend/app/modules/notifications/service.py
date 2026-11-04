@@ -110,10 +110,29 @@ class NotificationService:
                 "$or": [
                     {"selected_players.id": {"$in": [pid, player_id]}},
                     {"sixth_man_player.id": {"$in": [pid, player_id]}},
+                    {"substitute_player.id": {"$in": [pid, player_id]}},
                 ],
             }
         ).to_list()
-        recipients.extend(s.user_id for s in selections)
+
+        # Who holds him as a starter / 6th Man gets the usual alert; who holds
+        # him ONLY as the substitute gets a dedicated one (he would come in for
+        # 0 point if a starter is absent). One push per user: the usual alert
+        # wins when he is a starter in another of the user's leagues.
+        ids = {pid, str(player_id)}
+
+        def _is(p) -> bool:
+            return str((p or {}).get("id", "")) in ids
+
+        substitute_only: list = []
+        for s in selections:
+            starter = any(_is(p) for p in (getattr(s, "selected_players", None) or [])) or _is(
+                getattr(s, "sixth_man_player", None)
+            )
+            if not starter and _is(getattr(s, "substitute_player", None)):
+                substitute_only.append(s.user_id)
+            else:
+                recipients.append(s.user_id)
 
         slots = await LineupSlot.find(
             LineupSlot.player_id == player_id,
@@ -132,5 +151,17 @@ class NotificationService:
                 title=f"{player_name} is OUT",
                 body=f"Reason: {reason}. Update your lineup before tip-off.",
                 data={"type": "player_out", "player_name": player_name},
+                notification_type="player_out",
+            )
+
+        for user_id in substitute_only:
+            if user_id in notified:
+                continue
+            notified.add(user_id)
+            await self.send_push_to_user(
+                user_id=user_id,
+                title=f"Your substitute {player_name} is OUT tonight",
+                body="Change him before tip-off.",
+                data={"type": "player_out", "player_name": player_name, "role": "substitute"},
                 notification_type="player_out",
             )
