@@ -6,6 +6,10 @@ Relative ranking, not a fixed threshold: within tonight's ELIGIBLE pool
 by delta_pct gets HOT, the bottom 10% gets COLD, everyone else (including
 ineligible players) gets neutral (form=None, no badge rendered).
 
+The ranking is done separately inside each PRICE TIER (see ``PRICE_TIERS``),
+so every tier has its own HOT and COLD players instead of the badges
+landing almost only on the cheap players.
+
     recent_avg = mean of last 2 played games' Fantasy Score
     base_avg   = mean of last 5 played games' Fantasy Score
     delta_pct  = (recent_avg - base_avg) / base_avg
@@ -26,6 +30,20 @@ from datetime import date
 from app.modules.players.model import NBAGame, Player, PlayerGameStats
 
 _TOP_BOTTOM_FRACTION = 0.10
+
+# Price tiers (in M), the ONLY place the bounds live. Each entry is the
+# inclusive upper bound of a tier; the last tier is open-ended. Tier 1 = 3..10,
+# tier 2 = 11..22, tier 3 = 23 and above. Comparing against the upper bound
+# only means no price can fall between two tiers, even a non-integer one.
+PRICE_TIERS: tuple[float | None, ...] = (10, 22, None)
+
+
+def tier_index(price: float) -> int:
+    """Index in ``PRICE_TIERS`` of the tier the price belongs to."""
+    for idx, upper in enumerate(PRICE_TIERS):
+        if upper is None or price <= upper:
+            return idx
+    return len(PRICE_TIERS) - 1
 
 
 @dataclass
@@ -80,6 +98,21 @@ async def compute_and_store_form_indicators(today: date) -> int:
         delta_pct = (recent_avg - base_avg) / base_avg
         candidates.append(_Candidate(player=player, base_avg=base_avg, delta_pct=delta_pct))
 
+    updated = 0
+    for tier_candidates in _split_by_tier(candidates):
+        updated += await _apply_tier(tier_candidates)
+
+    return updated
+
+
+def _split_by_tier(candidates: list[_Candidate]) -> list[list[_Candidate]]:
+    tiers: list[list[_Candidate]] = [[] for _ in PRICE_TIERS]
+    for c in candidates:
+        tiers[tier_index(c.player.daily_price)].append(c)
+    return tiers
+
+
+async def _apply_tier(candidates: list[_Candidate]) -> int:
     # Deterministic sort: delta_pct descending; ties at the 10% boundary
     # rank the higher base_avg first (spec — an unstable order would make
     # badges flicker between recomputations).
