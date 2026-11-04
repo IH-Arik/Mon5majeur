@@ -1,0 +1,36 @@
+# Dry-run sandbox: a throwaway MongoDB and a runner on an INTERNAL network, which
+# has no route to the internet or to production. Even a wrong connection string
+# cannot reach anything but the local "dryrun-mongo".
+#
+#   docker compose -f scripts/dryrun/docker-compose.dryrun.yml up -d dryrun-mongo
+#   docker compose -f scripts/dryrun/docker-compose.dryrun.yml run --rm runner \
+#       python /app/scripts/dryrun/restore_local.py /export
+#   docker compose -f scripts/dryrun/docker-compose.dryrun.yml run --rm runner \
+#       python /app/scripts/dryrun/compare.py
+#   docker compose -f scripts/dryrun/docker-compose.dryrun.yml down -v      # throws everything away
+services:
+  dryrun-mongo:
+    image: mongo:6.0
+    networks: [dryrun]
+    volumes: [dryrun_mongo_data:/data/db]
+
+  runner:
+    build:
+      context: ../..                  # Mon5majeur-Backend/ (the code of THIS branch)
+      dockerfile: scripts/dryrun/Dockerfile.dryrun   # not the production Dockerfile
+    networks: [dryrun]
+    depends_on: [dryrun-mongo]
+    environment:
+      MONGODB_URI: mongodb://dryrun-mongo:27017
+      MONGODB_DB_NAME: dryrun_m5m
+      SECRET_KEY: dry-run-not-a-secret-0123456789abcdef
+      ENABLE_SCHEDULER: "false"
+    volumes:
+      - ./export:/export:ro           # the folder created by export_nights.py
+
+networks:
+  dryrun:
+    internal: true                    # no outbound traffic at all
+
+volumes:
+  dryrun_mongo_data:

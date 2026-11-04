@@ -1,0 +1,29 @@
+# Image of the dry-run runner. It is NOT the production Dockerfile and shares
+# nothing with the production deployment. Build context: Mon5majeur-Backend/.
+#
+# No `COPY . .`: only the application code and the three dry-run scripts are
+# copied, so a .env (or anything else sitting in the backend folder, such as the
+# exported data) can never enter the image. Two more nets: the sibling
+# Dockerfile.dryrun.dockerignore keeps those files out of the build context, and
+# the build fails if a .env* file is found anyway. The runner checks again at
+# every start (scripts/dryrun/_guard.py).
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app \
+    DRYRUN_IN_IMAGE=1
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+COPY app ./app
+COPY scripts/dryrun/_guard.py scripts/dryrun/restore_local.py scripts/dryrun/compare.py ./scripts/dryrun/
+
+RUN { test -z "$(find /app /tmp /root /home -name '.env*' -print -quit 2>/dev/null)" \
+      && ! ls -A / | grep -q '^\.env'; } \
+    || { echo "BUILD STOPPED: a .env file is in the image"; exit 1; }
+
+WORKDIR /tmp

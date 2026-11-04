@@ -14,3 +14,4 @@ for example:
 | `seed_all_data.py`, `seed_today_test_data.py`, `seed_demo_week_*.py`, `seed_public_league_*.py`, `expand_todays_players.py` | demo / test data for a LOCAL database. Never run on production |
 | `compare_databases.py` | read-only count comparison of two databases (see `docs/ATLAS_MIGRATION.md`) |
 | `measure_api.py` | times the slow API actions with a test account's token |
+| `dryrun/` | read-only export of past nights, local sandbox and comparison for the substitute rule (see `dryrun/README.md`) |

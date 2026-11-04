@@ -46,3 +46,7 @@ secrets/
 
 # local run logs
 logs/
+
+# dry-run exports (anonymised but still real lineups)
+scripts/dryrun/export/
+dryrun_report.txt
