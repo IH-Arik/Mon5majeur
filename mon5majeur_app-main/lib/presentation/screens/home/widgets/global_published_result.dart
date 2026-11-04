@@ -15,6 +15,7 @@ import '../../share/share_story_button.dart';
 import '../../share/share_story_from_global.dart';
 import '../controllers/home_controller.dart';
 import 'match_lineups_field.dart';
+import 'night_top_builder.dart';
 
 typedef _Result = ({Map<String, dynamic>? body, String? error});
 
@@ -47,10 +48,6 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
   bool _revalidated = false; // offset 0 re-read once per opening
   Future<void> _prefetchChain = Future.value();
 
-  // Gold/silver/bronze of the last published night. Only shown for offset 0:
-  // the endpoint cannot rank older nights.
-  Map<String, int> _medals = const {};
-
   Worker? _dayWorker;
 
   @override
@@ -63,9 +60,6 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
       if (mounted && _offset == 0 && _userId != null) _show();
     });
     _start();
-    NightTopScores.latest().then((m) {
-      if (mounted) setState(() => _medals = m);
-    });
   }
 
   @override
@@ -368,12 +362,16 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                   );
                   return Column(
                     children: [
-                      MatchLineupsField(
-                        teamA: team,
-                        teamB: null,
-                        showOpponent: false,
-                        globalResultStyle: true,
-                        medals: _offset == 0 ? _medals : null,
+                      // Gold/silver/bronze of the night on screen, whichever it is.
+                      NightTopBuilder(
+                        date: d['nba_date'] as String?,
+                        builder: (medals) => MatchLineupsField(
+                          teamA: team,
+                          teamB: null,
+                          showOpponent: false,
+                          globalResultStyle: true,
+                          medals: medals,
+                        ),
                       ),
                       SizedBox(height: 12.h),
                       Container(

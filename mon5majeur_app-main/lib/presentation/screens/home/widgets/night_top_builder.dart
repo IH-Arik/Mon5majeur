@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../data/services/night_top_scores.dart';
 
 /// Loads the night's top 3 fantasy scorers for [date] (a match date) and hands
-/// them to [builder]: an empty map until known, or when [date] is not the last
-/// published night.
+/// them to [builder]: an empty map until known, or while that night is not
+/// published yet.
 class NightTopBuilder extends StatefulWidget {
   final String? date;
   final Widget Function(Map<String, int> medals) builder;

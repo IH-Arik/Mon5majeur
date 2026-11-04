@@ -284,23 +284,49 @@ async def games_history(
     summary="Today's fantasy player scores sorted by score desc (Flutter: MyMatchScreen > Todays Fantasy Players Score)",
 )
 async def players_today_scores(
+    nba_date: str | None = Query(
+        None,
+        description=(
+            "A night (YYYY-MM-DD) to rank. Default: the last published night. "
+            "A night whose results are not published yet answers an empty list."
+        ),
+    ),
     _: User = Depends(get_current_user),
 ) -> PlayersTodayScoresResponse:
-    # The scores of the last PUBLISHED night (09:00 Paris after it), so the
-    # block fills at 9:00 and keeps the same night until the next 9:00
-    # (QA #9 3.1).
-    from app.modules.players.nba_night import published_night
+    from app.modules.players.nba_night import is_published, published_night
+    from app.modules.players.night_publication import published_marks
 
-    today = await published_night() or await _nba_today()
+    if nba_date is None:
+        # The scores of the last PUBLISHED night (09:00 Paris after it), so the
+        # block fills at 9:00 and keeps the same night until the next 9:00
+        # (QA #9 3.1).
+        night = await published_night() or await _nba_today()
+    else:
+        try:
+            night = date.fromisoformat(nba_date[:10])
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid nba_date format")
+        # Same rule as everywhere: nothing about a night before its 09:00
+        # Paris publication (no score leaks through the ranking).
+        marks = await published_marks([night])
+        if not is_published(night, datetime.now(timezone.utc), night in marks):
+            return PlayersTodayScoresResponse(nba_date=night.isoformat(), results=[])
 
+    return PlayersTodayScoresResponse(
+        nba_date=night.isoformat(), results=await _night_player_scores(night)
+    )
+
+
+async def _night_player_scores(night: date) -> list[PlayerTodayScoreItem]:
+    """Every NBA player who played `night`, best fantasy score first."""
     stats = await PlayerGameStats.find(
-        PlayerGameStats.nba_date == today,
+        PlayerGameStats.nba_date == night,
         PlayerGameStats.did_not_play == False,
         PlayerGameStats.score_computed == True,
     ).to_list()
 
     if not stats:
-        return PlayersTodayScoresResponse(results=[])
+        return []
 
     player_ids = list({s.player_id for s in stats})
     players_list = await Player.find({"_id": {"$in": player_ids}}).to_list()
@@ -322,7 +348,7 @@ async def players_today_scores(
     # Complete list, score descending; ties broken by name then id so every
     # refresh returns the same order (QA #12 item 5).
     items.sort(key=lambda i: (-i.score, i.name.lower(), i.id))
-    return PlayersTodayScoresResponse(results=items)
+    return items
 
 
 @router.get(

@@ -523,7 +523,11 @@ class PlayerTodayScoreItem(BaseSchema):
 
 
 class PlayersTodayScoresResponse(BaseSchema):
-    """GET /api/players-today-scores/ — sorted by score desc."""
+    """GET /api/players-today-scores/ — sorted by score desc.
+
+    `nba_date` is the night the scores belong to (YYYY-MM-DD), so a client that
+    asked for a given night can check it was really answered for that night."""
+    nba_date: str | None = None
     results: list[PlayerTodayScoreItem] = []
 
 
