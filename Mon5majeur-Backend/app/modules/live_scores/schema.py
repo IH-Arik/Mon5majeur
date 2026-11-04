@@ -26,6 +26,9 @@ class LivePlayerScore(BaseSchema):
     # False only for the dropped 6th-Man score (spec §4.4: top 5 of 6).
     # Always True when there's no 6th Man.
     is_counted: bool = True
+    # Starter replaced by the substitute (greyed, "absent"); never set before
+    # every game of the lineup is final.
+    is_absent: bool = False
 
 
 class LiveMatchScore(BaseSchema):
@@ -55,6 +58,13 @@ class LiveMatchScore(BaseSchema):
 
     home_players: list[LivePlayerScore]
     away_players: list[LivePlayerScore]
+    # Substitute (lineup rule) of each team: his live line and the state of the
+    # substitution. None without a substitute; an opponent's stays None until
+    # the first tip-off (lineup information).
+    home_substitute: LivePlayerScore | None = None
+    away_substitute: LivePlayerScore | None = None
+    home_substitution: dict | None = None
+    away_substitution: dict | None = None
 
     is_stale: bool = False
     refreshed_at: datetime
@@ -68,6 +78,8 @@ class LiveGlobalScore(BaseSchema):
 
     total_score: float
     players: list[LivePlayerScore]
+    substitute: LivePlayerScore | None = None
+    substitution: dict | None = None
 
     # True while at least one NBA game of the day is in progress. The app
     # shows "no live game" instead of a 0-point lineup when it is False.

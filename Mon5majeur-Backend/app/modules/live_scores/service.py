@@ -7,6 +7,8 @@ from beanie import PydanticObjectId
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.bonuses.live_access import sync_live_scoring
 from app.modules.leagues.model import League, LeagueMatch
+from app.modules.leagues.substitution import ENTERED
+from app.modules.leagues.substitution_service import describe, resolve_substitution
 from app.modules.live_scores.schema import (
     LiveGlobalScore,
     LiveMatchScore,
@@ -78,13 +80,24 @@ class LiveScoreService:
         # bonus away before the 09:00 reveal, so it is left out of the score
         # shown for any team that is not the viewer's own; the published
         # result adds it. (QA #9 10.1 point of attention.)
-        home_players, home_score = await _get_live_players_for_user(
+        # An opponent's substitute is lineup information: shown only once the
+        # night has started (first tip-off), like the rest of the lineup on the
+        # Result page. A team's own substitute is always shown to its owner.
+        started = match.status in ("live", "completed")
+        if not started and league is not None:
+            from app.modules.leagues.selection_service import _lock_in_seconds
+
+            started = await _lock_in_seconds(league.auto_id, match.match_day) == 0
+
+        home_players, home_score, home_sub, home_state = await _get_live_players_for_user(
             match.home_user_id, league, match.match_day, match.nba_date,
             show_chef_curry=user.id == match.home_user_id,
+            show_substitute=started or user.id == match.home_user_id,
         )
-        away_players, away_score = await _get_live_players_for_user(
+        away_players, away_score, away_sub, away_state = await _get_live_players_for_user(
             match.away_user_id, league, match.match_day, match.nba_date,
             show_chef_curry=user.id == match.away_user_id,
+            show_substitute=started or user.id == match.away_user_id,
         )
 
         home_user = await User.get(match.home_user_id)
@@ -109,6 +122,10 @@ class LiveScoreService:
             has_live_games=await _showing_night(match.nba_date),
             home_players=home_players,
             away_players=away_players,
+            home_substitute=home_sub,
+            away_substitute=away_sub,
+            home_substitution=home_state,
+            away_substitution=away_state,
             is_stale=await _is_stale_for_date(match.nba_date),
             refreshed_at=datetime.now(timezone.utc),
         )
@@ -153,9 +170,7 @@ class LiveScoreService:
                 refreshed_at=datetime.now(timezone.utc),
             )
 
-        players, total = await _build_live_players(
-            sel.selected_players, sel.sixth_man_player, today
-        )
+        players, total, substitute, substitution = await _live_lineup(sel, today, user.id)
         # sel.chef_curry is always False for the Global League (its own save
         # endpoint never accepts bonus flags) — kept here only for symmetry
         # with the duel path, never actually True in practice.
@@ -167,6 +182,8 @@ class LiveScoreService:
             league_name=league.name,
             total_score=round(total, 2),
             players=players,
+            substitute=substitute,
+            substitution=substitution,
             has_live_games=await _showing_night(today),
             is_stale=await _is_stale_for_date(today),
             refreshed_at=datetime.now(timezone.utc),
@@ -199,52 +216,74 @@ async def _get_selection(user_id: PydanticObjectId, league: League, match_day: i
     )
 
 
+async def _live_lineup(sel, nba_date: date, user_id=None):
+    """Live players, total, substitute and substitution state of one lineup.
+    The substitute only comes in once every game of the lineup is final."""
+    substitute_player = getattr(sel, "substitute_player", None)
+    result = None
+    if substitute_player is not None:
+        result = await resolve_substitution(
+            sel.selected_players, substitute_player, nba_date, closing=False, user_id=user_id
+        )
+    players, total, substitute = await _build_live_players(
+        sel.selected_players, sel.sixth_man_player, nba_date, substitute_player, result
+    )
+    return players, total, substitute, describe(result) if result is not None else None
+
+
 async def _get_live_players_for_user(
     user_id: PydanticObjectId,
     league: League | None,
     match_day: int,
     nba_date: date,
     show_chef_curry: bool = True,
-) -> tuple[list[LivePlayerScore], float]:
+    show_substitute: bool = True,
+) -> tuple[list[LivePlayerScore], float, LivePlayerScore | None, dict | None]:
     """A duel-league participant's live players + bonus-aware total, read
     from FlutterPlayerSelection — the store the team builder actually saves
     to (LineupSubmission/LineupSlot is a separate, unused system; reading
     from there meant this endpoint always returned an empty lineup)."""
     if league is None:
-        return [], 0.0
+        return [], 0.0, None, None
 
     sel = await _get_selection(user_id, league, match_day)
     if not sel:
-        return [], 0.0  # forfeit — no lineup submitted (spec §4.1)
+        return [], 0.0, None, None  # forfeit — no lineup submitted (spec §4.1)
 
-    players, total = await _build_live_players(
-        sel.selected_players, sel.sixth_man_player, nba_date
-    )
+    players, total, substitute, substitution = await _live_lineup(sel, nba_date, user_id)
     if sel.chef_curry and show_chef_curry:
         total += 3
-    return players, total
+    if not show_substitute:
+        substitute = substitution = None
+    return players, total, substitute, substitution
 
 
 async def _build_live_players(
     selected_players: list[dict],
     sixth_man_player: dict | None,
     nba_date: date,
-) -> tuple[list[LivePlayerScore], float]:
+    substitute_player: dict | None = None,
+    substitution=None,
+) -> tuple[list[LivePlayerScore], float, LivePlayerScore | None]:
     """Build live per-player scores; if a 6th Man is present, mark the top 5
-    of 6 as counted (spec §4.4) and sum only those into the total."""
+    of 6 as counted (spec §4.4) and sum only those into the total.
+
+    With a substitute that has come in (``substitution`` ENTERED), the replaced
+    starter stays listed but absent and uncounted, and the substitute's score
+    takes his place before the 6th Man rule keeps the best 5 of 6. The
+    substitute is returned apart, so the list keeps its usual five or six."""
     all_players = list(selected_players)
     sixth_index = None
     if sixth_man_player is not None:
         sixth_index = len(all_players)
         all_players = all_players + [sixth_man_player]
 
-    entries: list[dict] = []
-    for idx, p in enumerate(all_players):
+    async def _entry(idx: int, p: dict, slot: str) -> dict | None:
         raw_id = p.get("id")
         try:
             player_id = PydanticObjectId(str(raw_id))
         except Exception:
-            continue
+            return None
 
         player_doc = await Player.get(player_id)
         stat = await PlayerGameStats.find_one(
@@ -266,12 +305,12 @@ async def _build_live_players(
         if player_doc and player_doc.is_out:
             live_score = 0.0
 
-        entries.append({
+        return {
             "player_id": player_id,
             "full_name": p.get("name") or (player_doc.full_name if player_doc else ""),
             "position": p.get("position") or (player_doc.position if player_doc else None),
             "team_name": player_doc.team_name if player_doc else None,
-            "slot": "SIXTH_MAN" if idx == sixth_index else "STARTER",
+            "slot": slot,
             "points": stat.points if stat else 0,
             "rebounds": stat.rebounds if stat else 0,
             "assists": stat.assists if stat else 0,
@@ -281,10 +320,33 @@ async def _build_live_players(
             "minutes_played": stat.minutes_played if stat else 0,
             "fantasy_score_live": round(live_score, 2),
             "is_finalized": is_final,
-        })
+        }
+
+    entries: list[dict] = []
+    for idx, p in enumerate(all_players):
+        entry = await _entry(idx, p, "SIXTH_MAN" if idx == sixth_index else "STARTER")
+        if entry is not None:
+            entries.append(entry)
+
+    sub_entry = (
+        await _entry(len(all_players), substitute_player, "SUBSTITUTE")
+        if substitute_player is not None else None
+    )
+
+    # score each slot counts with: the replaced starter's slot takes the
+    # substitute's score once he has come in
+    scores = [e["fantasy_score_live"] for e in entries]
+    replaced_idx = None
+    if substitution is not None and substitution.status == ENTERED and sub_entry is not None:
+        gone = str(substitution.replaced.get("id", ""))
+        for i, e in enumerate(entries):
+            if e["slot"] == "STARTER" and str(e["player_id"]) == gone:
+                replaced_idx = i
+                scores[i] = sub_entry["fantasy_score_live"]
+                break
 
     if sixth_index is not None and len(entries) == 6:
-        ranked = sorted(range(len(entries)), key=lambda i: entries[i]["fantasy_score_live"], reverse=True)
+        ranked = sorted(range(len(entries)), key=lambda i: scores[i], reverse=True)
         counted = set(ranked[:5])
     else:
         counted = set(range(len(entries)))
@@ -292,12 +354,17 @@ async def _build_live_players(
     total = 0.0
     result: list[LivePlayerScore] = []
     for i, e in enumerate(entries):
-        is_counted = i in counted
-        if is_counted:
-            total += e["fantasy_score_live"]
-        result.append(LivePlayerScore(is_counted=is_counted, **e))
+        is_counted = i in counted and i != replaced_idx
+        if i in counted:
+            total += scores[i]
+        result.append(LivePlayerScore(is_counted=is_counted, is_absent=i == replaced_idx, **e))
 
-    return result, total
+    substitute = None
+    if sub_entry is not None:
+        substitute = LivePlayerScore(
+            is_counted=replaced_idx is not None and replaced_idx in counted, **sub_entry
+        )
+    return result, total, substitute
 
 
 async def _showing_night(nba_date: date) -> bool:
