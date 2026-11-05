@@ -232,7 +232,7 @@ class EnglishTranslation {
     AppString.substituteExplanation:
         "Your substitute comes in if a starter costing 10M or more doesn't play a single minute. He doesn't count toward your 100M budget and only plays under that condition.",
     AppString.substitutePriceHint: 'Substitute pick must cost ≤ @nM',
-    AppString.removeSubstitute: 'Remove the substitute',
+    AppString.removeSubstitute: 'Remove substitute',
     AppString.substituteReplaces: '🔄 @sub replaces @starter',
     AppString.substituteDidNotEnter: 'Did not enter',
     AppString.starterAbsent: 'absent',

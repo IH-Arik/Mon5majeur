@@ -20,13 +20,16 @@ class LineupPlayerSlot extends StatelessWidget {
   final AssetGenImage jersey;
   final String label;
   final VoidCallback onTap;
-
+  // 1.0 for a starter; the substitute's jersey is lighter (the "+", the label
+  // and the texts stay at full strength).
+  final double jerseyOpacity;
   const LineupPlayerSlot({
     super.key,
     required this.player,
     required this.jersey,
     required this.label,
     required this.onTap,
+    this.jerseyOpacity = 1.0,
   });
 
   @override
@@ -46,13 +49,16 @@ class LineupPlayerSlot extends StatelessWidget {
                 Positioned(
                   left: 0,
                   top: 0,
-                  child: Container(
-                    width: 114.w,
-                    height: 91.h,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: jersey.provider(),
-                        fit: BoxFit.cover,
+                  child: Opacity(
+                    opacity: jerseyOpacity,
+                    child: Container(
+                      width: 114.w,
+                      height: 91.h,
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: jersey.provider(),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
@@ -122,6 +128,24 @@ class LineupPlayerSlot extends StatelessWidget {
   }
 }
 
+/// How strong the substitute's jersey is drawn (composition, and live while
+/// nothing is decided).
+const double substituteJerseyOpacity = 0.8;
+
+/// The composition court is the usual 600 high plus [lineupBelowLine]: the
+/// substitute stands on the half-way line (the top of his jersey on it, centred)
+/// with his name and price in the other half. The line sits at 487.5 of the 600.
+///
+/// In pixels, not court units: under the line the slot holds the rest of the
+/// jersey and the gaps (which the 600 already has room for, scaled with the
+/// height) and two lines of text (scaled with the font), so on a small phone
+/// the text would otherwise be cut off. 44 = the two lines of text, margin included.
+double get lineupBelowLine => 44.sp;
+
+/// Court units from the top of the court: the substitute's slot starts 11.5 above
+/// the half-way line (the drawn jersey starts 11.5 under the top of its picture).
+const double lineupSubstituteTop = 476;
+
 /// The substitute's slot: the usual jersey slot labelled "Remplaçant" /
 /// "Substitute", with a small "Retirer" action once somebody is picked (he is
 /// optional, so he can be taken out again).
@@ -129,44 +153,22 @@ class LineupSubstituteSlot extends StatelessWidget {
   final Player? player;
   final AssetGenImage jersey;
   final VoidCallback onTap;
-  final VoidCallback onRemove;
 
   const LineupSubstituteSlot({
     super.key,
     required this.player,
     required this.jersey,
     required this.onTap,
-    required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        LineupPlayerSlot(
-          player: player,
-          jersey: jersey,
-          label: AppString.substitute.tr,
-          onTap: onTap,
-        ),
-        if (player != null)
-          GestureDetector(
-            onTap: onRemove,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 8.w),
-              child: Text(
-                AppString.removeSubstitute.tr,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11.sp,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ),
-      ],
+    return LineupPlayerSlot(
+      player: player,
+      jersey: jersey,
+      label: AppString.substitute.tr,
+      onTap: onTap,
+      jerseyOpacity: substituteJerseyOpacity,
     );
   }
 }
@@ -244,6 +246,9 @@ class LineupCourt extends StatelessWidget {
   final List<Widget> floating;
   // Taller court when the 6th man needs his own row under the starters.
   final double? height;
+  // More court under the half-way line (the substitute's name and price). The
+  // picture is then the full court, so the line stays where it was.
+  final double belowLine;
 
   // How far the four side players (wings and guards) sit further out toward
   // the edges of the court than their original offsets (40 / 60).
@@ -256,6 +261,7 @@ class LineupCourt extends StatelessWidget {
     this.inside = const [],
     this.floating = const [],
     this.height,
+    this.belowLine = 0,
   });
 
   @override
@@ -264,15 +270,26 @@ class LineupCourt extends StatelessWidget {
       children: [
         Container(
           margin: EdgeInsets.symmetric(horizontal: 16.w),
-          height: height ?? 600.h,
+          height: (height ?? 600.h) + belowLine,
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12.r),
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: Assets.images.playground.image(fit: BoxFit.cover),
-                ),
+                if (belowLine > 0)
+                  // 975 = the picture's height that puts the half-way line at
+                  // 487.5, exactly where the half-court picture has it at 600.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 975.h,
+                    child: Assets.images.fullplayground.image(fit: BoxFit.cover),
+                  )
+                else
+                  Positioned.fill(
+                    child: Assets.images.playground.image(fit: BoxFit.cover),
+                  ),
                 Positioned.fill(
                   child: Container(color: Colors.black.withValues(alpha: 0.3)),
                 ),

@@ -478,6 +478,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           maxPriceHint: AppString.substitutePriceHint.trParams({
             'n': '${substituteMaxPrice.toInt()}',
           }),
+          onRemove: substitutePlayer == null ? null : _removeSubstitute,
           onPlayerSelected: (p) => setState(() {
             substitutePlayer = p;
             isConfirmed = false; // editing after confirm → back to orange
@@ -784,16 +785,16 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
   Widget _buildCourtField() {
     return LineupCourt(
-      // Taller court: the substitute has his own row under the starters.
-      height: 720.h,
+      belowLine: lineupBelowLine,
       slotBuilder: _buildPlayerSlot,
       changeJerseyButton: LineupChangeJerseyButton(
         jersey: jerseys[selectedJerseyIndex],
         onTap: _selectJersey,
       ),
       inside: [
+        // Centred on the half-way line, his name and price in the other half.
         Positioned(
-          bottom: 12.h,
+          top: lineupSubstituteTop.h,
           left: 0,
           right: 0,
           child: Center(
@@ -801,7 +802,6 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
               player: substitutePlayer,
               jersey: jerseys[selectedJerseyIndex],
               onTap: _selectSubstitute,
-              onRemove: _removeSubstitute,
             ),
           ),
         ),

@@ -9,6 +9,7 @@ import '../../../../data/models/player.dart';
 import '../../tutorial/tutorial_controller.dart';
 import '../../tutorial/tutorial_skip_button.dart';
 import '../../tutorial/tutorial_style.dart';
+import '../widgets/out_badge.dart';
 import '../widgets/player_form_badge.dart';
 
 class SelectPlayerScreen extends StatefulWidget {
@@ -29,6 +30,9 @@ class SelectPlayerScreen extends StatefulWidget {
   // [maxPriceHint]) instead of the bank and the 6th Man price line.
   final String? infoText;
   final String? maxPriceHint;
+  // Substitute picker only, and only once a substitute is chosen: a button at
+  // the top of the list that takes him out of the lineup.
+  final VoidCallback? onRemove;
 
   const SelectPlayerScreen({
     super.key,
@@ -44,6 +48,7 @@ class SelectPlayerScreen extends StatefulWidget {
     this.maxPrice,
     this.infoText,
     this.maxPriceHint,
+    this.onRemove,
   });
 
   @override
@@ -175,6 +180,7 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
                         return Expanded(
                           child: Column(
                             children: [
+                              if (widget.onRemove != null) _buildRemoveButton(),
                               _buildTableHeader(
                                 filteredPlayers.length,
                                 players.length,
@@ -192,6 +198,32 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRemoveButton() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
+      child: SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: OutlinedButton.icon(
+          key: const ValueKey('remove-substitute'),
+          onPressed: () {
+            widget.onRemove!();
+            Navigator.pop(context);
+          },
+          icon: Icon(Icons.close, size: 18.r, color: Colors.white),
+          label: Text(
+            AppString.removeSubstitute.tr,
+            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.white54),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          ),
+        ),
       ),
     );
   }
@@ -514,24 +546,8 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
     );
   }
 
-  /// Same shape and font as the position badge, in red.
-  Widget _buildOutBadge() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE05353),
-        borderRadius: BorderRadius.circular(12.r),
-      ),
-      child: Text(
-        AppString.playerStatusOut.tr,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
+  /// Same shape and font as the position badge, in red (shared with the courts).
+  Widget _buildOutBadge() => const OutBadge();
 
   Widget _buildPlayerAvatar(Player player) {
     return Column(

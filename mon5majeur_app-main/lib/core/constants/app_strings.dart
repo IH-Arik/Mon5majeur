@@ -247,7 +247,7 @@ class AppString {
   static const String substitute = 'Substitute';
   static const String substituteExplanation = 'substituteExplanation';
   static const String substitutePriceHint = 'Substitute pick must cost ≤ @nM';
-  static const String removeSubstitute = 'Remove the substitute';
+  static const String removeSubstitute = 'Remove substitute';
   static const String substituteReplaces = '🔄 @sub replaces @starter';
   static const String substituteDidNotEnter = 'Did not enter';
   static const String starterAbsent = 'absent';

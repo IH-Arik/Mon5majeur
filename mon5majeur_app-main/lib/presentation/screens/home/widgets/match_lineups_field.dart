@@ -8,9 +8,9 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/utils/logo_assets.dart';
-import '../../../../core/utils/lineup_rules.dart';
 import '../../../../core/utils/score_style.dart';
 import '../../../../data/models/match_result_model.dart';
+import 'out_badge.dart';
 import 'substitute_widgets.dart';
 
 /// Both teams' lineups on a full court, with each player's fantasy score.
@@ -76,17 +76,14 @@ class MatchLineupsField extends StatelessWidget {
     this.labelMaxWidth,
   });
 
+  /// The substitute of a single-team view (Global League results, "view
+  /// team", Live) stands on the court itself. The duel's two-team view comes
+  /// with the duel screens.
   bool get _showsSubstitute =>
-      (globalResultStyle || !showOpponent) &&
+      globalResultStyle &&
+      !shareCompact &&
       teamA?.substitute != null &&
       !(teamA?.selectionHidden ?? false);
-
-  Widget _substituteCard() => SubstituteResultCard(
-        substitute: teamA!.substitute!,
-        state: teamA!.substitution,
-        replacedName: replacedStarterName(teamA!),
-        scoresHidden: scoresHidden,
-      );
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
       (t?.selection ?? const <PlayerSelection>[])
@@ -106,9 +103,6 @@ class MatchLineupsField extends StatelessWidget {
     return Column(
       children: [
         _court(b),
-        // The substitute of a single-team view (Global League results, "view
-        // team", Live). The duel's two-team view comes with the duel screens.
-        if (_showsSubstitute) _substituteCard(),
         if (duelResultStyle)
           ..._duelBonusCard()
         else ...[
@@ -138,7 +132,9 @@ class MatchLineupsField extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: 362.w),
       height: shareCompact
           ? 470.h
-          : (globalResultStyle ? 350.h : (showOpponent ? 700.h : 380.h)),
+          : (globalResultStyle
+              ? (350 + (_showsSubstitute ? _belowLine : 0)).h
+              : (showOpponent ? 700.h : 380.h)),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
@@ -186,6 +182,7 @@ class MatchLineupsField extends StatelessWidget {
             else
               for (var i = 0; i < aPlayers.length; i++)
                 _positionPlayer(i, aPlayers[i], teamA, isTopTeam: true),
+            if (_showsSubstitute) _substituteOnCourt(),
             if (!globalResultStyle &&
                 !noTeamAtAll &&
                 !aHidden &&
@@ -661,43 +658,85 @@ class MatchLineupsField extends StatelessWidget {
     );
   }
 
-  Widget _buildPlayer(PlayerSelection player, AssetGenImage jersey) {
-    if (!player.absent) return _playerBody(player, jersey);
-    // A starter the substitute replaced: greyed, with the "absent" mention.
+  /// The substitute stands on the half-way line (the court's bottom edge for a
+  /// lineup without him): the top of his jersey on the line, centred, his name
+  /// and points in the other half. The court is longer by [_belowLine] to hold
+  /// them. 341 = 350 (the line) - 9 (where the drawn jersey starts in its box);
+  /// 106 = what is needed under the line, margin included.
+  static const double _substituteTop = 341;
+  static const double _belowLine = 106;
+
+  Widget _substituteOnCourt() {
+    final team = teamA!;
+    final sub = team.substitute!;
+    final state = team.substitution;
+    final entered = state?.isEntered ?? false;
+    final notEntered = state?.isNotEntered ?? false;
+    final jersey = jerseyAsset(team.jerseyIndex);
+    final body = _playerBody(
+      sub,
+      jersey,
+      // Counted points plain, the others in brackets (nothing counts yet, or
+      // he did not come in).
+      scoreText: entered ? null : '(${sub.score})',
+      // Like on the composition screen: a jersey at 80 % while nothing is decided.
+      jerseyOpacity: entered || notEntered ? 1.0 : 0.8,
+      cornerMark: entered ? const SubstituteEnteredMark() : null,
+    );
+    return Positioned(
+      key: const ValueKey('substitute-on-court'),
+      top: _substituteTop.h,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: notEntered
+            ? Opacity(key: const ValueKey('in-the-shadow'), opacity: 0.4, child: body)
+            : body,
+      ),
+    );
+  }
+
+  /// A player who is not playing: in the shadow, with [badge] on his jersey.
+  Widget _inTheShadow(Widget body, Widget badge, {required String keyName}) {
     return SizedBox(
       width: 90.w,
       height: 107.h,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Opacity(opacity: 0.4, child: _playerBody(player, jersey)),
+          Opacity(
+            key: const ValueKey('in-the-shadow'),
+            opacity: 0.4,
+            child: body,
+          ),
           Positioned(
+            key: ValueKey(keyName),
             right: -2.w,
             top: 2.h,
-            child: Container(
-              key: const ValueKey('starter-absent'),
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-              decoration: BoxDecoration(
-                color: const Color(0xCC111111),
-                borderRadius: BorderRadius.circular(3.r),
-                border: Border.all(color: Colors.white54, width: 1.w),
-              ),
-              child: Text(
-                AppString.starterAbsent.tr,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 8.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
+            child: badge,
           ),
         ],
       ),
     );
   }
 
-  Widget _playerBody(PlayerSelection player, AssetGenImage jersey) {
+  Widget _buildPlayer(PlayerSelection player, AssetGenImage jersey) {
+    if (!player.absent) return _playerBody(player, jersey);
+    // A starter who played no minute: in the shadow, with the OUT badge.
+    return _inTheShadow(
+      _playerBody(player, jersey, scoreText: '0'),
+      const OutBadge(),
+      keyName: 'starter-out',
+    );
+  }
+
+  Widget _playerBody(
+    PlayerSelection player,
+    AssetGenImage jersey, {
+    String? scoreText,
+    double jerseyOpacity = 1.0,
+    Widget? cornerMark,
+  }) {
     final rank = medals?[player.id];
     final haloColor = rank == null ? null : _haloColors[rank];
     return SizedBox(
@@ -721,17 +760,22 @@ class MatchLineupsField extends StatelessWidget {
           Positioned(
             left: 0,
             top: 0,
-            child: Container(
-              width: 90.w,
-              height: 72.h,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: jersey.provider(),
-                  fit: BoxFit.cover,
+            child: Opacity(
+              opacity: jerseyOpacity,
+              child: Container(
+                width: 90.w,
+                height: 72.h,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: jersey.provider(),
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ),
           ),
+          if (cornerMark != null)
+            Positioned(left: 62.w, top: 16.h, child: cornerMark),
           if (haloColor != null)
             Positioned(
               right: -4.w,
@@ -798,7 +842,7 @@ class MatchLineupsField extends StatelessWidget {
                 child: scoresHidden
                     ? Icon(Icons.lock_outline, color: Colors.grey, size: 13.r)
                     : Text(
-                        '${player.score}',
+                        scoreText ?? '${player.score}',
                         textAlign: TextAlign.center,
                         style: scoreTextStyle(size: 16),
                       ),
