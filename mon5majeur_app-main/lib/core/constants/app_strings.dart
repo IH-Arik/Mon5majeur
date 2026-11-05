@@ -248,6 +248,10 @@ class AppString {
   static const String substituteExplanation = 'substituteExplanation';
   static const String substitutePriceHint = 'Substitute pick must cost ≤ @nM';
   static const String removeSubstitute = 'Remove substitute';
+  // The "i" next to each bonus of the team builder: what the bonus does, in a sentence.
+  static const String bonusInfoSixthMan = 'bonusInfoSixthMan';
+  static const String bonusInfoChefCurry = 'bonusInfoChefCurry';
+  static const String bonusInfoLuxuryTax = 'bonusInfoLuxuryTax';
   static const String substituteReplaces = '🔄 @sub replaces @starter';
   static const String substituteDidNotEnter = 'Did not enter';
   static const String starterAbsent = 'absent';
