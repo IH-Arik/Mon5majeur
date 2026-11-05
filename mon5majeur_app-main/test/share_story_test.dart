@@ -18,6 +18,7 @@ Map<String, dynamic> _night({bool available = true, int? number = 8}) => {
   'team_name': 'Robin Hoops',
   'team_logo': 'lakers',
   'jersey_index': 2,
+  'total_points': 146, // the server's, never recomputed
   'selection': [
     {'id': 'g1', 'name': 'Curry', 'position': 'PG', 'score': 24},
     {'id': 'w1', 'name': 'Tatum', 'position': 'SF', 'score': 32},

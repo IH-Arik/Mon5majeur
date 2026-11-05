@@ -14,6 +14,8 @@ const _orange = Color(0xFFE8642F);
 const _win = Color(0xFF22C55E);
 const _lose = Color(0xFFEF4444);
 const _grey = Color(0xFF9A9A9A);
+// A great World League night (the same gold as the night's top-3 medals).
+const _gold = Color(0xFFFFC83D);
 
 /// The 9:16 share image (designed for 1080x1920): a fixed 360x640 canvas, so
 /// it looks the same on every device and renders at 1080x1920 with a pixel
@@ -33,7 +35,9 @@ class ShareStoryWidget extends StatelessWidget {
   // The court's own size at design scale (see MatchLineupsField._court).
   static double get _courtW => 362.w;
   static double get _duelCourtH => 482.h; // 12 margin + the 470 compact court
-  static double get _worldCourtH => 362.h; // 12 margin + the 350 half court
+  // 12 margin + the 350 half court; 456 when the substitute stands under the
+  // half-way line (the same longer court as the Results tab).
+  double get _worldCourtH => data.me.substitute != null ? 468.h : 362.h;
 
   // Bebas Neue through the app's score style, in canvas pixels (not .sp).
   static TextStyle _bebas(double size, Color color, {double spacing = 1}) =>
@@ -340,7 +344,11 @@ class ShareStoryWidget extends StatelessWidget {
 
   // Same shape as the duel's: the score centered, a stamp under it.
   Widget _worldScore() {
-    final color = data.category.isLoss ? _grey : _orange;
+    // Three looks, so the card says how the night went at first glance: a poor
+    // night in grey, an ordinary one in orange, a great one in gold (the number
+    // too).
+    final great = data.category == ShareCategory.worldHigh;
+    final color = data.category.isLoss ? _grey : (great ? _gold : _orange);
     return Column(
       children: [
         Row(
@@ -348,7 +356,7 @@ class ShareStoryWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text('${data.myScore}', style: _bebas(38, Colors.white)),
+            Text('${data.myScore}', style: _bebas(38, great ? _gold : Colors.white)),
             const SizedBox(width: 6),
             Text(AppString.sharePts.tr, style: _bebas(22, color)),
           ],
