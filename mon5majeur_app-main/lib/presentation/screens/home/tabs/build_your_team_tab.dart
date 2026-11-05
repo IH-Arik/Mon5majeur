@@ -19,6 +19,7 @@ import '../controllers/home_controller.dart';
 import '../controllers/result_controller.dart';
 import '../screens/select_player_screen.dart';
 import '../widgets/game_card.dart';
+import '../widgets/bonus_option_row.dart';
 import '../widgets/lineup_widgets.dart';
 import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
@@ -70,6 +71,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // a starting point by the "Reuse my Global League team" button. Its bonuses
   // do not exist (the Global League has none), so none is ever copied.
   List<Player>? _globalTeam;
+  // Its substitute, copied with the starters (null when it has none).
+  Player? _globalSubstitute;
 
   // Client-side confirmed flag (no backend field). True after a successful
   // submit or when a complete saved team is loaded; reset to false on any edit.
@@ -945,7 +948,14 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       final team = list
           .map((e) => Player.fromJson(e as Map<String, dynamic>))
           .toList();
-      if (mounted) setState(() => _globalTeam = team);
+      final sub = (response.body as Map)['substitute_player'];
+      final substitute = sub is Map<String, dynamic> ? Player.fromJson(sub) : null;
+      if (mounted) {
+        setState(() {
+          _globalTeam = team;
+          _globalSubstitute = substitute;
+        });
+      }
     } catch (_) {
       // non-fatal: no button
     }
@@ -955,10 +965,15 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
   // courts share the same layout). Nobody is removed for the budget: the
   // usual "over budget" state applies and the user picks who to replace. Only
   // a player known to be OUT, or absent tonight, is left empty. The user then
-  // confirms with the usual button.
+  // confirms with the usual button. The substitute comes along (the whole lineup
+  // is replaced: no substitute in the Global team = none here); he is left empty
+  // when he does not pass the checks, without stopping the copy. The 6th Man and
+  // the bonuses of this league are not touched.
   Future<void> _reuseGlobalTeam() async {
     final team = _globalTeam;
     if (team == null) return;
+    // A locked (or just sent) lineup is never overwritten.
+    if (isSubmitting || isLineupLocked(lockInSeconds)) return;
 
     if (selectedPlayers.any((p) => p != null)) {
       final replace = await showDialog<bool>(
@@ -1007,11 +1022,13 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
     setState(() {
       selectedPlayers = [for (final p in team) usable(p)];
-      // The same player cannot be a starter and the substitute.
-      if (substitutePlayer?.id != null &&
-          selectedPlayers.any((p) => p?.id == substitutePlayer!.id)) {
-        substitutePlayer = null;
-      }
+      substitutePlayer = copiedSubstitute(
+        candidate: _globalSubstitute,
+        starters: selectedPlayers,
+        sixthMan: sixthManActivated ? sixthManPlayer : null,
+        pool: availablePlayers,
+        poolComplete: poolComplete,
+      );
       isConfirmed = false;
     });
 
@@ -1467,6 +1484,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
                 count: sixthManAvailable,
                 isActivated: sixthManActivated,
                 onTap: () => _selectBonus(BonusType.sixthMan),
+                info: AppString.bonusInfoSixthMan,
               ),
             ],
           ),
@@ -1477,6 +1495,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             count: chefsCurryAvailable,
             isActivated: chefsCurryActivated,
             onTap: () => _selectBonus(BonusType.chefsCurry),
+            info: AppString.bonusInfoChefCurry,
           ),
           SizedBox(height: 12.h),
           _buildBonusOptionItem(
@@ -1485,6 +1504,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             count: luxuryTaxAvailable,
             isActivated: luxuryTaxActivated,
             onTap: () => _selectBonus(BonusType.luxuryTax),
+            info: AppString.bonusInfoLuxuryTax,
           ),
         ],
       ),
@@ -1497,67 +1517,17 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     required int count,
     required bool isActivated,
     required VoidCallback onTap,
+    required String info,
   }) {
-    return GestureDetector(
+    return BonusOptionRow(
+      icon: icon,
+      label: label,
+      count: count,
+      isActivated: isActivated,
       onTap: onTap,
-      child: Row(
-        children: [
-          Container(
-            width: 37.w,
-            height: 37.h,
-            decoration: BoxDecoration(
-              color: isActivated
-                  ? const Color(0xFF777777)
-                  : const Color(0xFF1A1A1A),
-              borderRadius: BorderRadius.circular(19.r),
-              border: Border.all(color: const Color(0xFF2C2C2C), width: 1.r),
-            ),
-            child: Center(
-              child: icon.image(width: 16.w, height: 16.h, fit: BoxFit.contain),
-            ),
-          ),
-          SizedBox(width: 4.w),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              color: const Color(0xFF777777),
-              borderRadius: BorderRadius.circular(4.r),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10.sp,
-                fontFamily: 'Lato',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          SizedBox(width: 4.w),
-          Container(
-            width: 25.w,
-            height: 24.h,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A),
-              borderRadius: BorderRadius.circular(6.r),
-              border: Border.all(color: const Color(0xFF2C2C2C)),
-            ),
-            child: Center(
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  color: Color(0xFFE8632C),
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      info: info,
     );
   }
-
 
   Widget _buildPlayerSlot(int index, String position) {
     return LineupPlayerSlot(
@@ -1575,6 +1545,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       jersey: jerseys[selectedJerseyIndex],
       label: AppString.sixthMan.tr,
       onTap: _selectSixthMan,
+      // Highlighted once he is picked; the empty slot looks like any other.
+      glow: sixthManPlayer == null ? null : sixthManBlue,
     );
   }
 

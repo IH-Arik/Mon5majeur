@@ -233,6 +233,11 @@ class EnglishTranslation {
         "Your substitute comes in if a starter costing 10M or more doesn't play a single minute. He doesn't count toward your 100M budget and only plays under that condition.",
     AppString.substitutePriceHint: 'Substitute pick must cost ≤ @nM',
     AppString.removeSubstitute: 'Remove substitute',
+    AppString.bonusInfoSixthMan:
+        'Adds a 6th player (8M max, outside your budget): only your best 5 scores out of the 6 count.',
+    AppString.bonusInfoChefCurry: 'Adds 3 points to your final score.',
+    AppString.bonusInfoLuxuryTax:
+        'Raises your budget by 5M so you can pick pricier players.',
     AppString.substituteReplaces: '🔄 @sub replaces @starter',
     AppString.substituteDidNotEnter: 'Did not enter',
     AppString.starterAbsent: 'absent',
