@@ -8,7 +8,7 @@ from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.bonuses.live_access import sync_live_scoring
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.leagues.substitution import ENTERED
-from app.modules.leagues.substitution_service import describe, resolve_substitution
+from app.modules.leagues.substitution_service import describe, did_not_play_ids, resolve_substitution
 from app.modules.live_scores.schema import (
     LiveGlobalScore,
     LiveMatchScore,
@@ -170,7 +170,9 @@ class LiveScoreService:
                 refreshed_at=datetime.now(timezone.utc),
             )
 
-        players, total, substitute, substitution = await _live_lineup(sel, today, user.id)
+        players, total, substitute, substitution = await _live_lineup(
+            sel, today, user.id, flag_did_not_play=True
+        )
         # sel.chef_curry is always False for the Global League (its own save
         # endpoint never accepts bonus flags) — kept here only for symmetry
         # with the duel path, never actually True in practice.
@@ -216,9 +218,11 @@ async def _get_selection(user_id: PydanticObjectId, league: League, match_day: i
     )
 
 
-async def _live_lineup(sel, nba_date: date, user_id=None):
+async def _live_lineup(sel, nba_date: date, user_id=None, flag_did_not_play: bool = False):
     """Live players, total, substitute and substitution state of one lineup.
-    The substitute only comes in once every game of the lineup is final."""
+    The substitute only comes in once every game of the lineup is final.
+    flag_did_not_play: every starter who played no minute once his own game is
+    final is flagged absent too (Global League only; the duel keeps its own look)."""
     substitute_player = getattr(sel, "substitute_player", None)
     result = None
     if substitute_player is not None:
@@ -228,6 +232,14 @@ async def _live_lineup(sel, nba_date: date, user_id=None):
     players, total, substitute = await _build_live_players(
         sel.selected_players, sel.sixth_man_player, nba_date, substitute_player, result
     )
+    if flag_did_not_play:
+        starters = [p for p in players if p.slot == "STARTER"]
+        gone = await did_not_play_ids(
+            [{"id": str(p.player_id)} for p in starters], nba_date, closing=False
+        )
+        for p in starters:
+            if str(p.player_id) in gone:
+                p.is_absent = True
     return players, total, substitute, describe(result) if result is not None else None
 
 

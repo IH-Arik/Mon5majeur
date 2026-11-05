@@ -180,6 +180,35 @@ def describe(result: SubstitutionResult) -> dict | None:
     }
 
 
+async def did_not_play_ids(people: list[dict], nba_date: date, *, closing: bool) -> set[str]:
+    """Ids of the players who played no minute: a stats row at 0 minute, or no
+    row at all. Only ever looks at minutes, never at points (a player who played
+    and scored 0 is not in the set).
+
+    closing=True  - the night is over: no row counts as 0 minute.
+    closing=False - a player only counts once HIS game is final; a game not
+    started, in progress, postponed or unknown decides nothing."""
+    if not people:
+        return set()
+    minutes = await _minutes(people, nba_date)
+    ids = {str(p.get("id", "")) for p in people}
+    if closing:
+        return {i for i in ids if minutes.get(i, 0) == 0}
+    statuses = await _game_statuses(people, nba_date) or {}
+    return {i for i in ids if statuses.get(i) == "final" and minutes.get(i, 0) == 0}
+
+
+async def mark_did_not_play(items: list[dict], nba_date: date, *, closing: bool) -> None:
+    """Flag every starter of a display list who played no minute ("OUT" on the
+    screens), with or without a substitute. The 6th Man and the substitute are
+    never flagged here."""
+    starters = [i for i in items if not i.get("is_sixth_man")]
+    gone = await did_not_play_ids(starters, nba_date, closing=closing)
+    for item in starters:
+        if str(item.get("id", "")) in gone:
+            item["absent"] = True
+
+
 def mark_absent(items: list[dict], result: SubstitutionResult) -> None:
     """Flag the replaced starter ("absent") in already-built display items."""
     if result.status != ENTERED:

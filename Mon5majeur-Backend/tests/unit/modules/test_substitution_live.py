@@ -247,7 +247,8 @@ def test_live_items_pending_show_the_substitute_but_no_replacement(monkeypatch):
     world(monkeypatch, status=[F, L, F], rows=[row(1, 0, 0)] + PLAYED)
     _global(monkeypatch, _sel(SUB))
     items, sub, state = asyncio.run(gr._global_selection_items("U", 1, 1, NIGHT, True))
-    assert not any(i.get("absent") for i in items)
+    # #1 played no minute and his game is final: OUT. Nobody is replaced yet.
+    assert [i.get("absent") for i in items] == [True, None, None, None, None]
     assert state == {"status": PENDING, "replaced_id": None}
 
 

@@ -31,7 +31,7 @@ from app.modules.leagues.schema import (
     PlayersSelectionRequest,
 )
 from app.modules.leagues.substitution_service import (
-    counted_starters, describe, mark_absent, resolve_substitution,
+    counted_starters, describe, mark_absent, mark_did_not_play, resolve_substitution,
 )
 from app.modules.lineups.compat_model import FlutterPlayerSelection
 from app.modules.players.compat_router import _nba_today
@@ -328,6 +328,7 @@ async def _global_selection_items(
         }
 
     items = [await _item(p) for p in sel.selected_players]
+    await mark_did_not_play(items, nba_date, closing=False)
     if sel.substitute_player is None or not show_substitute:
         return items, None, None
 
@@ -673,6 +674,7 @@ async def get_global_leaderboard_team_detail(
     )
     selected_players = selection_doc.selected_players if selection_doc else []
     enriched = await _enrich_with_scores(selected_players, for_date=last_score.nba_date)
+    await mark_did_not_play(enriched, last_score.nba_date, closing=True)
 
     substitute_out = substitution = None
     if selection_doc is not None and selection_doc.substitute_player is not None:
@@ -787,6 +789,7 @@ async def _night_payload(league: League, target: User, night: date) -> dict:
 
         for p, pid in zip(sel.selected_players, ids):
             items.append(_night_item(p, pid))
+        await mark_did_not_play(items, night, closing=True)
         if sub is not None:
             result = await resolve_substitution(sel.selected_players, sub, night, closing=True)
             mark_absent(items, result)

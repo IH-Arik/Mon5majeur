@@ -46,6 +46,11 @@ def _stub(monkeypatch, *, score, sel, stats):
     monkeypatch.setattr(gr, "GlobalLeagueDailyScore", _Score)
     monkeypatch.setattr(gr, "FlutterPlayerSelection", _Sel)
     monkeypatch.setattr(gr, "PlayerGameStats", _Stats)
+
+    async def _nobody_is_out(*_a, **_k):      # the OUT flag has its own tests (test_did_not_play)
+        return None
+
+    monkeypatch.setattr(gr, "mark_did_not_play", _nobody_is_out)
     gr.clear_result_cache()
     return calls
 

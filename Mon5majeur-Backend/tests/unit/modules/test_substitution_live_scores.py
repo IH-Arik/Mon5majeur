@@ -216,8 +216,8 @@ def test_a_member_viewing_a_third_match_sees_no_substitute_before_tip_off(monkey
 
 # ── Global League live ───────────────────────────────────────────────────────
 
-def test_global_live_uses_the_direct_rule(monkeypatch):
-    live_world(monkeypatch, status=[F, F, F], rows=ABSENT_1 + SUB_ROW)
+def _global_live(monkeypatch, *, status, rows, substitute):
+    live_world(monkeypatch, status=status, rows=rows)
     me = SimpleNamespace(id=ID["U"])
 
     class Leagues:
@@ -232,7 +232,7 @@ def test_global_live_uses_the_direct_rule(monkeypatch):
 
         @staticmethod
         async def find_one(*_):
-            return sel(substitute=SUB, user=ID["U"])
+            return sel(substitute=substitute, user=ID["U"])
 
     async def live_night():
         return NIGHT
@@ -260,7 +260,17 @@ def test_global_live_uses_the_direct_rule(monkeypatch):
     monkeypatch.setattr(lsvc, "_ensure_premium", ok)
     monkeypatch.setattr(lsvc, "_showing_night", showing)
     monkeypatch.setattr(lsvc, "_is_stale_for_date", stale)
-    out = asyncio.run(lsvc.LiveScoreService().get_global_live(me))
+    return asyncio.run(lsvc.LiveScoreService().get_global_live(me))
+
+
+def test_global_live_uses_the_direct_rule(monkeypatch):
+    out = _global_live(monkeypatch, status=[F, F, F], rows=ABSENT_1 + SUB_ROW, substitute=SUB)
     assert out.total_score == 97
     assert out.substitution == {"status": "entered", "replaced_id": oid(1)}
     assert out.substitute.fantasy_score_live == 22 and len(out.players) == 5
+
+
+def test_global_live_flags_a_starter_with_no_minute_even_without_a_substitute(monkeypatch):
+    out = _global_live(monkeypatch, status=[F, L, L], rows=ABSENT_1[1:], substitute=None)   # #1: game final, no row
+    assert [p.is_absent for p in out.players] == [True, False, False, False, False]
+    assert out.substitute is None and out.substitution is None
