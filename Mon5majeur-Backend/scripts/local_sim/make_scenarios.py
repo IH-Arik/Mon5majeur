@@ -174,8 +174,10 @@ async def main() -> None:
         await sel.insert()
 
     def five(ts: list[int], absent=None):
-        """Five starters, one per position family, from the given teams (stars)."""
-        order = ["PG", "SG", "SF", "PF", "C"]
+        """Five starters, one per position family, from the given teams (stars), in the
+        order the app saves them (the court's slots: wing, center, wing, guard, guard):
+        the composition screens fill the slots by index."""
+        order = ["SF", "C", "PF", "PG", "SG"]
         return [star(ts[k % len(ts)], pos) for k, pos in enumerate(order)]
 
     # ═══ the published night P ═══════════════════════════════════════════════

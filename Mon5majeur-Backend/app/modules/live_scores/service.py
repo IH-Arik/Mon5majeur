@@ -7,7 +7,7 @@ from beanie import PydanticObjectId
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.bonuses.live_access import sync_live_scoring
 from app.modules.leagues.model import League, LeagueMatch
-from app.modules.leagues.substitution import ENTERED
+from app.modules.leagues.substitution import ENTERED, best_five_flags
 from app.modules.leagues.substitution_service import describe, did_not_play_ids, resolve_substitution
 from app.modules.live_scores.schema import (
     LiveGlobalScore,
@@ -360,8 +360,7 @@ async def _build_live_players(
                 break
 
     if sixth_index is not None and len(entries) == 6:
-        ranked = sorted(range(len(entries)), key=lambda i: scores[i], reverse=True)
-        counted = set(ranked[:5])
+        counted = {i for i, kept in enumerate(best_five_flags(scores)) if kept}
     else:
         counted = set(range(len(entries)))
 

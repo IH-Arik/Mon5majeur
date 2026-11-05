@@ -30,7 +30,7 @@ no minutes). While the games are still being played the caller passes
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 SUBSTITUTE_MAX_PRICE = 10.0       # M, checked when the lineup is validated
 REPLACEABLE_MIN_PRICE = 10.0      # M, a starter must cost at least this much
@@ -94,3 +94,39 @@ def apply_substitution(
     replaced = min(eligible, key=lambda p: (-_price(p), _id(p)))
     counted = [substitute if p is replaced else p for p in starters]
     return SubstitutionResult(ENTERED, counted, substitute, replaced)
+
+
+# ── Who counts (the 6th Man rule: best 5 of 6) ───────────────────────────────
+
+KEPT_SCORES = 5                   # a duel lineup counts five scores
+
+
+def best_five_flags(scores: Sequence[float]) -> list[bool]:
+    """For each slot, whether its score counts. ``scores`` is the lineup's slots
+    in their saved order, the substitute standing in the place of the starter he
+    replaced, the 6th Man (if any) LAST. With six slots the best five count; on
+    equal scores the LATER slot is the one left out (so the 6th Man goes first,
+    then the last starter): the same player on every screen. With five slots or
+    fewer everybody counts.
+
+    This is the only place the rule lives: the duel total (close and results),
+    the live total and the "counted" flag of every screen all come from here."""
+    if len(scores) <= KEPT_SCORES:
+        return [True] * len(scores)
+    order = sorted(range(len(scores)), key=lambda i: (-scores[i], i))
+    kept = set(order[:KEPT_SCORES])
+    return [i in kept for i in range(len(scores))]
+
+
+def counted_player_ids(
+    slots: Sequence[dict],
+    sixth_man: dict | None,
+    score_of: Callable[[dict], float],
+) -> set[str]:
+    """Ids of the players whose score counts in a duel lineup. ``slots`` is
+    ``SubstitutionResult.starters`` (or the five saved starters without a
+    substitute): the replaced starter is not in it, so he never counts; a
+    substitute who did not come in is not in it either."""
+    players = list(slots) + ([sixth_man] if sixth_man is not None else [])
+    flags = best_five_flags([score_of(p) for p in players])
+    return {_id(p) for p, kept in zip(players, flags) if kept}

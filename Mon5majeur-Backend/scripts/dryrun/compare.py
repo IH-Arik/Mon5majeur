@@ -59,12 +59,13 @@ async def main() -> None:
     diffs = await compare_with(published, nights, say)
 
     await real_lineups_with_absent_starters(nights, say)
+    counted_failures = await counted_sum_checks(nights, say)
     await fictitious_lineups(nights, say)
 
     out = Path("dryrun_report.txt")
     out.write_text("\n".join(report), encoding="utf-8")
     say(f"\nReport written to {out.resolve()}")
-    sys.exit(1 if diffs else 0)
+    sys.exit(1 if (diffs or counted_failures) else 0)
 
 
 # ── Part A ───────────────────────────────────────────────────────────────────
@@ -129,6 +130,94 @@ async def compare_with(published, nights, say):
     if not diffs:
         say("-> zero difference")
     return diffs
+
+
+# ── Part A3 ──────────────────────────────────────────────────────────────────
+
+async def counted_sum_checks(nights, say):
+    """The "counted" rule against the total, on every REAL duel lineup: the points
+    of the players who count (+3 with Chef Curry) must equal the total of the real
+    close function AND the score the engine published for that match. Then the same
+    check on variants of each real lineup: a hypothetical substitute (lowest /
+    middle / highest scorer who played) and a hypothetical 6th Man (same three),
+    ties included. Returns the failures (empty = all good)."""
+    from types import SimpleNamespace
+
+    from app.modules.leagues.model import League, LeagueMatch
+    from app.modules.leagues.selection_service import _score_one_player, score_full_selection, total_from_scores
+    from app.modules.leagues.substitution import counted_player_ids
+    from app.modules.leagues.substitution_service import counted_starters
+    from app.modules.lineups.compat_model import FlutterPlayerSelection
+    from app.modules.players.model import Player, PlayerGameStats
+
+    leagues = {l.id: l for l in await League.find_all().to_list()}
+    names = {str(p.id): p.full_name for p in await Player.find_all().to_list()}
+    failures: list[str] = []
+    real = variants = published_checked = sixth_real = with_chef = 0
+
+    async def check(label, sel, night, published=None):
+        nonlocal failures
+        slots = await counted_starters(sel, night)
+        people = list(slots) + ([sel.sixth_man_player] if sel.sixth_man_player else [])
+        scores = {str(p["id"]): await _score_one_player(p.get("id"), night) for p in people}
+        ids = counted_player_ids(slots, sel.sixth_man_player, lambda p: scores[str(p["id"])])
+        counted_sum = round(sum(scores[i] for i in ids) + (3 if sel.chef_curry else 0), 2)
+        total = await score_full_selection(sel, night)
+        page = total_from_scores(sel, scores, starters=slots)
+        counts_ok = len(ids) == 5
+        if counted_sum != total or page != total or not counts_ok or (published is not None and round(total) != published):
+            failures.append(f"{label}: counted {counted_sum} close {total} page {page} published {published} (counted players {len(ids)})")
+
+    for night in nights:
+        rows = {str(r.player_id): r for r in await PlayerGameStats.find(PlayerGameStats.nba_date == night).to_list()}
+        pool = sorted(
+            (i for i, r in rows.items() if not r.did_not_play and (r.minutes_played or 0) > 0
+             and i in names and r.fantasy_score is not None),
+            key=lambda i: rows[i].fantasy_score)
+        picks = {"lowest": pool[0], "middle": pool[len(pool) // 2], "highest": pool[-1]} if pool else {}
+        matches = await LeagueMatch.find(LeagueMatch.nba_date == night).to_list()
+        published_for = {}
+        for m in matches:
+            if m.status == "completed":
+                published_for[(m.league_id, m.match_day, m.home_user_id)] = m.home_score
+                published_for[(m.league_id, m.match_day, m.away_user_id)] = m.away_score
+        for sel in await FlutterPlayerSelection.find(FlutterPlayerSelection.nba_date == night).to_list():
+            league = next((l for l in leagues.values() if l.auto_id == sel.league_auto_id), None)
+            if league is None or league.type == "global":
+                continue
+            pub = published_for.get((league.id, sel.match_day, sel.user_id))
+            real += 1
+            sixth_real += sel.sixth_man_player is not None
+            with_chef += bool(sel.chef_curry)
+            published_checked += pub is not None
+            await check(f"REAL {night} {str(sel.user_id)[:8]}", sel, night, pub)
+            in_lineup = {str(p["id"]) for p in sel.selected_players}
+            for sub_name, sub_id in [("none", None)] + list(picks.items()):
+                for six_name, six_id in [("keep", "keep"), ("none", None)] + list(picks.items()):
+                    if sub_id in in_lineup or (six_id not in (None, "keep") and six_id in in_lineup):
+                        continue
+                    sub = {"id": sub_id, "name": names.get(sub_id, ""), "position": "", "price": "7M"} if sub_id else None
+                    if six_id == "keep":
+                        six = sel.sixth_man_player
+                    else:
+                        six = {"id": six_id, "name": names.get(six_id, ""), "position": "", "price": "6M"} if six_id else None
+                    if sub_id and six is not None and str(six.get("id")) == sub_id:
+                        continue
+                    fake = SimpleNamespace(user_id=sel.user_id, selected_players=sel.selected_players,
+                                           substitute_player=sub, sixth_man_player=six, chef_curry=sel.chef_curry)
+                    variants += 1
+                    await check(f"VARIANT {night} {str(sel.user_id)[:8]} sub={sub_name} sixth={six_name}", fake, night)
+    say("\n" + "=" * 78)
+    say("PART A3 - the points of the players who count (+3 Chef Curry) = the total")
+    say(f"real duel lineups: {real} (with a 6th Man: {sixth_real}, with Chef Curry: {with_chef}); "
+        f"compared with the published match score: {published_checked}")
+    say(f"variants with a hypothetical substitute / 6th Man (ties included): {variants}")
+    say(f"FAILURES: {len(failures)}")
+    for f in failures[:40]:
+        say("  " + f)
+    if not failures:
+        say("-> every lineup: counted points = total")
+    return failures
 
 
 # ── Part A2 ──────────────────────────────────────────────────────────────────

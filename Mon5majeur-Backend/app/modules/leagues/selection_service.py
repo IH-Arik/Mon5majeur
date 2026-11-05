@@ -9,6 +9,7 @@ from beanie import PydanticObjectId
 
 from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.leagues.positions import can_fill_lineup
+from app.modules.leagues.substitution import best_five_flags, counted_player_ids
 from app.modules.leagues.substitution_save import prepare_substitute
 from app.modules.leagues.substitution_service import (
     counted_starters, describe, mark_absent, mark_did_not_play, resolve_substitution,
@@ -65,7 +66,7 @@ def total_from_scores(
     scores = [one(p) for p in (sel.selected_players if starters is None else starters)]
     if sel.sixth_man_player is not None:
         scores.append(one(sel.sixth_man_player))
-        scores = sorted(scores, reverse=True)[:5]
+        scores = [x for x, kept in zip(scores, best_five_flags(scores)) if kept]
     total = sum(scores)
     if sel.chef_curry and with_chef_curry:
         total += 3
@@ -100,7 +101,7 @@ async def score_full_selection(sel: FlutterPlayerSelection, nba_date: date) -> f
 
     if sel.sixth_man_player is not None:
         scores.append(await _score_one_player(sel.sixth_man_player.get("id"), nba_date))
-        scores = sorted(scores, reverse=True)[:5]
+        scores = [x for x, kept in zip(scores, best_five_flags(scores)) if kept]
 
     total = sum(scores)
     if sel.chef_curry:
@@ -614,6 +615,13 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
                     sel_doc.selected_players, sel_doc.substitute_player, nba_date,
                     closing=published, user_id=user_oid,
                 )
+            # Who counts in the total (best 5 of 6 with a 6th Man, the substitute in
+            # the place of the starter he replaced): the same rule as the total.
+            counted_ids = counted_player_ids(
+                sub_result.starters if sub_result is not None else sel_doc.selected_players,
+                sel_doc.sixth_man_player,
+                lambda p: scores_by_player.get(str(p.get("id", "")), 0.0),
+            )
             if is_me or published:
                 bonus = real_bonus
             elif real_bonus == "sixth_man" and started:
@@ -629,6 +637,7 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
                         "position": p.get("position", ""),
                         "score": fscore,
                         "is_sixth_man": is_sixth,
+                        "counted": str(pid_str) in counted_ids,
                     }
 
                 starters = [await _item(p, False) for p in sel_doc.selected_players]

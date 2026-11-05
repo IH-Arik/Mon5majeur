@@ -368,6 +368,10 @@ class PlayerSelectionItem(BaseSchema):
     score: int = 0
     is_sixth_man: bool = False
     absent: bool = False        # starter replaced by the substitute (shown greyed)
+    # Duels: False when the score is not in the total (best 5 of 6 left him out, or
+    # the substitute did not come in). The same rule as the total, same on every
+    # screen. Not set in the Global League (always True there).
+    counted: bool = True
 
 
 class PlayerScoreItem(BaseSchema):

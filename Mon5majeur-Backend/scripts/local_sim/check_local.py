@@ -70,6 +70,20 @@ def api(p):
     return {k: p[k] for k in ("id", "name", "position", "team", "team_id", "status", "price")}
 
 
+def counted_sum_checks(page, where):
+    """Every visible lineup of a duel page: the points of the players flagged
+    "counted" (+3 with Chef Curry) are exactly its total."""
+    for ps in page.get("player_scores", []):
+        if ps.get("selection_hidden"):
+            continue
+        items = list(ps.get("selection", [])) + ([ps["substitute"]] if ps.get("substitute") else [])
+        total = sum(i["score"] for i in items if i.get("counted"))
+        if ps.get("bonus") == "chef_curry":
+            total += 3
+        check(total == ps["total_points"], f"{where}: {ps['team_name']} counted points = total",
+              f"counted {total}, total {ps['total_points']}")
+
+
 def published_night_checks():
     print("\nPublished night (computed by the REAL close code):")
     me = login("me")
@@ -91,6 +105,7 @@ def published_night_checks():
           "Duel (r1): no substitute -> nothing")
     check(by_team(ps, "r2")["substitution"]["status"] == "entered", "Duel (r2): 0-minute starter replaced")
     check(by_team(ps, "r3")["substitution"]["status"] == "not_entered", "Duel (r3): substitute did not enter")
+    counted_sum_checks(d, "Duel day 1")
     me_score = by_team(ps, "me")
     check(me_score["total_points"] > 0 and not d.get("scores_hidden"), "Duel (me): points shown (premium)")
 
@@ -149,7 +164,11 @@ def live_checks():
     code, g = call("GET", "/api/v1/live/global", me)
     check(code == 200 and (g.get("substitution") or {}).get("status") == "pending",
           "Live Global (me): pending, a starter's game is still on", f"{code} {g.get('substitution')}")
-    check(not any(p.get("is_absent") for p in g.get("players", [])), "Live Global (me): nobody greyed yet")
+    # A starter whose own game is final with no minute is OUT at once (with or without a
+    # substitute); nobody is REPLACED before every game of the lineup is final.
+    out = [p for p in g.get("players", []) if p.get("is_absent")]
+    check(len(out) == 1 and out[0]["minutes_played"] == 0 and out[0]["is_finalized"] is False,
+          "Live Global (me): only the 0-minute starter whose game is final is OUT; nobody replaced yet", str(out)[:120])
     check(g.get("substitute") is not None and len(g.get("players", [])) == 5, "Live Global (me): substitute apart, 5 listed")
     code, g2 = call("GET", "/api/v1/live/global", me2)
     check((g2.get("substitution") or {}).get("status") == "entered", "Live Global (me2): every game final -> entered",
@@ -163,6 +182,8 @@ def live_checks():
           "Live duel (me): pending", f"{code} {live.get('home_substitution')}")
     check(live.get("away_substitute") is not None, "Live duel: the opponent's substitute is visible once games started")
     code, d1 = call("GET", "/api/private-leagues/matches/2/2/", r1)
+    counted_sum_checks(d1, "Duel day 2 (live night, r1's view)")
+    counted_sum_checks(d, "Duel day 2 (live night, my view)")
     check(by_team(d1["player_scores"], "me")["substitution"]["status"] == "pending",
           "Result page (r1 looks at me): pending, not replaced yet")
 
