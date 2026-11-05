@@ -243,6 +243,14 @@ class AppString {
   static const String c = 'C';
   static const String pgSg = 'PG/SG';
   static const String sixthMan = '6th Man';
+  // Substitute ("remplaçant"): a lineup rule, not a bonus.
+  static const String substitute = 'Substitute';
+  static const String substituteExplanation = 'substituteExplanation';
+  static const String substitutePriceHint = 'Substitute pick must cost ≤ @nM';
+  static const String removeSubstitute = 'Remove the substitute';
+  static const String substituteReplaces = '🔄 @sub replaces @starter';
+  static const String substituteDidNotEnter = 'Did not enter';
+  static const String starterAbsent = 'absent';
   static const String changeJersey = 'Change\nJersey';
   static const String plus = '+';
   static const String bonuses = 'Bonuses';

@@ -26,6 +26,7 @@ import '../widgets/position_label.dart';
 import '../../../../data/services/jersey_service.dart';
 import 'jersey_selection_screen.dart';
 import 'team_confirm_controls.dart';
+import '../../../../core/utils/lineup_rules.dart';
 import '../../../widgets/push_notification_prompts.dart';
 
 class BuildYourTeamTabGlobal extends StatefulWidget {
@@ -44,6 +45,9 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   final double totalBudget = 100.0;
   List<Player?> selectedPlayers = List.filled(5, null);
   Player? sixthManPlayer;
+  // Optional, outside the budget (a lineup rule, not a bonus): comes in for a
+  // starter of 10M+ who plays 0 minute. Saved with the lineup.
+  Player? substitutePlayer;
 
   // Client-side confirmed flag (no backend field). True after a successful
   // submit or when a complete saved team is loaded; reset to false on any edit.
@@ -86,8 +90,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
   ];
 
   double get usedBudget =>
-      selectedPlayers.fold(0.0, (sum, p) => sum + (p?.price ?? 0.0)) +
-      (sixthManPlayer?.price ?? 0.0);
+      budgetUsedByStarters(selectedPlayers) + (sixthManPlayer?.price ?? 0.0);
 
   int get remainingPlayers => selectedPlayers.where((p) => p == null).length;
   bool get isTeamComplete => selectedPlayers.every((p) => p != null);
@@ -171,6 +174,7 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       for (int i = 0; i < selection.selectedPlayers.length && i < 5; i++) {
         selectedPlayers[i] = selection.selectedPlayers[i];
       }
+      substitutePlayer = selection.substitutePlayer;
       // The backend decides whether this matchday is actually validated.
       isConfirmed = selection.lineupSubmitted;
     });
@@ -429,6 +433,10 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
           remainingBudget: totalBudget - usedBudget,
           onPlayerSelected: (p) => setState(() {
             selectedPlayers[index] = p;
+            // The same player cannot be a starter and the substitute.
+            if (substitutePlayer?.id != null && substitutePlayer!.id == p.id) {
+              substitutePlayer = null;
+            }
             isConfirmed = false; // editing after confirm → back to orange
           }),
           onLoadMore: _loadMorePlayers,
@@ -438,6 +446,52 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
       ),
     ).then((_) => _maybeStartLineupShowcase());
   }
+
+  void _selectSubstitute() {
+    if (isLoadingPlayers && availablePlayers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loading players, please wait...'.tr)),
+      );
+      return;
+    }
+
+    // Anybody of 10M or less except the five starters; his price is outside
+    // the budget, so the bank is not shown.
+    final excluded = selectedPlayers
+        .where((p) => p != null && p.id != null)
+        .map((p) => p!.id!)
+        .toSet();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => SelectPlayerScreen(
+          playersNotifier: _playersNotifier,
+          getHasMorePages: () => hasMorePages,
+          getIsLoadingMore: () => _isLoadingMore,
+          teamJersey: jerseys[selectedJerseyIndex],
+          positionCategory: null,
+          excludedPlayerIds: excluded,
+          remainingBudget: totalBudget - usedBudget,
+          maxPrice: substituteMaxPrice,
+          infoText: AppString.substituteExplanation.tr,
+          maxPriceHint: AppString.substitutePriceHint.trParams({
+            'n': '${substituteMaxPrice.toInt()}',
+          }),
+          onPlayerSelected: (p) => setState(() {
+            substitutePlayer = p;
+            isConfirmed = false; // editing after confirm → back to orange
+          }),
+          onLoadMore: _loadMorePlayers,
+        ),
+      ),
+    );
+  }
+
+  void _removeSubstitute() => setState(() {
+    substitutePlayer = null;
+    isConfirmed = false;
+  });
 
   void _selectJersey() async {
     final result = await Navigator.push<int>(
@@ -484,7 +538,11 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
     final playersToSave = selectedPlayers.whereType<Player>().toList();
 
-    final success = await _controller.submitPlayerSelection(playersToSave);
+    final success = await _controller.submitPlayerSelection(
+      playersToSave,
+      substitute: substitutePlayer,
+      sendSubstitute: true, // this version knows the field: null removes it
+    );
 
     if (success) {
       setState(() => isConfirmed = true);
@@ -726,11 +784,28 @@ class _BuildYourTeamTabGlobalState extends State<BuildYourTeamTabGlobal> {
 
   Widget _buildCourtField() {
     return LineupCourt(
+      // Taller court: the substitute has his own row under the starters.
+      height: 720.h,
       slotBuilder: _buildPlayerSlot,
       changeJerseyButton: LineupChangeJerseyButton(
         jersey: jerseys[selectedJerseyIndex],
         onTap: _selectJersey,
       ),
+      inside: [
+        Positioned(
+          bottom: 12.h,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: LineupSubstituteSlot(
+              player: substitutePlayer,
+              jersey: jerseys[selectedJerseyIndex],
+              onTap: _selectSubstitute,
+              onRemove: _removeSubstitute,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

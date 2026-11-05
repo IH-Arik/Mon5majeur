@@ -25,6 +25,10 @@ class SelectPlayerScreen extends StatefulWidget {
   // pick at submit time, so filtering the list here means Confirm can never
   // silently fail on a 6th Man that was never a valid choice to begin with.
   final double? maxPrice;
+  // The substitute is outside the budget: his picker shows this explanation (and
+  // [maxPriceHint]) instead of the bank and the 6th Man price line.
+  final String? infoText;
+  final String? maxPriceHint;
 
   const SelectPlayerScreen({
     super.key,
@@ -38,6 +42,8 @@ class SelectPlayerScreen extends StatefulWidget {
     this.positionCategory,
     this.excludedPlayerIds = const {},
     this.maxPrice,
+    this.infoText,
+    this.maxPriceHint,
   });
 
   @override
@@ -222,6 +228,28 @@ class _SelectPlayerScreenState extends State<SelectPlayerScreen> {
   }
 
   Widget _buildBudgetInfo() {
+    final info = widget.infoText;
+    if (info != null) {
+      return Container(
+        key: const ValueKey('picker-info'),
+        color: const Color(0xFF000000),
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(info, style: TextStyle(color: Colors.white70, fontSize: 13.sp)),
+            if (widget.maxPriceHint != null) ...[
+              SizedBox(height: 6.h),
+              Text(
+                widget.maxPriceHint!,
+                style: TextStyle(color: Colors.white38, fontSize: 11.sp),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
     return Container(
       color: const Color(0xFF000000),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),

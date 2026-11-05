@@ -6,7 +6,9 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/feature_flags.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/utils/lineup_positions.dart';
+import '../../../../core/utils/lineup_rules.dart';
 import '../../../../data/models/match_result_model.dart';
+import '../../../../data/models/substitution_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../data/services/api_url.dart';
 import '../../../../data/services/global_result_cache.dart';
@@ -237,6 +239,10 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
       username: '',
       totalPoints: (d['total_points'] as num?)?.toInt() ?? 0,
       selection: inCourtOrder(items, (p) => p.position),
+      substitute: d['substitute'] is Map
+          ? PlayerSelection.fromJson(Map<String, dynamic>.from(d['substitute'] as Map))
+          : null,
+      substitution: SubstitutionState.fromJson(d['substitution']),
       teamLogo: d['team_logo'] ?? '',
       jerseyIndex: (d['jersey_index'] as num?)?.toInt() ?? 0,
       isMe: d['is_me'] ?? false,
@@ -356,10 +362,9 @@ class _GlobalPublishedResultState extends State<GlobalPublishedResult> {
                   final team = _toTeam(d);
                   // The score is the sum of the players' points shown on the
                   // court, so the two always agree.
-                  final sum = team.selection.fold<int>(
-                    0,
-                    (a, p) => a + p.score,
-                  );
+                  // (the replaced starter counts for nothing, the substitute
+                  // counts once he came in).
+                  final sum = lineupPointsTotal(team);
                   return Column(
                     children: [
                       // Gold/silver/bronze of the night on screen, whichever it is.

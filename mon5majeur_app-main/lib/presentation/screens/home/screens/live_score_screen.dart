@@ -14,6 +14,8 @@ import '../../../../core/routes/route_path.dart';
 import '../../../../core/routes/routes.dart';
 import '../../../../data/models/live_score_model.dart';
 import '../../../../core/utils/lineup_positions.dart';
+import '../../../../core/utils/lineup_rules.dart';
+import '../../../../data/models/substitution_model.dart';
 import '../../../../data/models/match_result_model.dart';
 import '../../../widgets/match_widgets.dart';
 import '../controllers/home_controller.dart';
@@ -490,10 +492,17 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
     final name = (profileName != null && profileName.isNotEmpty)
         ? profileName
         : AppString.myTeam.tr;
-    final squad = _toSquad(name, score.players, jersey: _myJersey);
+    final squad = _toSquad(
+      name,
+      score.players,
+      jersey: _myJersey,
+      substitute: score.substitute,
+      substitution: score.substitution,
+    );
     // The score is the sum of the points shown on the court, so the two
-    // always agree (not the server's total).
-    final sum = squad.selection.fold<int>(0, (a, p) => a + p.score);
+    // always agree (not the server's total): the replaced starter counts for
+    // nothing, the substitute counts once he came in.
+    final sum = lineupPointsTotal(squad);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.all(16.w),
@@ -632,9 +641,12 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
   /// The court draws the five starters by position; the 6th man rides along
   /// flagged, and the lineup widget lists him under the court.
   PlayerScore _toSquad(String teamName, List<LivePlayerScore> players,
-      {int jersey = 0, _Side side = _Side.none}) {
+      {int jersey = 0,
+      _Side side = _Side.none,
+      LivePlayerScore? substitute,
+      SubstitutionState? substitution}) {
     final starters = inCourtOrder(
-      players.where((p) => !p.isSixthMan).take(5).toList(),
+      players.where((p) => !p.isSixthMan && !p.isSubstitute).take(5).toList(),
       (p) => p.position,
     );
     final sixth = players.where((p) => p.isSixthMan).toList();
@@ -645,7 +657,9 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           position: p.position ?? '',
           score: p.fantasyScoreLive.round(),
           isSixthMan: sixth,
+          absent: p.isAbsent,
         );
+
     // Duel Live bonus zone, decided only by the lineup (never by a server
     // bonus field): the 6th man is the only bonus seen; an opponent without
     // one always shows the lock (nothing is given away); my own team without
@@ -668,7 +682,12 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       // Best 5 of the 6 when there is a 6th man (the same rule as the duel),
       // so the 6th man's points can be followed live; it can go down when he
       // becomes the worst of the six.
-      totalPoints: _bestFive([...starters, ...sixth]),
+      totalPoints: liveLineupTotal(
+        starters: starters,
+        sixth: sixth,
+        substitute: substitute,
+        substitution: substitution,
+      ),
       selection: [
         for (final p in starters) toSel(p),
         for (final p in sixth) toSel(p, sixth: true),
@@ -677,16 +696,10 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
       isMe: side != _Side.opponent,
       bonus: bonus,
       bonusHidden: bonusHidden,
+      substitute: substitute == null ? null : toSel(substitute),
+      substitution: substitution,
     );
   }
-}
-
-/// Sum of the best five live scores among [players] (all of them when there
-/// are five or fewer).
-int _bestFive(List<LivePlayerScore> players) {
-  final scores = [for (final p in players) p.fantasyScoreLive.round()]
-    ..sort((a, b) => b.compareTo(a));
-  return scores.take(5).fold(0, (sum, v) => sum + v);
 }
 
 /// Whose team a Live squad is. [none] = the Global League view (no bonus).

@@ -122,6 +122,55 @@ class LineupPlayerSlot extends StatelessWidget {
   }
 }
 
+/// The substitute's slot: the usual jersey slot labelled "Remplaçant" /
+/// "Substitute", with a small "Retirer" action once somebody is picked (he is
+/// optional, so he can be taken out again).
+class LineupSubstituteSlot extends StatelessWidget {
+  final Player? player;
+  final AssetGenImage jersey;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const LineupSubstituteSlot({
+    super.key,
+    required this.player,
+    required this.jersey,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LineupPlayerSlot(
+          player: player,
+          jersey: jersey,
+          label: AppString.substitute.tr,
+          onTap: onTap,
+        ),
+        if (player != null)
+          GestureDetector(
+            onTap: onRemove,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 8.w),
+              child: Text(
+                AppString.removeSubstitute.tr,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11.sp,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// "Changer de maillot +" button at the top-left of the court.
 class LineupChangeJerseyButton extends StatelessWidget {
   final AssetGenImage jersey;

@@ -8,8 +8,10 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/utils/datetime_format.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/utils/logo_assets.dart';
+import '../../../../core/utils/lineup_rules.dart';
 import '../../../../core/utils/score_style.dart';
 import '../../../../data/models/match_result_model.dart';
+import 'substitute_widgets.dart';
 
 /// Both teams' lineups on a full court, with each player's fantasy score.
 /// Shared by the Results tab ("View details"), the match detail screen and the
@@ -74,6 +76,18 @@ class MatchLineupsField extends StatelessWidget {
     this.labelMaxWidth,
   });
 
+  bool get _showsSubstitute =>
+      (globalResultStyle || !showOpponent) &&
+      teamA?.substitute != null &&
+      !(teamA?.selectionHidden ?? false);
+
+  Widget _substituteCard() => SubstituteResultCard(
+        substitute: teamA!.substitute!,
+        state: teamA!.substitution,
+        replacedName: replacedStarterName(teamA!),
+        scoresHidden: scoresHidden,
+      );
+
   List<PlayerSelection> _starters(PlayerScore? t) =>
       (t?.selection ?? const <PlayerSelection>[])
           .where((p) => !p.isSixthMan)
@@ -92,6 +106,9 @@ class MatchLineupsField extends StatelessWidget {
     return Column(
       children: [
         _court(b),
+        // The substitute of a single-team view (Global League results, "view
+        // team", Live). The duel's two-team view comes with the duel screens.
+        if (_showsSubstitute) _substituteCard(),
         if (duelResultStyle)
           ..._duelBonusCard()
         else ...[
@@ -645,6 +662,42 @@ class MatchLineupsField extends StatelessWidget {
   }
 
   Widget _buildPlayer(PlayerSelection player, AssetGenImage jersey) {
+    if (!player.absent) return _playerBody(player, jersey);
+    // A starter the substitute replaced: greyed, with the "absent" mention.
+    return SizedBox(
+      width: 90.w,
+      height: 107.h,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Opacity(opacity: 0.4, child: _playerBody(player, jersey)),
+          Positioned(
+            right: -2.w,
+            top: 2.h,
+            child: Container(
+              key: const ValueKey('starter-absent'),
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+              decoration: BoxDecoration(
+                color: const Color(0xCC111111),
+                borderRadius: BorderRadius.circular(3.r),
+                border: Border.all(color: Colors.white54, width: 1.w),
+              ),
+              child: Text(
+                AppString.starterAbsent.tr,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 8.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _playerBody(PlayerSelection player, AssetGenImage jersey) {
     final rank = medals?[player.id];
     final haloColor = rank == null ? null : _haloColors[rank];
     return SizedBox(

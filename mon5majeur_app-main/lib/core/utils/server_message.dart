@@ -75,6 +75,11 @@ final _rules = <_Rule>[
     ['name'],
   ),
   _Rule(
+    RegExp(r'^The substitute costs (.+) — must be 10M or less$'),
+    'The substitute costs @price — must be 10M or less',
+    ['price'],
+  ),
+  _Rule(
     RegExp(r'^Player (.+) is listed twice$'),
     '@name is listed twice',
     ['name'],
