@@ -91,10 +91,11 @@ def test_live_global_flags_the_out_starter_without_any_substitute(monkeypatch):
     assert [p.is_absent for p in players] == [True, False, False, False, False]
 
 
-def test_live_duel_keeps_its_own_look(monkeypatch):
+def test_live_lineup_without_the_flag_keeps_its_old_look(monkeypatch):
     live_world(monkeypatch, status=[F, F, F], rows=NO_ROW_1)
     players, *_ = asyncio.run(lsvc._live_lineup(live_sel(), NIGHT, "H"))
     assert not any(p.is_absent for p in players)
+
 
 
 def _published(monkeypatch, sel):

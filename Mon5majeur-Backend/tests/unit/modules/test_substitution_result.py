@@ -193,13 +193,15 @@ def test_page_before_the_close_waits_for_every_game(monkeypatch, _models):
                        home=sel(substitute=SUB), away=AWAY_PLAIN, match_status="live")["H"]
     assert page["substitution"] == {"status": "pending", "replaced_id": None}
     assert page["total_points"] == 30 + 20 + 15 + 10
-    assert not any(i.get("absent") for i in page["selection"])
+    # #1 played no minute and his game is final: OUT. Nobody is replaced yet.
+    assert [i.get("absent") for i in page["selection"]] == [True, None, None, None, None]
 
 
 def test_page_not_final_game_never_replaces_before_the_close(monkeypatch, _models):
     page = result_page(monkeypatch, _models, status=[S, F, F], rows=ALL[1:] + SUB_ROW,
                        home=sel(substitute=SUB), away=AWAY_PLAIN, match_status="scheduled")["H"]
     assert page["substitution"]["status"] == "pending"
+    assert not any(i.get("absent") for i in page["selection"])    # his game has not been played: not OUT
 
 
 def test_opponent_lineup_and_substitute_stay_hidden_until_tip_off(monkeypatch, _models):
@@ -295,3 +297,31 @@ def test_scripts_without_substitute_print_what_they_always_printed(monkeypatch, 
     _script_world(monkeypatch, _models, mod, ALL + SUB_ROW, sel(), sel(user="A"))
     lines = asyncio.run(mod._duel_totals(NIGHT, {oid(1): 50}))          # #1 corrected 40 -> 50
     assert lines == ["  league 1 day 1: 115.0-115.0 -> 125.0-125.0"]
+
+
+# ── a starter with no minute is OUT in a duel too, with or without a substitute ──
+
+def test_page_flags_the_out_starter_without_any_substitute(monkeypatch, _models):
+    pages = result_page(monkeypatch, _models, status=[F, F, F], rows=ABSENT_1,
+                        home=sel(), away=AWAY_PLAIN)
+    assert [i.get("absent") for i in pages["H"]["selection"]] == [True, None, None, None, None]
+    assert pages["H"]["substitute"] is None and pages["H"]["substitution"] is None
+
+
+def test_page_a_postponed_game_without_row_is_out_at_the_close(monkeypatch, _models):
+    page = result_page(monkeypatch, _models, status=[S, F, F], rows=ALL[1:],
+                       home=sel(), away=AWAY_PLAIN)["H"]
+    assert [i.get("absent") for i in page["selection"]].count(True) == 1
+
+
+def test_page_a_player_who_played_and_scored_zero_is_not_out(monkeypatch, _models):
+    page = result_page(monkeypatch, _models, status=[F, F, F], rows=[row(1, 0, 30)] + ALL[1:],
+                       home=sel(), away=AWAY_PLAIN)["H"]
+    assert not any(i.get("absent") for i in page["selection"])
+
+
+def test_page_the_sixth_man_is_never_flagged(monkeypatch, _models):
+    page = result_page(monkeypatch, _models, status=[F, F, F], rows=ALL,       # no row for the 6th Man
+                       home=sel(sixth=SIXTH), away=AWAY_PLAIN)["H"]
+    sixth = [i for i in page["selection"] if i.get("is_sixth_man")]
+    assert len(sixth) == 1 and not sixth[0].get("absent")

@@ -11,7 +11,7 @@ from app.exceptions.errors import ForbiddenException, NotFoundException
 from app.modules.leagues.positions import can_fill_lineup
 from app.modules.leagues.substitution_save import prepare_substitute
 from app.modules.leagues.substitution_service import (
-    counted_starters, describe, mark_absent, resolve_substitution,
+    counted_starters, describe, mark_absent, mark_did_not_play, resolve_substitution,
 )
 from app.modules.leagues.model import League, LeagueMatch
 from app.modules.lineups.compat_model import FlutterPlayerSelection
@@ -638,6 +638,9 @@ async def get_match_result(league_auto_id: int, match_day: int, viewer: User | N
                 selection_items = starters
                 if sel_doc.sixth_man_player is not None:
                     selection_items.append(await _item(sel_doc.sixth_man_player, True))
+                # a starter who played no minute (OUT on the screens), with or
+                # without a substitute; the 6th Man is never flagged
+                await mark_did_not_play(selection_items, nba_date, closing=published)
                 if sub_result is not None:
                     mark_absent(selection_items, sub_result)
                     substitute_item = await _item(sel_doc.substitute_player, False)

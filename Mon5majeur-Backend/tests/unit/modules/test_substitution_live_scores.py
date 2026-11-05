@@ -274,3 +274,10 @@ def test_global_live_flags_a_starter_with_no_minute_even_without_a_substitute(mo
     out = _global_live(monkeypatch, status=[F, L, L], rows=ABSENT_1[1:], substitute=None)   # #1: game final, no row
     assert [p.is_absent for p in out.players] == [True, False, False, False, False]
     assert out.substitute is None and out.substitution is None
+
+
+def test_live_duel_flags_a_starter_with_no_minute_too(monkeypatch):
+    out = live_match(monkeypatch, status=[F, L, L], rows=ALL[1:], started=True, viewer="H",
+                     match_status="live")
+    assert [p.is_absent for p in out.home_players][:1] == [True]
+    assert not any(p.is_absent for p in out.home_players[1:])

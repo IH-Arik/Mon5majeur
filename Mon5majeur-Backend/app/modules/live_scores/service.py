@@ -222,7 +222,7 @@ async def _live_lineup(sel, nba_date: date, user_id=None, flag_did_not_play: boo
     """Live players, total, substitute and substitution state of one lineup.
     The substitute only comes in once every game of the lineup is final.
     flag_did_not_play: every starter who played no minute once his own game is
-    final is flagged absent too (Global League only; the duel keeps its own look)."""
+    final is flagged absent too (Global League and duels)."""
     substitute_player = getattr(sel, "substitute_player", None)
     result = None
     if substitute_player is not None:
@@ -262,7 +262,9 @@ async def _get_live_players_for_user(
     if not sel:
         return [], 0.0, None, None  # forfeit — no lineup submitted (spec §4.1)
 
-    players, total, substitute, substitution = await _live_lineup(sel, nba_date, user_id)
+    players, total, substitute, substitution = await _live_lineup(
+        sel, nba_date, user_id, flag_did_not_play=True
+    )
     if sel.chef_curry and show_chef_curry:
         total += 3
     if not show_substitute:
