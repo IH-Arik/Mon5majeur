@@ -5,6 +5,8 @@ import '../../../../controllers/my_leagues_controller.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/custom_assets/assets.gen.dart';
 import '../../../../core/utils/datetime_format.dart';
+import '../../../../core/utils/lineup_request.dart';
+import '../../../../core/utils/lineup_rules.dart';
 import '../../../../core/utils/server_message.dart';
 import '../../../../data/models/bonus_inventory_model.dart';
 import '../../../../data/models/game_model.dart';
@@ -61,6 +63,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       _baseBudget + (luxuryTaxActivated ? _luxuryTaxBonus : 0.0);
   List<Player?> selectedPlayers = List.filled(5, null);
   Player? sixthManPlayer;
+  // Optional substitute (10M or less, outside the budget): left of the half-way
+  // line, the 6th Man's place is on the right.
+  Player? substitutePlayer;
   // Tonight's Global League team, when the user already built one: offered as
   // a starting point by the "Reuse my Global League team" button. Its bonuses
   // do not exist (the Global League has none), so none is ever copied.
@@ -145,6 +150,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         _day = newDay;
         selectedPlayers = List.filled(5, null);
         sixthManPlayer = null;
+        substitutePlayer = null;
         activeBonus = null;
         isConfirmed = false;
         lockInSeconds = lock;
@@ -532,6 +538,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
           remainingBudget: totalBudget - usedBudget,
           onPlayerSelected: (p) => setState(() {
             selectedPlayers[index] = p;
+            // The same player cannot be a starter and the substitute.
+            if (substitutePlayer?.id != null && substitutePlayer!.id == p.id) {
+              substitutePlayer = null;
+            }
             isConfirmed = false; // editing after confirm → back to orange
           }),
           onLoadMore: _loadMorePlayers,
@@ -553,6 +563,8 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
         .where((p) => p != null && p.id != null)
         .map((p) => p!.id!)
         .toSet();
+    // The substitute cannot also be the 6th Man.
+    if (substitutePlayer?.id != null) selectedIds.add(substitutePlayer!.id!);
 
     Navigator.push(
       context,
@@ -575,6 +587,54 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       ),
     );
   }
+
+  void _selectSubstitute() {
+    if (isLoadingPlayers && availablePlayers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Loading players, please wait...'.tr)),
+      );
+      return;
+    }
+
+    // Anybody of 10M or less except the five starters and the 6th Man; his
+    // price is outside the budget, so the bank is not shown.
+    final excluded = selectedPlayers
+        .where((p) => p != null && p.id != null)
+        .map((p) => p!.id!)
+        .toSet();
+    if (sixthManPlayer?.id != null) excluded.add(sixthManPlayer!.id!);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => SelectPlayerScreen(
+          playersNotifier: _playersNotifier,
+          getHasMorePages: () => hasMorePages,
+          getIsLoadingMore: () => _isLoadingMore,
+          teamJersey: jerseys[selectedJerseyIndex],
+          positionCategory: null,
+          excludedPlayerIds: excluded,
+          remainingBudget: totalBudget - usedBudget,
+          maxPrice: substituteMaxPrice,
+          infoText: AppString.substituteExplanation.tr,
+          maxPriceHint: AppString.substitutePriceHint.trParams({
+            'n': '${substituteMaxPrice.toInt()}',
+          }),
+          onRemove: substitutePlayer == null ? null : _removeSubstitute,
+          onPlayerSelected: (p) => setState(() {
+            substitutePlayer = p;
+            isConfirmed = false; // editing after confirm → back to orange
+          }),
+          onLoadMore: _loadMorePlayers,
+        ),
+      ),
+    );
+  }
+
+  void _removeSubstitute() => setState(() {
+    substitutePlayer = null;
+    isConfirmed = false;
+  });
 
   void _selectJersey() async {
     final result = await Navigator.push<int>(
@@ -745,17 +805,14 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       // Prepare request body — bonus flags tell the backend which strategic
       // bonus (if any) to consume from the free quota / purchased charges
       // and apply when this duel is scored (spec §4.4).
-      final requestBody = {
-        'selected_players': selectedPlayers
-            .where((p) => p != null)
-            .map((p) => p!.toApiJson())
-            .toList(),
-        'luxury_tax': luxuryTaxActivated,
-        'chef_curry': chefsCurryActivated,
-        'sixth_man_player': sixthManActivated
-            ? sixthManPlayer?.toApiJson()
-            : null,
-      };
+      final requestBody = duelLineupRequestBody(
+        starters: selectedPlayers,
+        luxuryTax: luxuryTaxActivated,
+        chefCurry: chefsCurryActivated,
+        sixthManActive: sixthManActivated,
+        sixthMan: sixthManPlayer,
+        substitute: substitutePlayer,
+      );
 
       // Make API call - UPDATED TO USE publicPlayersSelection
       final url = widget.isPrivate
@@ -950,6 +1007,11 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
     setState(() {
       selectedPlayers = [for (final p in team) usable(p)];
+      // The same player cannot be a starter and the substitute.
+      if (substitutePlayer?.id != null &&
+          selectedPlayers.any((p) => p?.id == substitutePlayer!.id)) {
+        substitutePlayer = null;
+      }
       isConfirmed = false;
     });
 
@@ -1043,6 +1105,10 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
             activeBonus = null;
             sixthManPlayer = null;
           }
+          final savedSubstitute = data['substitute_player'];
+          substitutePlayer = savedSubstitute is Map<String, dynamic>
+              ? Player.fromJson(savedSubstitute)
+              : null;
         });
 
         if (savedPlayers != null && savedPlayers.isNotEmpty) {
@@ -1323,7 +1389,7 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
 
   Widget _buildCourtField() {
     return LineupCourt(
-      height: sixthManActivated ? 720.h : null,
+      belowLine: lineupBelowLine,
       slotBuilder: _buildPlayerSlot,
       changeJerseyButton: LineupChangeJerseyButton(
         jersey: jerseys[selectedJerseyIndex],
@@ -1331,17 +1397,20 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
       ),
       inside: [
         Positioned(top: 30.h, right: 20.w, child: _buildBonusButton()),
-        // Own row under the starters, centred: it used to sit over the right
-        // guard and hide his name and price (QA #9 9.3).
-        if (sixthManActivated)
-          Positioned(
-            bottom: 12.h,
-            left: 0,
-            right: 0,
-            child: Center(child: _buildSixthManSlot()),
+        // The half-way line: the substitute on the left (always there, empty
+        // until picked), the 6th Man on the right (only while that bonus is
+        // on). Fixed places, the top of the jersey on the line.
+        LineupHalfwayRow(
+          substitute: LineupSubstituteSlot(
+            key: const ValueKey('duel-substitute'),
+            player: substitutePlayer,
+            jersey: jerseys[selectedJerseyIndex],
+            onTap: _selectSubstitute,
+            fitName: true,
           ),
+          sixthMan: sixthManActivated ? _buildSixthManSlot(fitName: true) : null,
+        ),
       ],
-      // Bonus options menu - on top layer
       floating: [
         if (showBonusOptions && !_bonusLocked)
           Positioned(top: 94.h, right: 20.w, child: _buildBonusOptionsMenu()),
@@ -1499,8 +1568,9 @@ class _BuildYourTeamTabState extends State<BuildYourTeamTab> {
     );
   }
 
-  Widget _buildSixthManSlot() {
+  Widget _buildSixthManSlot({bool fitName = false}) {
     return LineupPlayerSlot(
+      fitName: fitName,
       player: sixthManPlayer,
       jersey: jerseys[selectedJerseyIndex],
       label: AppString.sixthMan.tr,

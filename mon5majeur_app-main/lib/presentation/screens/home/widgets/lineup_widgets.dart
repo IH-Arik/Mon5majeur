@@ -23,6 +23,10 @@ class LineupPlayerSlot extends StatelessWidget {
   // 1.0 for a starter; the substitute's jersey is lighter (the "+", the label
   // and the texts stay at full strength).
   final double jerseyOpacity;
+  // The name is shrunk to the slot's width instead of widening it (duel court,
+  // where the slot stands at the very edge and must not grow past it).
+  final bool fitName;
+
   const LineupPlayerSlot({
     super.key,
     required this.player,
@@ -30,6 +34,7 @@ class LineupPlayerSlot extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.jerseyOpacity = 1.0,
+    this.fitName = false,
   });
 
   @override
@@ -88,17 +93,7 @@ class LineupPlayerSlot extends StatelessWidget {
           ),
           if (p != null) ...[
             SizedBox(height: 8.h),
-            Text(
-              p.name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: const Color(0xFFFECD56),
-                fontSize: 12.sp,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w600,
-                height: 1.83,
-              ),
-            ),
+            _name(p.name),
             SizedBox(height: 4.h),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 6.w),
@@ -124,6 +119,25 @@ class LineupPlayerSlot extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _name(String name) {
+    final text = Text(
+      name,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: const Color(0xFFFECD56),
+        fontSize: 12.sp,
+        fontFamily: 'Roboto',
+        fontWeight: FontWeight.w600,
+        height: 1.83,
+      ),
+    );
+    if (!fitName) return text;
+    return SizedBox(
+      width: 114.w,
+      child: FittedBox(fit: BoxFit.scaleDown, child: text),
     );
   }
 }
@@ -153,12 +167,14 @@ class LineupSubstituteSlot extends StatelessWidget {
   final Player? player;
   final AssetGenImage jersey;
   final VoidCallback onTap;
+  final bool fitName;
 
   const LineupSubstituteSlot({
     super.key,
     required this.player,
     required this.jersey,
     required this.onTap,
+    this.fitName = false,
   });
 
   @override
@@ -169,6 +185,41 @@ class LineupSubstituteSlot extends StatelessWidget {
       label: AppString.substitute.tr,
       onTap: onTap,
       jerseyOpacity: substituteJerseyOpacity,
+      fitName: fitName,
+    );
+  }
+}
+
+/// The duel court's row on the half-way line: the substitute on the left edge, the
+/// 6th Man on the right edge (null while that bonus is off). Fixed places, so
+/// neither moves when the other appears. Both start with the top of
+/// the jersey on the line ([lineupSubstituteTop]).
+class LineupHalfwayRow extends StatelessWidget {
+  final Widget substitute;
+  final Widget? sixthMan;
+
+  const LineupHalfwayRow({super.key, required this.substitute, this.sixthMan});
+
+  @override
+  Widget build(BuildContext context) {
+    // Against the court's own edges: the guards' price tags end just above the
+    // line, in the columns 103 and 258 of the court; a jersey there would touch
+    // them on a small phone.
+    return Positioned(
+      top: lineupSubstituteTop.h,
+      left: 0,
+      right: 0,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: Align(alignment: Alignment.topLeft, child: substitute)),
+          Expanded(
+            child: sixthMan == null
+                ? const SizedBox.shrink()
+                : Align(alignment: Alignment.topRight, child: sixthMan),
+          ),
+        ],
+      ),
     );
   }
 }
