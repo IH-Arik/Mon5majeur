@@ -233,6 +233,11 @@ class FrenchTranslation {
         "Ton remplaçant entre en jeu si un titulaire coûtant 10 M ou plus n'a joué aucune minute. Il ne compte pas dans ton budget de 100 M, et il ne joue qu'à cette condition.",
     AppString.substitutePriceHint: 'Le remplaçant doit coûter @nM maximum',
     AppString.removeSubstitute: 'Retirer le remplaçant',
+    AppString.bonusInfoSixthMan:
+        'Ajoute un 6ème joueur (8M max, hors budget) : seuls tes 5 meilleurs scores sur les 6 comptent.',
+    AppString.bonusInfoChefCurry: 'Ajoute 3 points à ton score final.',
+    AppString.bonusInfoLuxuryTax:
+        'Augmente ton budget de 5M pour pouvoir choisir des joueurs plus chers.',
     AppString.substituteReplaces: '🔄 @sub remplace @starter',
     AppString.substituteDidNotEnter: 'Non entré',
     AppString.starterAbsent: 'absent',
