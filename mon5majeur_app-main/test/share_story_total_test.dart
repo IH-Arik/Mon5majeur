@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mon5majeur_app/core/language/language_controller.dart';
 import 'package:mon5majeur_app/data/models/match_result_model.dart';
+import 'package:mon5majeur_app/data/models/substitution_model.dart';
+import 'package:mon5majeur_app/presentation/screens/home/widgets/match_lineups_field.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/out_badge.dart';
 import 'package:mon5majeur_app/presentation/screens/home/widgets/substitute_widgets.dart';
 import 'package:mon5majeur_app/presentation/screens/share/share_story_from_duel.dart';
@@ -84,6 +86,8 @@ Future<void> showCard(WidgetTester t, ShareStoryData data) async {
   await t.pump();
   await t.pump(const Duration(milliseconds: 300));
 }
+
+const pendingState = SubstitutionState(status: 'pending');
 
 void main() {
   final accounts = {'me': me, 'r1': r1, 'r2': r2, 'r3': r3};
@@ -228,6 +232,128 @@ void main() {
       expect(s.homeScore, 103);
       expect(s.awayScore, 96);
       expect(s.myScore, 103);
+    });
+  });
+
+  group('the duel card carries the substitutes too', () {
+    PlayerScore side(int n, String name, {SubstitutionState? state, bool out = false, bool hidden = false}) => PlayerScore(
+          playerId: n, teamName: name, username: name, totalPoints: 0, jerseyIndex: n, selectionHidden: hidden,
+          selection: [
+            for (var i = 0; i < 5; i++)
+              PlayerSelection(id: '$n$i', name: 'J$i', position: ['SF', 'C', 'PF', 'PG', 'SG'][i], score: 20 + i, absent: out && i == 4),
+          ],
+          substitute: state == null ? null : PlayerSelection(id: '${n}s', name: 'Sub$n', position: 'PG', score: 11),
+          substitution: state,
+        );
+
+    ShareStoryData duel(PlayerScore a, PlayerScore b, {int scoreA = 147, int scoreB = 245}) => shareStoryFromDuel(
+          result: MatchResultModel(
+            id: 1, leagueId: 3, leagueName: 'Ligue', matchDay: 1, matchType: 'league', matchDate: '2026-11-03',
+            status: 'completed', playerScores: const [], pairs: const [], createdAt: '', scoresHidden: false,
+          ),
+          pair: MatchPair(playerAId: 1, playerAName: 'A', playerBId: 2, playerBName: 'B', scoreA: scoreA, scoreB: scoreB),
+          teamA: a, teamB: b, iAmHome: true,
+        )!;
+
+    final subA = find.byKey(const ValueKey('substitute-on-court-a'));
+    final subB = find.byKey(const ValueKey('substitute-on-court-b'));
+    const entered = SubstitutionState(status: 'entered', replacedId: 'x');
+    const notEntered = SubstitutionState(status: 'not_entered');
+
+    testWidgets('both teams: A above the half-way line, B below; the server\'s score is the one drawn', (t) async {
+      await showCard(t, duel(side(1, 'A', state: entered, out: true), side(2, 'B', state: entered)));
+      expect(subA, findsOneWidget);
+      expect(subB, findsOneWidget);
+      expect(t.getRect(subA).bottom, lessThan(t.getRect(subB).top));
+      expect(find.byType(SubstituteEnteredMark), findsNWidgets(2));
+      expect(find.byType(OutBadge), findsOneWidget);
+      expect(find.text('147'), findsOneWidget);
+      expect(find.text('245'), findsOneWidget);
+    });
+
+    testWidgets('a substitute who did not come in (or not yet) is left off the card', (t) async {
+      for (final state in [notEntered, pendingState]) {
+        await showCard(t, duel(side(1, 'A', state: entered), side(2, 'B', state: state)));
+        expect(subA, findsOneWidget);
+        expect(subB, findsNothing);
+        expect(find.text('(11)'), findsNothing);
+      }
+      await showCard(t, duel(side(1, 'A', state: notEntered), side(2, 'B', state: pendingState)));
+      expect(subA, findsNothing);
+      expect(subB, findsNothing);
+    });
+
+    testWidgets('a substitute who came in but was left out by the 6th Man: drawn in the shadow, in brackets', (t) async {
+      PlayerScore leftOut(int n, String name) => PlayerScore(
+            playerId: n, teamName: name, username: name, totalPoints: 0, jerseyIndex: n,
+            selection: [
+              for (var i = 0; i < 5; i++)
+                PlayerSelection(id: '$n$i', name: 'J$i', position: ['SF', 'C', 'PF', 'PG', 'SG'][i], score: 20 + i),
+            ],
+            substitute: PlayerSelection(id: '${n}s', name: 'Sub$n', position: 'PG', score: 11, counted: false),
+            substitution: entered,
+          );
+      await showCard(t, duel(leftOut(1, 'A'), side(2, 'B')));
+      expect(subA, findsOneWidget);
+      expect(find.descendant(of: subA, matching: find.byKey(const ValueKey('not-counted'))), findsOneWidget);
+      expect(find.descendant(of: subA, matching: find.text('(11)')), findsOneWidget);
+      expect(find.descendant(of: subA, matching: find.byType(SubstituteEnteredMark)), findsOneWidget);
+    });
+
+    testWidgets('on the story the substitutes are drawn at 80 % of a starter', (t) async {
+      await showCard(t, duel(side(1, 'A', state: entered), side(2, 'B', state: entered)));
+      // (the whole court is shrunk to the story, so compare with a starter's jersey picture)
+      final starter = t.getRect(find.descendant(of: find.byType(MatchLineupsField), matching: find.byType(Opacity)).first).height;
+      for (final sub in [subA, subB]) {
+        final jersey = t.getRect(find.descendant(of: sub, matching: find.byType(Opacity)).last).height; // (not the shadow wrapper)
+        expect(jersey / starter, closeTo(0.8, 0.02));
+      }
+    });
+
+    testWidgets('nothing is cut at the bottom of the longer court', (t) async {
+      await showCard(t, duel(side(1, 'A', state: entered), side(2, 'B', state: entered)));
+      final found = [for (final o in overflows) if (o.contains('bottom') || o.contains('top')) o];
+      expect(found, isEmpty, reason: found.join('; '));
+      // the court is clipped to its frame: everything of it, down to team B's label and
+      // substitute, must be inside that frame
+      final frame = t.getRect(find.ancestor(of: find.byType(MatchLineupsField), matching: find.byType(ClipRect)).first);
+      expect(t.getRect(find.byKey(const ValueKey('substitute-on-court-b'))).bottom, lessThanOrEqualTo(frame.bottom + 0.5));
+      expect(t.getRect(find.text('B').first).bottom, lessThanOrEqualTo(frame.bottom + 0.5));
+    });
+
+    testWidgets('the court is what the story is about: it takes at least two thirds of its height', (t) async {
+      await showCard(t, duel(side(1, 'A', state: entered), side(2, 'B', state: entered)));
+      final frame = t.getRect(find.ancestor(of: find.byType(MatchLineupsField), matching: find.byType(ClipRect)).first);
+      final card = t.getRect(find.byType(ShareStoryWidget));
+      debugPrint('COURTSHARE ${frame.height / card.height}');
+      expect(frame.height / card.height, greaterThan(0.66));
+    });
+
+    testWidgets('no substitute anywhere: the card is what it was, no extra court', (t) async {
+      await showCard(t, duel(side(1, 'A'), side(2, 'B')));
+      expect(subA, findsNothing);
+      expect(subB, findsNothing);
+      // team B's label sits at the bottom of the court: lower on a longer court
+      // (the field itself always fills the box it is given, so its own height says nothing)
+      double labelY(WidgetTester t) => t.getTopLeft(find.text('B').first).dy - t.getTopLeft(find.byType(MatchLineupsField)).dy;
+      final plain = labelY(t);
+      await showCard(t, duel(side(1, 'A', state: entered), side(2, 'B')));
+      final withSub = labelY(t);
+      expect(withSub, greaterThan(plain));
+    });
+
+    test('a duel with a lineup still hidden is not offered at all', () {
+      final story = shareStoryFromDuel(
+        result: MatchResultModel(
+          id: 1, leagueId: 3, leagueName: 'Ligue', matchDay: 1, matchType: 'league', matchDate: '2026-11-03',
+          status: 'completed', playerScores: const [], pairs: const [], createdAt: '', scoresHidden: false,
+        ),
+        pair: MatchPair(playerAId: 1, playerAName: 'A', playerBId: 2, playerBName: 'B', scoreA: 1, scoreB: 2),
+        teamA: side(1, 'A', state: entered),
+        teamB: side(2, 'B', state: entered, hidden: true),
+        iAmHome: true,
+      );
+      expect(story, isNull);
     });
   });
 

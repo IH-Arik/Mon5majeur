@@ -30,11 +30,22 @@ class ShareStoryWidget extends StatelessWidget {
 
   static const double width = 360;
   static const double height = 640;
-  static const double _safeV = height * 0.06;
+  // Instagram covers the top and the bottom of a story. On a duel card the court
+  // is what the picture is about, so everything around it is kept small.
+  double get _safeV => height * (data.isDuel ? 0.05 : 0.06);
 
   // The court's own size at design scale (see MatchLineupsField._court).
   static double get _courtW => 362.w;
-  static double get _duelCourtH => 482.h; // 12 margin + the 470 compact court
+  // 12 margin + the 470 compact court; longer when a team's substitute stands on
+  // it (see MatchLineupsField, `_longCourtExtra`).
+  double get _duelCourtH => (482 + (_duelHasSubstitute ? 164 : 0)).h;
+  // Only a substitute who came in is drawn (the same rule as the court's).
+  bool get _duelHasSubstitute => [data.home, data.away].any(
+    (t) =>
+        t?.substitute != null &&
+        !t!.selectionHidden &&
+        (t.substitution?.isEntered ?? false),
+  );
   // 12 margin + the 350 half court; 456 when the substitute stands under the
   // half-way line (the same longer court as the Results tab).
   double get _worldCourtH => data.me.substitute != null ? 468.h : 362.h;
@@ -57,17 +68,17 @@ class ShareStoryWidget extends StatelessWidget {
         child: ColoredBox(
           color: Colors.black,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, _safeV, 12, _safeV),
+            padding: EdgeInsets.fromLTRB(12, _safeV, 12, _safeV),
             child: Column(
               children: [
                 _header(),
-                const SizedBox(height: 6),
+                SizedBox(height: data.isDuel ? 3 : 6),
                 if (data.isDuel) ...[
                   _duelScore(),
                 ] else
                   // The team name is on the court's own label: not repeated.
                   _worldScore(),
-                const SizedBox(height: 4),
+                SizedBox(height: data.isDuel ? 2 : 4),
                 Expanded(
                   child: Center(
                     child: FittedBox(
@@ -76,9 +87,9 @@ class ShareStoryWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: data.isDuel ? 3 : 6),
                 _humor(),
-                const SizedBox(height: 8),
+                SizedBox(height: data.isDuel ? 4 : 8),
                 _footer(),
               ],
             ),
@@ -102,10 +113,10 @@ class ShareStoryWidget extends StatelessWidget {
 
   // The logo is the ad: big, on the left. The league and the day on the right.
   Widget _header() => SizedBox(
-    height: 32,
+    height: data.isDuel ? 30 : 32,
     child: Row(
       children: [
-        Assets.icons.nameLogo.image(height: 26),
+        Assets.icons.nameLogo.image(height: data.isDuel ? 22 : 26),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -116,16 +127,16 @@ class ShareStoryWidget extends StatelessWidget {
                 data.isDuel ? data.leagueName : AppString.globalLeague.tr,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: data.isDuel ? 11 : 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
                 _dayLabel,
                 maxLines: 1,
-                style: const TextStyle(color: _grey, fontSize: 10),
+                style: TextStyle(color: _grey, fontSize: data.isDuel ? 9 : 10),
               ),
             ],
           ),
@@ -139,31 +150,31 @@ class ShareStoryWidget extends StatelessWidget {
   // Score centered, the result stamp under it, the tie mention under the stamp.
   Widget _duelScore() => Column(
     children: [
+      // The score and its stamp on one line: the court is what the picture is
+      // about, the rest is kept small.
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Home on the left, away on the right; mine in the result's color
           // (green / red), theirs in grey. A tie follows the home rule.
           Text(
             '${data.homeScore}',
-            style: _bebas(38, data.iAmHome ? _resultColor : _grey),
+            style: _bebas(34, data.iAmHome ? _resultColor : _grey),
           ),
-          Text(' – ', style: _bebas(26, _grey)),
+          Text(' – ', style: _bebas(24, _grey)),
           Text(
             '${data.awayScore}',
-            style: _bebas(38, data.iAmHome ? _grey : _resultColor),
+            style: _bebas(34, data.iAmHome ? _grey : _resultColor),
           ),
+          const SizedBox(width: 14),
+          _resultStamp(),
         ],
       ),
-      const SizedBox(height: 2),
-      _resultStamp(),
       if (data.category.isTie)
-        Padding(
-          padding: const EdgeInsets.only(top: 3),
-          child: Text(
-            AppString.tieHomeWins.tr,
-            style: const TextStyle(color: _grey, fontSize: 10),
-          ),
+        Text(
+          AppString.tieHomeWins.tr,
+          style: const TextStyle(color: _grey, fontSize: 10),
         ),
     ],
   );
@@ -187,7 +198,11 @@ class ShareStoryWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color, width: 2),
       ),
-      child: Text(text, maxLines: 1, style: _bebas(20, color, spacing: 2)),
+      child: Text(
+        text,
+        maxLines: 1,
+        style: _bebas(data.isDuel ? 16 : 20, color, spacing: 2),
+      ),
     ),
   );
 
@@ -382,8 +397,8 @@ class ShareStoryWidget extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           fontFamily: 'CaveatBrush',
-          fontSize: 16,
-          height: 1.25,
+          fontSize: data.isDuel ? 15 : 16,
+          height: data.isDuel ? 1.15 : 1.25,
           color: data.category.isLoss ? const Color(0xFFBDBDBD) : _orange,
         ),
       ),
@@ -393,7 +408,7 @@ class ShareStoryWidget extends StatelessWidget {
   // Both stores the same size, so they sit side by side as a pair.
   Widget _store(AssetGenImage icon, String label) => Container(
     width: 108,
-    padding: const EdgeInsets.symmetric(vertical: 3),
+    padding: EdgeInsets.symmetric(vertical: data.isDuel ? 2 : 3),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(5),
       border: Border.all(color: Colors.white24),
@@ -423,9 +438,9 @@ class ShareStoryWidget extends StatelessWidget {
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(height: 1, width: double.infinity, color: Colors.white24),
-      const SizedBox(height: 6),
+      SizedBox(height: data.isDuel ? 4 : 6),
       _cta(),
-      const SizedBox(height: 5),
+      SizedBox(height: data.isDuel ? 3 : 5),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

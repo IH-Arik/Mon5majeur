@@ -128,6 +128,10 @@ class PlayerSelection {
   final bool isSixthMan;
   // A starter the substitute replaced: shown greyed, "absent".
   final bool absent;
+  // Duels: false when his points are not in the total (the best 5 of 6 left him
+  // out, or the substitute did not come in). The server decides, the same on
+  // every screen; true when it says nothing (Global League, older servers).
+  final bool counted;
 
   PlayerSelection({
     required this.id,
@@ -136,6 +140,7 @@ class PlayerSelection {
     required this.score,
     this.isSixthMan = false,
     this.absent = false,
+    this.counted = true,
   });
 
   factory PlayerSelection.fromJson(Map<String, dynamic> json) {
@@ -148,6 +153,7 @@ class PlayerSelection {
       score: (json['score'] as num?)?.round() ?? 0,
       isSixthMan: json['is_sixth_man'] ?? false,
       absent: json['absent'] ?? false,
+      counted: json['counted'] ?? true,
     );
   }
 }

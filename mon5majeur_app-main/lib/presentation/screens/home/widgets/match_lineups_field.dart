@@ -85,8 +85,12 @@ class MatchLineupsField extends StatelessWidget {
       teamA?.substitute != null &&
       !(teamA?.selectionHidden ?? false);
 
+  // On the share card only a substitute who came in is shown: one who did not
+  // play would only leave two unexplained players on the court.
   bool _teamHasSubstitute(PlayerScore? t) =>
-      t?.substitute != null && !(t?.selectionHidden ?? false);
+      t?.substitute != null &&
+      !(t?.selectionHidden ?? false) &&
+      (!shareCompact || (t?.substitution?.isEntered ?? false));
 
   /// Duel result (two teams on one court): the court is longer in the middle so
   /// each team's substitute has room - team A's just above the half-way line,
@@ -94,12 +98,14 @@ class MatchLineupsField extends StatelessWidget {
   bool get _longDuelCourt =>
       duelResultStyle &&
       showOpponent &&
-      !shareCompact &&
       (_teamHasSubstitute(teamA) || _teamHasSubstitute(teamB));
 
-  static const double _longCourtExtra = 130;
+  // The share story's court is the compact one (470): longer by a bit more, and
+  // the substitutes are drawn at 80 % so the whole picture still reads on a phone.
+  double get _longCourtExtra => shareCompact ? 164 : 130;
+  double get _subScale => shareCompact ? 0.8 : 1.0;
   // the half-way line of the longer duel court (its middle)
-  static const double _lineY = (700 + _longCourtExtra) / 2;
+  double get _lineY => ((shareCompact ? 470 : 700) + _longCourtExtra) / 2;
 
   List<PlayerSelection> _starters(PlayerScore? t) =>
       (t?.selection ?? const <PlayerSelection>[])
@@ -147,7 +153,7 @@ class MatchLineupsField extends StatelessWidget {
       width: double.infinity,
       constraints: BoxConstraints(maxWidth: 362.w),
       height: shareCompact
-          ? 470.h
+          ? (470 + (_longDuelCourt ? _longCourtExtra : 0)).h
           : (globalResultStyle
               ? (350 + (_showsSubstitute ? _belowLine : 0)).h
               : (showOpponent ? (700 + (_longDuelCourt ? _longCourtExtra : 0)).h : 380.h)),
@@ -200,7 +206,7 @@ class MatchLineupsField extends StatelessWidget {
                 _positionPlayer(i, aPlayers[i], teamA, isTopTeam: true),
             if (_showsSubstitute) _substituteOnCourt(teamA!, top: _substituteTop.h),
             if (_longDuelCourt && _teamHasSubstitute(teamA))
-              _substituteOnCourt(teamA!, top: (_lineY - 107 - 4).h, keyName: 'substitute-on-court-a'),
+              _substituteOnCourt(teamA!, top: (_lineY - 107 * _subScale - 4).h, keyName: 'substitute-on-court-a', scale: _subScale),
             if (!globalResultStyle &&
                 !noTeamAtAll &&
                 !aHidden &&
@@ -221,7 +227,7 @@ class MatchLineupsField extends StatelessWidget {
               for (var i = 0; i < bPlayers.length; i++)
                 _positionPlayer(i, bPlayers[i], b, isTopTeam: false),
             if (_longDuelCourt && _teamHasSubstitute(b))
-              _substituteOnCourt(b!, top: (_lineY + 4).h, keyName: 'substitute-on-court-b'),
+              _substituteOnCourt(b!, top: (_lineY + 4).h, keyName: 'substitute-on-court-b', scale: _subScale),
             if (showOpponent &&
                 !noTeamAtAll &&
                 !bHidden &&
@@ -308,7 +314,7 @@ class MatchLineupsField extends StatelessWidget {
                 ),
                 scoresHidden
                     ? Icon(Icons.lock_outline, color: Colors.grey, size: 13.r)
-                    : Text('${sixth.score}', style: scoreTextStyle(size: 14)),
+                    : _sixthScore(sixth),
               ],
             ),
           ],
@@ -410,7 +416,7 @@ class MatchLineupsField extends StatelessWidget {
                   ),
                   scoresHidden
                       ? Icon(Icons.lock_outline, color: Colors.grey, size: 13.r)
-                      : Text('${sixth.score}', style: scoreTextStyle(size: 14)),
+                      : _sixthScore(sixth),
                 ],
               ),
             ],
@@ -686,22 +692,32 @@ class MatchLineupsField extends StatelessWidget {
   static const double _substituteTop = 341;
   static const double _belowLine = 106;
 
-  Widget _substituteOnCourt(PlayerScore team, {required double top, String keyName = 'substitute-on-court'}) {
+  Widget _substituteOnCourt(PlayerScore team, {required double top, String keyName = 'substitute-on-court', double scale = 1.0}) {
     final sub = team.substitute!;
     final state = team.substitution;
     final entered = state?.isEntered ?? false;
     final notEntered = state?.isNotEntered ?? false;
+    // He came in, but the best 5 of 6 left him out: the sync mark stays (he did
+    // come in), the rest is in the shadow with his points in brackets.
+    final leftOut = entered && !sub.counted;
     final jersey = jerseyAsset(team.jerseyIndex);
-    final body = _playerBody(
+    Widget body = _playerBody(
       sub,
       jersey,
       // Counted points plain, the others in brackets (nothing counts yet, or
       // he did not come in).
-      scoreText: entered ? null : '(${sub.score})',
+      scoreText: entered && !leftOut ? null : '(${sub.score})',
       // Like on the composition screen: a jersey at 80 % while nothing is decided.
       jerseyOpacity: entered || notEntered ? 1.0 : 0.8,
       cornerMark: entered ? const SubstituteEnteredMark() : null,
     );
+    if (scale != 1.0) {
+      body = SizedBox(
+        width: 90.w * scale,
+        height: 107.h * scale,
+        child: FittedBox(fit: BoxFit.contain, child: body),
+      );
+    }
     return Positioned(
       key: ValueKey(keyName),
       top: top,
@@ -710,10 +726,25 @@ class MatchLineupsField extends StatelessWidget {
       child: Center(
         child: notEntered
             ? Opacity(key: const ValueKey('in-the-shadow'), opacity: 0.4, child: body)
+            : leftOut
+            ? _notCounted(body)
             : body,
       ),
     );
   }
+
+  /// The 6th Man's points: in brackets and dimmed when the best 5 of 6 left him out.
+  Widget _sixthScore(PlayerSelection sixth) => sixth.counted
+      ? Text('${sixth.score}', style: scoreTextStyle(size: 14))
+      : Opacity(
+          key: const ValueKey('sixth-not-counted'),
+          opacity: 0.5,
+          child: Text('(${sixth.score})', style: scoreTextStyle(size: 14)),
+        );
+
+  /// Played, but his points are not in the total: in the shadow.
+  Widget _notCounted(Widget body) =>
+      Opacity(key: const ValueKey('not-counted'), opacity: 0.4, child: body);
 
   /// A player who is not playing: in the shadow, with [badge] on his jersey.
   Widget _inTheShadow(Widget body, Widget badge, {required String keyName}) {
@@ -740,6 +771,11 @@ class MatchLineupsField extends StatelessWidget {
   }
 
   Widget _buildPlayer(PlayerSelection player, AssetGenImage jersey) {
+    // The best 5 of 6 left him out: in the shadow and his points in brackets, like
+    // everything that does not count (no badge: he did play).
+    if (!player.absent && !player.counted) {
+      return _notCounted(_playerBody(player, jersey, scoreText: '(${player.score})'));
+    }
     if (!player.absent) return _playerBody(player, jersey);
     // A starter who played no minute: in the shadow, with the OUT badge.
     return _inTheShadow(

@@ -662,6 +662,7 @@ class _LiveScoreScreenState extends State<LiveScoreScreen> {
           score: p.fantasyScoreLive.round(),
           isSixthMan: sixth,
           absent: p.isAbsent,
+          counted: p.isCounted,
         );
 
     // Duel Live bonus zone, decided only by the lineup (never by a server

@@ -162,8 +162,21 @@ void main() {
       expect(t.getRect(find.text('Cunning')).top, greaterThan(courtBottom - 1));
     });
 
-    testWidgets('the share story (compact court) is untouched', (t) async {
+    testWidgets('the share story (compact court) carries them too, on its own longer court', (t) async {
+      await show(t, team('Moi', 0, state: entered), team('Eux', 1, state: entered), compact: true);
+      expect(subA, findsOneWidget);
+      expect(subB, findsOneWidget);
+      expect(t.getRect(subA).bottom, lessThan(t.getRect(subB).top));
+    });
+
+    testWidgets('the share story leaves off a substitute who did not come in', (t) async {
       await show(t, team('Moi', 0, state: entered), team('Eux', 1, state: notEntered), compact: true);
+      expect(subA, findsOneWidget);
+      expect(subB, findsNothing);
+    });
+
+    testWidgets('the share story without any substitute draws none', (t) async {
+      await show(t, team('Moi', 0), team('Eux', 1), compact: true);
       expect(subA, findsNothing);
       expect(subB, findsNothing);
     });
