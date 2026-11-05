@@ -85,6 +85,22 @@ class MatchLineupsField extends StatelessWidget {
       teamA?.substitute != null &&
       !(teamA?.selectionHidden ?? false);
 
+  bool _teamHasSubstitute(PlayerScore? t) =>
+      t?.substitute != null && !(t?.selectionHidden ?? false);
+
+  /// Duel result (two teams on one court): the court is longer in the middle so
+  /// each team's substitute has room - team A's just above the half-way line,
+  /// team B's just below. The 6th Man is not on the court, as before.
+  bool get _longDuelCourt =>
+      duelResultStyle &&
+      showOpponent &&
+      !shareCompact &&
+      (_teamHasSubstitute(teamA) || _teamHasSubstitute(teamB));
+
+  static const double _longCourtExtra = 130;
+  // the half-way line of the longer duel court (its middle)
+  static const double _lineY = (700 + _longCourtExtra) / 2;
+
   List<PlayerSelection> _starters(PlayerScore? t) =>
       (t?.selection ?? const <PlayerSelection>[])
           .where((p) => !p.isSixthMan)
@@ -134,7 +150,7 @@ class MatchLineupsField extends StatelessWidget {
           ? 470.h
           : (globalResultStyle
               ? (350 + (_showsSubstitute ? _belowLine : 0)).h
-              : (showOpponent ? 700.h : 380.h)),
+              : (showOpponent ? (700 + (_longDuelCourt ? _longCourtExtra : 0)).h : 380.h)),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.r),
@@ -182,7 +198,9 @@ class MatchLineupsField extends StatelessWidget {
             else
               for (var i = 0; i < aPlayers.length; i++)
                 _positionPlayer(i, aPlayers[i], teamA, isTopTeam: true),
-            if (_showsSubstitute) _substituteOnCourt(),
+            if (_showsSubstitute) _substituteOnCourt(teamA!, top: _substituteTop.h),
+            if (_longDuelCourt && _teamHasSubstitute(teamA))
+              _substituteOnCourt(teamA!, top: (_lineY - 107 - 4).h, keyName: 'substitute-on-court-a'),
             if (!globalResultStyle &&
                 !noTeamAtAll &&
                 !aHidden &&
@@ -202,6 +220,8 @@ class MatchLineupsField extends StatelessWidget {
             else
               for (var i = 0; i < bPlayers.length; i++)
                 _positionPlayer(i, bPlayers[i], b, isTopTeam: false),
+            if (_longDuelCourt && _teamHasSubstitute(b))
+              _substituteOnCourt(b!, top: (_lineY + 4).h, keyName: 'substitute-on-court-b'),
             if (showOpponent &&
                 !noTeamAtAll &&
                 !bHidden &&
@@ -666,8 +686,7 @@ class MatchLineupsField extends StatelessWidget {
   static const double _substituteTop = 341;
   static const double _belowLine = 106;
 
-  Widget _substituteOnCourt() {
-    final team = teamA!;
+  Widget _substituteOnCourt(PlayerScore team, {required double top, String keyName = 'substitute-on-court'}) {
     final sub = team.substitute!;
     final state = team.substitution;
     final entered = state?.isEntered ?? false;
@@ -684,8 +703,8 @@ class MatchLineupsField extends StatelessWidget {
       cornerMark: entered ? const SubstituteEnteredMark() : null,
     );
     return Positioned(
-      key: const ValueKey('substitute-on-court'),
-      top: _substituteTop.h,
+      key: ValueKey(keyName),
+      top: top,
       left: 0,
       right: 0,
       child: Center(
