@@ -21,6 +21,39 @@ bool canBeSubstitute(Player candidate, Set<String> excludedIds) {
   return candidate.price <= substituteMaxPrice;
 }
 
+/// The substitute a copied lineup ends with ("Reuse my Global League team"): the
+/// one of the copied lineup, if he passes the same checks as by hand, otherwise
+/// nobody (the copy itself is never stopped by him). He is left out when he costs
+/// more than [substituteMaxPrice] (the price of the player list, which is the
+/// database's, when he is in it), is OUT, is a starter or the 6th Man of the
+/// lineup he lands in, or is known not to play tonight (a complete [pool] that
+/// does not hold him). Before the pool is complete the server decides on save.
+Player? copiedSubstitute({
+  required Player? candidate,
+  required Iterable<Player?> starters,
+  required Player? sixthMan,
+  required List<Player> pool,
+  required bool poolComplete,
+}) {
+  if (candidate?.id == null) return null;
+  Player? fresh;
+  for (final p in pool) {
+    if (p.id == candidate!.id) {
+      fresh = p;
+      break;
+    }
+  }
+  if (fresh == null && poolComplete) return null;
+  final player = fresh ?? candidate!;
+  if (player.status == 'OUT') return null;
+  final taken = <String>{
+    for (final s in starters)
+      if (s?.id != null) s!.id!,
+    if (sixthMan?.id != null) sixthMan!.id!,
+  };
+  return canBeSubstitute(player, taken) ? player : null;
+}
+
 /// The points of a lineup as the server counts them: the starter the substitute
 /// replaced counts for nothing (he is flagged absent) and the substitute counts
 /// once he has really come in. A substitute who did not enter, or whose entry

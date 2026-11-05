@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -26,6 +28,9 @@ class LineupPlayerSlot extends StatelessWidget {
   // The name is shrunk to the slot's width instead of widening it (duel court,
   // where the slot stands at the very edge and must not grow past it).
   final bool fitName;
+  // A fixed halo that follows the jersey's silhouette (the duel composition's
+  // 6th Man once he is picked). Null for everybody else.
+  final Color? glow;
 
   const LineupPlayerSlot({
     super.key,
@@ -35,6 +40,7 @@ class LineupPlayerSlot extends StatelessWidget {
     required this.onTap,
     this.jerseyOpacity = 1.0,
     this.fitName = false,
+    this.glow,
   });
 
   @override
@@ -51,21 +57,27 @@ class LineupPlayerSlot extends StatelessWidget {
               // The position pill hangs below the jersey; never clip it.
               clipBehavior: Clip.none,
               children: [
+                if (glow != null) ...[
+                  // Wide soft halo, then a tight bright edge: the laser.
+                  _glowLayer(
+                    Color.lerp(glow!, Colors.white, 0.2)!,
+                    sigma: 8,
+                    scale: 1.06,
+                    alpha: 1,
+                  ),
+                  _glowLayer(
+                    Color.lerp(glow!, Colors.white, 0.55)!,
+                    sigma: 2.2,
+                    scale: 1.02,
+                    alpha: 1,
+                  ),
+                ],
                 Positioned(
                   left: 0,
                   top: 0,
                   child: Opacity(
                     opacity: jerseyOpacity,
-                    child: Container(
-                      width: 114.w,
-                      height: 91.h,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: jersey.provider(),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
+                    child: _jerseyPicture(),
                   ),
                 ),
                 Positioned(
@@ -122,6 +134,39 @@ class LineupPlayerSlot extends StatelessWidget {
     );
   }
 
+  Widget _jerseyPicture() => Container(
+    width: 114.w,
+    height: 91.h,
+    decoration: BoxDecoration(
+      image: DecorationImage(image: jersey.provider(), fit: BoxFit.cover),
+    ),
+  );
+
+  // The jersey's own picture painted in one colour and blurred: its outline, not
+  // a rectangle (the picture around the jersey is transparent).
+  Widget _glowLayer(
+    Color color, {
+    required double sigma,
+    required double scale,
+    required double alpha,
+  }) => Positioned(
+    left: 0,
+    top: 0,
+    child: Transform.scale(
+      scale: scale,
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        child: ColorFiltered(
+          colorFilter: ColorFilter.mode(
+            color.withValues(alpha: alpha),
+            BlendMode.srcIn,
+          ),
+          child: _jerseyPicture(),
+        ),
+      ),
+    ),
+  );
+
   Widget _name(String name) {
     final text = Text(
       name,
@@ -141,6 +186,9 @@ class LineupPlayerSlot extends StatelessWidget {
     );
   }
 }
+
+/// The blue of the "6ÈME HOMME" bonus icon (measured on assets/icons/sixman.png).
+const Color sixthManBlue = Color(0xFF2C46F4);
 
 /// How strong the substitute's jersey is drawn (composition, and live while
 /// nothing is decided).
